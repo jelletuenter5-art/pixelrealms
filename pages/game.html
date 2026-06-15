@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>PixelRealms</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -19,7 +19,7 @@
   html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; }
 
   /* LAYOUT */
-  .layout { display: grid; grid-template-columns: 260px 1fr 280px; grid-template-rows: 50px 1fr; height: 100vh; }
+  .layout { display: grid; grid-template-columns: 260px 1fr 280px; grid-template-rows: 50px 1fr; height: 100vh; height: 100dvh; }
 
   /* TOP BAR */
   .topbar {
@@ -175,7 +175,7 @@
   .token-progress { background: var(--border); border-radius: 4px; height: 6px; margin-top: 0.5rem; overflow: hidden; }
   .token-fill { height: 100%; background: linear-gradient(90deg, var(--green), #16a34a); border-radius: 4px; transition: width 0.5s; }
 
-  .toast { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%) translateY(80px);
+  .toast { position: fixed; bottom: calc(1rem + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(80px);
     background: var(--panel2); border: 1px solid var(--green); color: var(--green);
     padding: 0.75rem 1.5rem; border-radius: 10px; font-size: 0.85rem; z-index: 9999;
     transition: transform 0.3s; max-width: 90vw; text-align: center; }
@@ -211,12 +211,13 @@
     .panel-toggle { display: inline-flex; }
 
     .left-panel, .right-panel {
-      position: fixed; top: 0; bottom: 0; width: 85%; max-width: 320px;
+      position: fixed; top: 0; height: 100vh; height: 100dvh; width: 85%; max-width: 320px;
       z-index: 250; transition: transform 0.25s ease; box-shadow: 0 0 30px rgba(0,0,0,0.6);
     }
     .left-panel { left: 0; transform: translateX(-100%); border-right: 1px solid var(--border); }
     .right-panel { right: 0; transform: translateX(100%); border-left: 1px solid var(--border); }
     .left-panel.open, .right-panel.open { transform: translateX(0); }
+    .panel-body, #rightPanelBody { padding-bottom: 1.5rem; }
 
     .panel-backdrop.show {
       display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 240;
@@ -591,8 +592,14 @@ function initCanvas() {
   // Center map initially
   const totalW = engine.game.map_width * CONFIG.PIXEL_SIZE;
   const totalH = engine.game.map_height * CONFIG.PIXEL_SIZE;
-  offsetX = (canvas.width - totalW) / 2;
-  offsetY = (canvas.height - totalH) / 2;
+
+  // On phones, zoom out further so more of the map is visible at once
+  if (window.innerWidth <= 860) {
+    scale = Math.max(0.3, Math.min(canvas.width / totalW, canvas.height / totalH) * 0.95);
+  }
+
+  offsetX = (canvas.width - totalW * scale) / 2;
+  offsetY = (canvas.height - totalH * scale) / 2;
 
   // Mouse events
   canvas.addEventListener('mousedown', e => {
@@ -992,10 +999,10 @@ async function renderNations(body) {
 
   const myId = engine.country?.id;
   body.innerHTML = `<div class="section-label">Nations (${countries.length})</div>` +
-    countries.map(c => `<div class="country-item ${c.id === myId ? 'me' : ''}" onclick="focusCountry('${c.id}')">
+    countries.map((c, i) => `<div class="country-item ${c.id === myId ? 'me' : ''}" onclick="focusCountry('${c.id}')">
       <div class="country-flag" style="background:${c.color}"></div>
       <div class="country-info">
-        <div class="country-name">${c.flag_emoji || ''} ${c.name} ${c.id === myId ? '(You)' : ''}</div>
+        <div class="country-name">#${i + 1} ${c.flag_emoji || ''} ${c.name} ${c.id === myId ? '(You)' : ''}</div>
         <div class="country-stats">🗺️ ${c.pixel_count}px · ⚔️ ${c.army_size} · 💰 ${Math.floor(c.gold)}</div>
       </div>
     </div>`).join('');
