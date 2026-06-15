@@ -56,7 +56,7 @@ CREATE TABLE countries (
   pixel_count INTEGER DEFAULT 5,
   pending_pixels FLOAT DEFAULT 0,        -- accrued offline expansion tokens
   last_active TIMESTAMPTZ DEFAULT NOW(),
-  gold INTEGER DEFAULT 100,
+  gold FLOAT DEFAULT 100,
   income_per_pixel FLOAT DEFAULT 0.5,    -- gold per pixel per hour
   infrastructure_level INTEGER DEFAULT 0,
   army_size INTEGER DEFAULT 10,
