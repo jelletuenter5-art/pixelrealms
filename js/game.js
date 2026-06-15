@@ -83,8 +83,23 @@ class GameEngine {
     }
 
     const key = `${x},${y}`;
-    const pixel = this.pixelData[key];
-    if (!pixel) return { ok: false, msg: 'Pixel not found.' };
+    let pixel = this.pixelData[key];
+    if (!pixel) {
+      // Pixel row missing (seeding gap) — seed it on demand from the local map
+      const tile = this.mapData?.[y]?.[x];
+      if (!tile) return { ok: false, msg: 'Pixel not found.' };
+      const { data, error } = await sb.from('pixels')
+        .upsert({ game_id: this.gameId, x, y, terrain: tile.terrain }, { onConflict: 'game_id,x,y', ignoreDuplicates: true })
+        .select().single();
+      if (error || !data) {
+        const { data: existing } = await sb.from('pixels').select('*').eq('game_id', this.gameId).eq('x', x).eq('y', y).single();
+        if (!existing) return { ok: false, msg: 'Pixel not found.' };
+        pixel = existing;
+      } else {
+        pixel = data;
+      }
+      this.pixelData[key] = pixel;
+    }
     if (pixel.terrain === 'water') return { ok: false, msg: "Can't expand into water." };
     if (pixel.country_id === this.country.id) return { ok: false, msg: 'Already yours.' };
 
