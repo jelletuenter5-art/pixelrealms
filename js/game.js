@@ -63,9 +63,33 @@ class GameEngine {
     // Calculate pending pixels from time offline
     if (this.country) {
       await this.accruePendingPixels();
+      await this._reconcileCountryStats();
     }
 
     return this;
+  }
+
+  // Recompute pixel_count / income / upkeep from real territory + buildings so
+  // stored counters can't drift out of sync with the actual map state.
+  async _reconcileCountryStats() {
+    const myPixels = Object.values(this.pixelData).filter(p => p.country_id === this.country.id);
+    const myInfra = Object.values(this.infraData).filter(i => i.country_id === this.country.id);
+    const farms = myInfra.filter(i => i.type === 'farm').length;
+    const markets = myInfra.filter(i => i.type === 'market').length;
+
+    const correctPixelCount = myPixels.length;
+    const correctIncome = 0.5 + farms * CONFIG.INFRA_COSTS.farm.incomeBonus;
+    const correctUpkeep = Math.max(0.02, 0.1 - markets * CONFIG.INFRA_COSTS.market.upkeepReduction);
+
+    const updates = {};
+    if (correctPixelCount !== this.country.pixel_count) updates.pixel_count = correctPixelCount;
+    if (Math.abs(correctIncome - this.country.income_per_pixel) > 1e-6) updates.income_per_pixel = correctIncome;
+    if (Math.abs(correctUpkeep - this.country.army_upkeep_per_pixel) > 1e-6) updates.army_upkeep_per_pixel = correctUpkeep;
+
+    if (Object.keys(updates).length > 0) {
+      const { data } = await sb.from('countries').update(updates).eq('id', this.country.id).select().single();
+      if (data) this.country = data;
+    }
   }
 
   // ── Pixel Accrual (offline expansion tokens) ─────────────
@@ -170,7 +194,9 @@ class GameEngine {
     if (!defender) return { ok: false, msg: 'Defender not found.' };
 
     // Combat formula
-    const terrainDef = CONFIG.TERRAIN_DEFENSE[pixel.terrain] || 1;
+    const wall = this.infraData[key];
+    const wallBonus = wall?.type === 'wall' ? CONFIG.INFRA_COSTS.wall.defenseBonus : 0;
+    const terrainDef = (CONFIG.TERRAIN_DEFENSE[pixel.terrain] || 1) * (1 + wallBonus);
     const attackPower = this.country.army_size * (Math.random() * 0.4 + 0.8);
     const defensePower = defender.army_size * terrainDef * (Math.random() * 0.4 + 0.8);
 
@@ -267,9 +293,10 @@ class GameEngine {
     const newGold = this.country.gold - cost.gold;
     let updates = { gold: newGold };
 
-    if (type === 'barracks') updates.army_size = this.country.army_size + 20;
-    if (type === 'farm') updates.income_per_pixel = this.country.income_per_pixel + 0.5;
-    if (type === 'mine') updates.gold = newGold + 10; // instant bonus
+    if (type === 'barracks') updates.army_size = this.country.army_size + cost.armyBonus;
+    if (type === 'farm') updates.income_per_pixel = this.country.income_per_pixel + cost.incomeBonus;
+    if (type === 'market') updates.army_upkeep_per_pixel = Math.max(0.02, this.country.army_upkeep_per_pixel - cost.upkeepReduction);
+    // mine: ongoing flat income handled by tickIncome; wall: defense bonus handled in attack()
 
     await sb.from('countries').update(updates).eq('id', this.country.id);
     Object.assign(this.country, updates);
@@ -458,7 +485,12 @@ class GameEngine {
 async function tickIncome(engine) {
   if (!engine.country) return;
   const c = engine.country;
-  const minuteIncome = (c.income_per_pixel * c.pixel_count) / 60;
+  const mines = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id && i.type === 'mine').length;
+  const flatIncomePerHour = mines * CONFIG.INFRA_COSTS.mine.flatIncome;
+  const terrainWeight = Object.values(engine.pixelData)
+    .filter(p => p.country_id === c.id)
+    .reduce((sum, p) => sum + (CONFIG.TERRAIN_INCOME[p.terrain] ?? 1), 0);
+  const minuteIncome = (c.income_per_pixel * terrainWeight + flatIncomePerHour) / 60;
   const newGold = Math.floor(c.gold + minuteIncome);
   if (newGold === c.gold) return;
 
