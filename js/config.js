@@ -1,8 +1,8 @@
 // PixelRealms — config.js
 // Replace these with your actual Supabase credentials after setup
 
-const SUPABASE_URL = 'https://lezdjsrkiczasrdpfuqs.supabase.co/rest/v1/';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxlemRqc3JraWN6YXNyZHBmdXFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MTYxNjIsImV4cCI6MjA5NzA5MjE2Mn0.2KcHVYCr4Nj2eUIYRSZq0FiK4f0r6dzz8BArx3ZCnwE';
+const SUPABASE_URL = 'https://lezdjsrkiczasrdpfuqs.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_AhWRHGXo1tJ16sgJlB3s3A_x5wCvZ0G';
 
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
