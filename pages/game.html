@@ -557,10 +557,11 @@ function initCanvas() {
     const factor = e.deltaY < 0 ? 1.1 : 0.9;
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-    offsetX = mx - (mx - offsetX) * factor;
-    offsetY = my - (my - offsetY) * factor;
-    scale *= factor;
-    scale = Math.max(0.3, Math.min(6, scale));
+    const newScale = Math.max(0.3, Math.min(6, scale * factor));
+    const f = newScale / scale;
+    offsetX = mx - (mx - offsetX) * f;
+    offsetY = my - (my - offsetY) * f;
+    scale = newScale;
     renderMap();
   }, { passive: false });
 
@@ -575,7 +576,14 @@ function initCanvas() {
     if (e.touches.length === 2) {
       const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
       const factor = dist / lastDist;
-      scale = Math.max(0.3, Math.min(6, scale * factor));
+      const newScale = Math.max(0.3, Math.min(6, scale * factor));
+      const f = newScale / scale;
+      const rect = canvas.getBoundingClientRect();
+      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+      const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+      offsetX = cx - (cx - offsetX) * f;
+      offsetY = cy - (cy - offsetY) * f;
+      scale = newScale;
       lastDist = dist;
       renderMap();
     } else if (dragStart) {
@@ -835,9 +843,11 @@ function setMode(mode) {
 // ── ZOOM ──────────────────────────────────────────────
 function zoom(factor) {
   const cx = canvas.width / 2, cy = canvas.height / 2;
-  offsetX = cx - (cx - offsetX) * factor;
-  offsetY = cy - (cy - offsetY) * factor;
-  scale = Math.max(0.3, Math.min(6, scale * factor));
+  const newScale = Math.max(0.3, Math.min(6, scale * factor));
+  const f = newScale / scale;
+  offsetX = cx - (cx - offsetX) * f;
+  offsetY = cy - (cy - offsetY) * f;
+  scale = newScale;
   renderMap();
 }
 function resetView() {

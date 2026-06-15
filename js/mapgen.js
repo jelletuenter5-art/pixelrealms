@@ -95,7 +95,14 @@ class MapGenerator {
     for (let y = 0; y < this.height; y++) {
       map[y] = [];
       for (let x = 0; x < this.width; x++) {
-        const elevation = this.noise.fbm(x, y) + islandMask(x, y) * 0.4;
+        const baseElevation = this.noise.fbm(x, y, 5);
+        // Independent higher-frequency layer that scatters extra peaks
+        // across the landmass instead of one big central massif.
+        const ridge = this.noise.fbm(x * 2.5 + 900, y * 2.5 + 900, 4);
+
+        let elevation = baseElevation * 0.65 + islandMask(x, y) * 0.3;
+        elevation += Math.max(0, ridge - 0.5) * 0.7;
+
         const moisture  = this.noise.fbm(x + 500, y + 500, 4);
 
         let terrain;
@@ -105,7 +112,7 @@ class MapGenerator {
           terrain = 'grass'; // coastal lowland
         } else if (elevation < 0.62) {
           terrain = moisture > 0.55 ? 'grass' : 'desert';
-        } else if (elevation < 0.76) {
+        } else if (elevation < 0.74) {
           terrain = 'hill';
         } else {
           terrain = 'mountain';
