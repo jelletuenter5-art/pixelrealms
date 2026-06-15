@@ -140,9 +140,18 @@
     .page-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; padding-bottom: 0.5rem; }
     .page-tab { padding: 0.6rem 0.9rem; font-size: 0.8rem; white-space: nowrap; flex: 0 0 auto; }
     .game-grid { grid-template-columns: 1fr; }
-    .lb-header, .lb-row { grid-template-columns: 36px 1fr 70px 70px; }
-    .lb-header div:nth-child(5), .lb-header div:nth-child(6),
-    .lb-row div:nth-child(5), .lb-row div:nth-child(6) { display: none; }
+    .lb-header { display: none; }
+    .lb-row {
+      display: grid; grid-template-columns: 32px 1fr; gap: 0.25rem 0.5rem;
+      padding: 0.75rem 0.75rem; align-items: center;
+    }
+    .lb-row .rank { grid-row: 1 / 3; }
+    .lb-row .lb-name { font-size: 0.95rem; }
+    .lb-row .lb-stat {
+      grid-column: 2; font-size: 0.78rem; display: flex; gap: 0.3rem;
+    }
+    .lb-row .lb-stat::before { content: attr(data-label); color: var(--muted); font-weight: 600; }
+    .lb-row .lb-stat.highlight::before { color: var(--muted); }
   }
 </style>
 </head>
@@ -576,10 +585,10 @@ async function loadLeaderboard() {
   list.innerHTML = ranked.map((p, i) => `<div class="lb-row">
     <div class="rank ${rankClass(i)}">${rankEmoji(i) || '#' + (i+1)}</div>
     <div class="lb-name">${p.avatar_emoji || '🙂'} ${p.username}</div>
-    <div class="lb-stat highlight">${p.total_wins}</div>
-    <div class="lb-stat highlight">${p.totalPixels.toLocaleString()}</div>
-    <div class="lb-stat">${p.games_played}</div>
-    <div class="lb-stat">${new Date(p.created_at).toLocaleDateString()}</div>
+    <div class="lb-stat highlight" data-label="Wins">${p.total_wins}</div>
+    <div class="lb-stat highlight" data-label="Pixels">${p.totalPixels.toLocaleString()}</div>
+    <div class="lb-stat" data-label="Games">${p.games_played}</div>
+    <div class="lb-stat" data-label="Joined">${new Date(p.created_at).toLocaleDateString()}</div>
   </div>`).join('');
 }
 
