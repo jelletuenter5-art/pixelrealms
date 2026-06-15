@@ -183,7 +183,8 @@
   .toast { position: fixed; bottom: calc(1rem + env(safe-area-inset-bottom)); left: 50%; transform: translate(-50%, 150%);
     background: var(--panel2); border: 1px solid var(--green); color: var(--green);
     padding: 0.75rem 1.5rem; border-radius: 10px; font-size: 0.85rem; z-index: 9999;
-    transition: transform 0.3s, visibility 0.3s; max-width: 90vw; text-align: center; visibility: hidden; }
+    transition: transform 0.3s, visibility 0.3s; max-width: 90vw; text-align: center;
+    visibility: hidden; pointer-events: none; }
   .toast.show { transform: translate(-50%, 0); visibility: visible; }
   .toast.error { border-color: var(--red); color: var(--red); }
 
@@ -233,6 +234,13 @@
     .map-btn { width: 30px; height: 30px; font-size: 0.9rem; }
     .pixel-tooltip { display: none !important; }
     #spawnBanner { font-size: 0.75rem; white-space: normal; text-align: center; max-width: 90%; }
+
+    /* Keep toast clear of the right-panel drawer (Build/My Realm/Chat) on mobile */
+    .toast {
+      bottom: auto; top: calc(0.75rem + env(safe-area-inset-top));
+      transform: translate(-50%, -150%);
+    }
+    .toast.show { transform: translate(-50%, 0); }
   }
 </style>
 </head>
