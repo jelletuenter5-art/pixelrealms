@@ -328,6 +328,15 @@ async function loadOpenGames() {
 
   openGames = {};
   (data || []).forEach(g => { openGames[g.category] = g; });
+
+  // Make sure every category has an open world to join (e.g. after a reset)
+  const missing = ['small', 'medium', 'big'].filter(cat => !openGames[cat]);
+  if (missing.length > 0) {
+    for (const cat of missing) {
+      openGames[cat] = await createWorld(cat);
+    }
+  }
+
   renderOpenGames();
 }
 
@@ -488,11 +497,17 @@ async function rotateWorld(gameId, category) {
     .select('id').eq('category', category).eq('is_open', true).limit(1);
   if (existingOpen && existingOpen.length > 0) { await loadOpenGames(); return; }
 
+  await createWorld(category);
+  await loadOpenGames();
+}
+
+// Creates and returns a fresh open world for the given category
+async function createWorld(category) {
   const cfg = CATEGORY_CONFIG[category];
   const { count } = await sb.from('games')
     .select('id', { count: 'exact', head: true }).eq('category', category);
 
-  await sb.from('games').insert({
+  const { data } = await sb.from('games').insert({
     name: `${cfg.label} #${(count || 0) + 1}`,
     code: generateCode(),
     category,
@@ -502,9 +517,9 @@ async function rotateWorld(gameId, category) {
     map_height: cfg.mapHeight,
     map_seed: Math.floor(Math.random() * 9999999),
     status: 'waiting',
-  });
+  }).select().single();
 
-  await loadOpenGames();
+  return data;
 }
 
 // ── LEADERBOARD ───────────────────────────────────
