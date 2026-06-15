@@ -20,11 +20,11 @@ const CONFIG = {
   ARMY_PER_PIXEL: 2,              // army units per pixel at start
   ATTACK_GOLD_COST: 10,
   INFRA_COSTS: {
-    farm:     { gold: 50,  effect: 'Doubles income for 5 pixels',  incomeBonus: 0.5 },
-    barracks: { gold: 80,  effect: '+20 army units',               armyBonus: 20 },
-    market:   { gold: 60,  effect: '+0.3 gold/pixel/hr trade bonus',tradeBonus: 0.3 },
-    wall:     { gold: 40,  effect: '+50% defense on this tile',    defenseBonus: 0.5 },
-    mine:     { gold: 70,  effect: '+10 gold/hr flat income',      flatIncome: 10 },
+    farm:     { gold: 50,  effect: '+0.3 gold/pixel/hr income, nation-wide',       incomeBonus: 0.3 },
+    mine:     { gold: 70,  effect: '+5 gold/hr flat income (scales with mines)',   flatIncome: 5 },
+    market:   { gold: 60,  effect: '-0.02 army upkeep per pixel, nation-wide',     upkeepReduction: 0.02 },
+    barracks: { gold: 80,  effect: '+20 army strength',                            armyBonus: 20 },
+    wall:     { gold: 40,  effect: '+50% defense when this tile is attacked',      defenseBonus: 0.5 },
   },
   TERRAIN_DEFENSE: {
     grass: 1.0, hill: 1.3, mountain: 1.6, desert: 0.8, water: 0

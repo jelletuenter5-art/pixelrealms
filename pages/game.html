@@ -322,21 +322,24 @@
       then open the <strong>Build</strong> tab on the right and choose a structure:
     </p>
     <ul style="font-size:0.82rem;color:var(--muted);line-height:1.8;margin-left:1.2rem">
-      <li>🌾 <strong>Farm</strong> — increases income per pixel</li>
-      <li>⚔️ <strong>Barracks</strong> — instantly adds army units</li>
-      <li>🏪 <strong>Market</strong> — boosts trade income</li>
-      <li>🧱 <strong>Wall</strong> — boosts defense on that tile</li>
-      <li>⛏️ <strong>Mine</strong> — instant gold + flat income boost</li>
+      <li>🌾 <strong>Farm</strong> (50g) — +0.3 gold/pixel/hr, applies to your <em>whole nation</em>. Best once you have lots of pixels.</li>
+      <li>⛏️ <strong>Mine</strong> (70g) — +5 gold/hr flat income, regardless of nation size. Great early game or for small nations.</li>
+      <li>🏪 <strong>Market</strong> (60g) — reduces your army's upkeep cost by 0.02 gold/pixel/hr nation-wide. Helps sustain a big army.</li>
+      <li>⚔️ <strong>Barracks</strong> (80g) — instantly adds 20 army strength.</li>
+      <li>🧱 <strong>Wall</strong> (40g) — +50% defense, but only for attacks on <em>that specific tile</em>. Build on your frontline.</li>
     </ul>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Only one building per tile. Buildings appear on the map for every player to see.
+      Only one building per tile. Buildings appear on the map for every player to see, and
+      your building counts are listed at the top of the <strong>Build</strong> tab.
     </p>
 
     <div class="section-label">💰 Economy</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Every pixel generates gold per hour based on your income rate. Your army costs gold
-      upkeep per pixel. Watch the Net income in <strong>My Realm</strong> — if it's negative,
-      build farms/mines or shrink your army's upkeep burden.
+      Every pixel generates gold per hour based on your income rate (terrain affects this too —
+      grass and hills are best, deserts and mountains worse). Your army costs gold upkeep per
+      pixel every hour. Watch the <strong>Net income</strong> in <strong>My Realm</strong> —
+      if it's negative, your gold will slowly drain. Build mines for a quick flat boost, farms
+      once you're large, or markets to cut upkeep if your army is expensive.
     </p>
 
     <div class="section-label">🤝 Trade</div>
@@ -1039,7 +1042,18 @@ function renderMyCountry(body) {
   const nextToken = CONFIG.PIXELS_PER_HOUR;
   const fraction = c.pending_pixels % 1;
   const pct = (fraction / nextToken * 100).toFixed(0);
-  const incomePerHr = (c.income_per_pixel * c.pixel_count).toFixed(1);
+
+  const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id);
+  const mines = myInfra.filter(i => i.type === 'mine').length;
+  const farms = myInfra.filter(i => i.type === 'farm').length;
+  const markets = myInfra.filter(i => i.type === 'market').length;
+  const flatIncome = mines * CONFIG.INFRA_COSTS.mine.flatIncome;
+
+  const terrainWeight = Object.values(engine.pixelData)
+    .filter(p => p.country_id === c.id)
+    .reduce((sum, p) => sum + (CONFIG.TERRAIN_INCOME[p.terrain] ?? 1), 0);
+  const pixelIncome = (c.income_per_pixel * terrainWeight);
+  const incomePerHr = (pixelIncome + flatIncome).toFixed(1);
   const upkeep = (c.army_upkeep_per_pixel * c.pixel_count).toFixed(1);
 
   body.innerHTML = `
@@ -1066,13 +1080,14 @@ function renderMyCountry(body) {
       ${statCard('⚔️ Army', c.army_size, 'red')}
       ${statCard('📈 Income/hr', incomePerHr, 'blue')}
       ${statCard('🔧 Upkeep/hr', upkeep, 'muted')}
-      ${statCard('🏗️ Infra lvl', c.infrastructure_level, 'gold')}
+      ${statCard('🏗️ Buildings', myInfra.length, 'gold')}
     </div>
 
     <div class="section-label">Income Breakdown</div>
     <div style="font-size:0.78rem;color:var(--muted);line-height:1.8">
-      Base: ${c.income_per_pixel}/pixel × ${c.pixel_count} = <span style="color:var(--gold)">${incomePerHr} gold/hr</span><br>
-      Army upkeep: −${upkeep} gold/hr<br>
+      Per-pixel: ${c.income_per_pixel}/pixel × ${terrainWeight.toFixed(1)} terrain-weighted pixels = <span style="color:var(--gold)">${pixelIncome.toFixed(1)} gold/hr</span>${farms > 0 ? ` <span style="color:var(--muted)">(${farms} 🌾 farm${farms>1?'s':''})</span>` : ''}<br>
+      ${mines > 0 ? `Mines: +${flatIncome} gold/hr <span style="color:var(--muted)">(${mines} ⛏️ mine${mines>1?'s':''})</span><br>` : ''}
+      Army upkeep: −${upkeep} gold/hr${markets > 0 ? ` <span style="color:var(--muted)">(reduced by ${markets} 🏪 market${markets>1?'s':''})</span>` : ''}<br>
       Net: <span style="color:var(--green)">${(parseFloat(incomePerHr) - parseFloat(upkeep)).toFixed(1)} gold/hr</span>
     </div>
 
@@ -1166,7 +1181,21 @@ function renderInfra(body) {
     statusHtml = `✅ Tile selected: (${selectedBuildTile.x}, ${selectedBuildTile.y})`;
   }
 
+  const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id);
+  const counts = {};
+  myInfra.forEach(i => { counts[i.type] = (counts[i.type] || 0) + 1; });
+
   body.innerHTML = `
+    <div class="section-label">Your Buildings (${myInfra.length})</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0.4rem;margin-bottom:1rem">
+      ${Object.keys(CONFIG.INFRA_COSTS).map(type => `
+        <div style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:0.4rem;text-align:center">
+          <div style="font-size:1.1rem">${INFRA_ICONS[type] || '🏗️'}</div>
+          <div style="font-size:0.85rem;font-weight:700">${counts[type] || 0}</div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="section-label">Build New</div>
     <div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.75rem">${statusHtml}</div>
     ${Object.entries(CONFIG.INFRA_COSTS).map(([type, info]) => {
       const canAfford = (c.gold || 0) >= info.gold;
