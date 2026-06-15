@@ -900,7 +900,7 @@ function updateTopBar() {
   if (!c) return;
   document.getElementById('myCountryFlag').textContent = c.flag_emoji || '🏳️';
   document.getElementById('myCountryName').textContent = c.name;
-  document.getElementById('myGold').textContent = c.gold.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  document.getElementById('myGold').textContent = c.gold.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   document.getElementById('myPixels').textContent = c.pixel_count;
   document.getElementById('myArmy').textContent = c.army_size;
   document.getElementById('myTokens').textContent = engine.getLiveTokens();
@@ -1078,7 +1078,7 @@ function renderMyCountry(body) {
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem">
-      ${statCard('💰 Gold', c.gold.toFixed(1), 'gold')}
+      ${statCard('💰 Gold', c.gold.toFixed(2), 'gold')}
       ${statCard('🗺️ Pixels', c.pixel_count, 'green')}
       ${statCard('⚔️ Army', c.army_size, 'red')}
       ${statCard('📈 Income/hr', incomePerHr, 'blue')}

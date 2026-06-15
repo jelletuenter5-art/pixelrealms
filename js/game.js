@@ -501,7 +501,7 @@ async function tickIncome(engine) {
   const flatIncomePerHour = mines * CONFIG.INFRA_COSTS.mine.flatIncome;
   const hourlyIncome = c.income_per_pixel * c.pixel_count + flatIncomePerHour;
   const tickIncome = hourlyIncome * (CONFIG.INCOME_TICK_SECONDS / 3600);
-  const newGold = Math.round((c.gold + tickIncome) * 100) / 100;
+  const newGold = Math.round((c.gold + tickIncome) * 10000) / 10000;
   if (newGold === c.gold) return;
 
   await sb.from('countries').update({ gold: newGold }).eq('id', c.id);
