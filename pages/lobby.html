@@ -98,6 +98,26 @@
   .lb-stat { color: var(--muted); font-size: 0.9rem; }
   .lb-stat.highlight { color: var(--green); font-weight: 600; }
 
+  /* SETTINGS / FEEDBACK / ADMIN */
+  .avatar-picker { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+  .avatar-option { width: 42px; height: 42px; border-radius: 8px; display: flex; align-items: center;
+    justify-content: center; font-size: 1.3rem; background: var(--panel2); border: 2px solid transparent;
+    cursor: pointer; transition: all 0.15s; }
+  .avatar-option.selected { border-color: var(--green); }
+  .feedback-item { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 1rem; margin-bottom: 0.75rem; }
+  .feedback-meta { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--muted); margin-bottom: 0.5rem; }
+  .feedback-msg { font-size: 0.9rem; line-height: 1.5; }
+  .feedback-reply { margin-top: 0.6rem; padding: 0.6rem 0.8rem; background: var(--panel2); border-radius: 8px;
+    font-size: 0.85rem; border-left: 3px solid var(--green); }
+  .feedback-badge { padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
+  .feedback-badge.open { background: rgba(245,158,11,0.15); color: var(--gold); }
+  .feedback-badge.resolved { background: rgba(74,222,128,0.15); color: var(--green); }
+  textarea { width: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.75rem 1rem; color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.9rem;
+    outline: none; resize: vertical; transition: border-color 0.2s; }
+  textarea:focus { border-color: var(--green); }
+
   .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--panel2); border: 1px solid var(--green);
     color: var(--green); padding: 0.9rem 1.5rem; border-radius: 10px; font-size: 0.9rem;
     z-index: 1000; transform: translateX(200%); transition: transform 0.3s; max-width: 300px; }
@@ -123,6 +143,9 @@
     <button class="page-tab active" onclick="showSection('myGames')">⚔️ My Realms</button>
     <button class="page-tab" onclick="showSection('browse')">🌍 Worlds</button>
     <button class="page-tab" onclick="showSection('leaderboard')">🏆 Leaderboard</button>
+    <button class="page-tab" onclick="showSection('settings')">⚙️ Settings</button>
+    <button class="page-tab" onclick="showSection('feedback')">💬 Feedback</button>
+    <button class="page-tab" id="adminTab" onclick="showSection('admin')" style="display:none">🛠️ Admin</button>
   </div>
 
   <!-- MY GAMES -->
@@ -156,6 +179,48 @@
     </div>
     <div id="leaderboardList"><div style="color:var(--muted); padding:1rem">Loading…</div></div>
   </div>
+
+  <!-- SETTINGS -->
+  <div id="settings" class="section">
+    <h2 style="font-family:'Cinzel',serif; margin-bottom:1.5rem">Account Settings</h2>
+    <div style="max-width:420px">
+      <div class="form-group">
+        <label>Ruler Name</label>
+        <input type="text" id="settingsUsername" maxlength="24">
+      </div>
+      <div class="form-group">
+        <label>Avatar</label>
+        <div class="avatar-picker" id="avatarPicker"></div>
+      </div>
+      <div class="form-group">
+        <label>Accent Color</label>
+        <div class="avatar-picker" id="colorPickerSettings"></div>
+      </div>
+      <button class="btn btn-primary" onclick="saveSettings()">Save Changes</button>
+      <div id="settingsMsg" style="margin-top:0.75rem; font-size:0.85rem"></div>
+    </div>
+  </div>
+
+  <!-- FEEDBACK -->
+  <div id="feedback" class="section">
+    <h2 style="font-family:'Cinzel',serif; margin-bottom:1.5rem">Feedback</h2>
+    <div style="max-width:520px; margin-bottom:2rem">
+      <div class="form-group">
+        <label>Send feedback to the admins</label>
+        <textarea id="feedbackInput" rows="4" maxlength="1000" placeholder="Bugs, ideas, suggestions…"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="submitFeedback()">Send Feedback</button>
+      <div id="feedbackMsg" style="margin-top:0.75rem; font-size:0.85rem"></div>
+    </div>
+    <h3 style="font-family:'Cinzel',serif; margin-bottom:1rem; font-size:1rem; color:var(--muted)">Your Submissions</h3>
+    <div id="myFeedbackList"><div style="color:var(--muted)">Loading…</div></div>
+  </div>
+
+  <!-- ADMIN -->
+  <div id="admin" class="section">
+    <h2 style="font-family:'Cinzel',serif; margin-bottom:1.5rem">Admin — Player Feedback</h2>
+    <div id="adminFeedbackList"><div style="color:var(--muted)">Loading…</div></div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -170,6 +235,8 @@ const CATEGORY_CONFIG = {
   medium: { maxPlayers: 35, mapWidth: 100, mapHeight: 80,  label: 'Medium Realm' },
   big:    { maxPlayers: 50, mapWidth: 150, mapHeight: 120, label: 'Grand Realm' },
 };
+
+const AVATAR_EMOJIS = ['🙂','😎','🤖','👑','🐉','🦁','🦅','🐺','🦊','🧙','💀','👽','🥷','🎯','⚔️','🛡️','🏴','🌍'];
 
 (async () => {
   const { data: { session } } = await sb.auth.getSession();
@@ -187,6 +254,14 @@ const CATEGORY_CONFIG = {
   }
   currentProfile = profile;
   document.getElementById('topUsername').textContent = profile?.username || 'Ruler';
+
+  if (profile?.is_admin) {
+    document.getElementById('adminTab').style.display = '';
+    loadAdminFeedback();
+  }
+
+  initSettings();
+  loadMyFeedback();
 
   await loadMyGames();
   await loadOpenGames();
@@ -433,25 +508,171 @@ async function rotateWorld(gameId, category) {
 
 // ── LEADERBOARD ───────────────────────────────────
 async function loadLeaderboard() {
-  const { data } = await sb.from('profiles')
-    .select('*')
-    .order('total_wins', { ascending: false })
-    .limit(50);
+  const [{ data: profiles }, { data: countries }] = await Promise.all([
+    sb.from('profiles').select('*'),
+    sb.from('countries').select('player_id, pixel_count'),
+  ]);
+
+  if (!profiles || profiles.length === 0) {
+    document.getElementById('leaderboardList').innerHTML = '<div style="color:var(--muted);padding:1rem">No data yet</div>';
+    return;
+  }
+
+  // Sum live pixel counts per player across all their active countries
+  const livePixels = {};
+  (countries || []).forEach(c => {
+    livePixels[c.player_id] = (livePixels[c.player_id] || 0) + (c.pixel_count || 0);
+  });
+
+  const ranked = profiles.map(p => ({
+    ...p,
+    totalPixels: (p.total_pixels_ever || 0) + (livePixels[p.id] || 0),
+  })).sort((a, b) => b.totalPixels - a.totalPixels || b.total_wins - a.total_wins);
 
   const list = document.getElementById('leaderboardList');
-  if (!data || data.length === 0) { list.innerHTML = '<div style="color:var(--muted);padding:1rem">No data yet</div>'; return; }
-
   const rankClass = (i) => i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
   const rankEmoji = (i) => i === 0 ? '👑' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
 
-  list.innerHTML = data.map((p, i) => `<div class="lb-row">
+  list.innerHTML = ranked.map((p, i) => `<div class="lb-row">
     <div class="rank ${rankClass(i)}">${rankEmoji(i) || '#' + (i+1)}</div>
-    <div class="lb-name">${p.username}</div>
+    <div class="lb-name">${p.avatar_emoji || '🙂'} ${p.username}</div>
     <div class="lb-stat highlight">${p.total_wins}</div>
-    <div class="lb-stat highlight">${(p.total_pixels_ever || 0).toLocaleString()}</div>
+    <div class="lb-stat highlight">${p.totalPixels.toLocaleString()}</div>
     <div class="lb-stat">${p.games_played}</div>
     <div class="lb-stat">${new Date(p.created_at).toLocaleDateString()}</div>
   </div>`).join('');
+}
+
+// ── SETTINGS ──────────────────────────────────────
+function initSettings() {
+  document.getElementById('settingsUsername').value = currentProfile?.username || '';
+
+  const avatarPicker = document.getElementById('avatarPicker');
+  avatarPicker.innerHTML = AVATAR_EMOJIS.map(e =>
+    `<div class="avatar-option ${e === (currentProfile?.avatar_emoji || '🙂') ? 'selected' : ''}" data-emoji="${e}" onclick="pickAvatar(this)">${e}</div>`
+  ).join('');
+
+  const colorPicker = document.getElementById('colorPickerSettings');
+  colorPicker.innerHTML = CONFIG.COUNTRY_COLORS.map(c =>
+    `<div class="avatar-option ${c === (currentProfile?.avatar_color || '#4ade80') ? 'selected' : ''}" data-color="${c}" style="background:${c}" onclick="pickAccentColor(this)"></div>`
+  ).join('');
+
+  window._settingsAvatar = currentProfile?.avatar_emoji || '🙂';
+  window._settingsColor = currentProfile?.avatar_color || '#4ade80';
+}
+
+function pickAvatar(el) {
+  document.querySelectorAll('#avatarPicker .avatar-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  window._settingsAvatar = el.dataset.emoji;
+}
+
+function pickAccentColor(el) {
+  document.querySelectorAll('#colorPickerSettings .avatar-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  window._settingsColor = el.dataset.color;
+}
+
+async function saveSettings() {
+  const msg = document.getElementById('settingsMsg');
+  const newUsername = document.getElementById('settingsUsername').value.trim();
+  if (!newUsername || newUsername.length < 2) { msg.style.color = 'var(--red)'; msg.textContent = 'Name too short.'; return; }
+
+  if (newUsername !== currentProfile.username) {
+    const { data: existing } = await sb.from('profiles').select('id').eq('username', newUsername).neq('id', currentUser.id).single();
+    if (existing) { msg.style.color = 'var(--red)'; msg.textContent = 'That name is already taken.'; return; }
+  }
+
+  const { data, error } = await sb.from('profiles').update({
+    username: newUsername,
+    avatar_emoji: window._settingsAvatar,
+    avatar_color: window._settingsColor,
+  }).eq('id', currentUser.id).select().single();
+
+  if (error) { msg.style.color = 'var(--red)'; msg.textContent = error.message; return; }
+
+  currentProfile = data;
+  document.getElementById('topUsername').textContent = data.username;
+  msg.style.color = 'var(--green)';
+  msg.textContent = 'Saved!';
+}
+
+// ── FEEDBACK ──────────────────────────────────────
+async function submitFeedback() {
+  const input = document.getElementById('feedbackInput');
+  const message = input.value.trim();
+  const msg = document.getElementById('feedbackMsg');
+  if (!message) { msg.style.color = 'var(--red)'; msg.textContent = 'Write something first.'; return; }
+
+  const { error } = await sb.from('feedback').insert({
+    user_id: currentUser.id,
+    username: currentProfile.username,
+    message,
+  });
+  if (error) { msg.style.color = 'var(--red)'; msg.textContent = error.message; return; }
+
+  input.value = '';
+  msg.style.color = 'var(--green)';
+  msg.textContent = 'Sent! Thanks for the feedback.';
+  loadMyFeedback();
+}
+
+async function loadMyFeedback() {
+  const { data } = await sb.from('feedback')
+    .select('*').eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+
+  const list = document.getElementById('myFeedbackList');
+  if (!data || data.length === 0) { list.innerHTML = '<div style="color:var(--muted)">No submissions yet.</div>'; return; }
+
+  list.innerHTML = data.map(f => `<div class="feedback-item">
+    <div class="feedback-meta">
+      <span>${new Date(f.created_at).toLocaleString()}</span>
+      <span class="feedback-badge ${f.status}">${f.status}</span>
+    </div>
+    <div class="feedback-msg">${escapeHtmlLobby(f.message)}</div>
+    ${f.admin_reply ? `<div class="feedback-reply">💬 <strong>Admin:</strong> ${escapeHtmlLobby(f.admin_reply)}</div>` : ''}
+  </div>`).join('');
+}
+
+// ── ADMIN ─────────────────────────────────────────
+async function loadAdminFeedback() {
+  const { data } = await sb.from('feedback')
+    .select('*')
+    .order('status', { ascending: true })
+    .order('created_at', { ascending: false });
+
+  const list = document.getElementById('adminFeedbackList');
+  if (!data || data.length === 0) { list.innerHTML = '<div style="color:var(--muted)">No feedback yet.</div>'; return; }
+
+  list.innerHTML = data.map(f => `<div class="feedback-item">
+    <div class="feedback-meta">
+      <span><strong>${f.username}</strong> · ${new Date(f.created_at).toLocaleString()}</span>
+      <span class="feedback-badge ${f.status}">${f.status}</span>
+    </div>
+    <div class="feedback-msg">${escapeHtmlLobby(f.message)}</div>
+    ${f.admin_reply ? `<div class="feedback-reply">💬 <strong>Your reply:</strong> ${escapeHtmlLobby(f.admin_reply)}</div>` : ''}
+    <div style="margin-top:0.6rem; display:flex; gap:0.5rem">
+      <input type="text" id="reply-${f.id}" placeholder="Reply to player…" value="${f.admin_reply ? escapeHtmlLobby(f.admin_reply) : ''}" style="flex:1">
+      <button class="btn-sm" onclick="replyFeedback('${f.id}')">Reply</button>
+      ${f.status === 'open' ? `<button class="btn-sm" onclick="resolveFeedback('${f.id}')">Mark Resolved</button>` : ''}
+    </div>
+  </div>`).join('');
+}
+
+async function replyFeedback(id) {
+  const reply = document.getElementById(`reply-${id}`).value.trim();
+  await sb.from('feedback').update({ admin_reply: reply }).eq('id', id);
+  loadAdminFeedback();
+}
+
+async function resolveFeedback(id) {
+  await sb.from('feedback').update({ status: 'resolved', resolved_at: new Date().toISOString() }).eq('id', id);
+  loadAdminFeedback();
+}
+
+function escapeHtmlLobby(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 function showToast(msg, type = 'ok') {

@@ -16,7 +16,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   public.trades,
   public.infrastructure,
   public.game_events,
-  public.messages
+  public.messages,
+  public.feedback
 TO anon, authenticated;
 
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;

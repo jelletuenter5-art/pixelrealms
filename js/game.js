@@ -191,10 +191,15 @@ class GameEngine {
     await this._logEvent('attack', `${this.country.name} attacked ${defender.name} at (${x},${y}) — ${success ? 'SUCCESS' : 'FAILED'}`);
 
     // Check if defender is eliminated
-    if (newDefenderArmy <= 1 && defender.pixel_count <= 1) {
-      await sb.from('countries').update({ is_alive: false, surrendered_at: new Date().toISOString() })
+    const defenderPixelsLeft = Math.max(0, defender.pixel_count - (success ? 1 : 0));
+    if (newDefenderArmy <= 1 && defenderPixelsLeft <= 0) {
+      await sb.from('countries').update({ is_alive: false, surrendered_at: new Date().toISOString(), pixel_count: defenderPixelsLeft })
         .eq('id', defender.id);
+      this.countries[defender.id] = { ...defender, is_alive: false, pixel_count: defenderPixelsLeft, army_size: newDefenderArmy };
       await this._logEvent('eliminated', `${this.country.name} has eliminated ${defender.name}!`);
+      await this._checkWinCondition();
+    } else {
+      this.countries[defender.id] = { ...defender, pixel_count: defenderPixelsLeft, army_size: newDefenderArmy };
     }
 
     return { ok: true, msg, success, attackerLoss, defenderLoss };
@@ -268,6 +273,48 @@ class GameEngine {
     this.country.gold += trade.gold_offered;
     await this._logEvent('trade', `${sender.name} sent ${trade.gold_offered} gold to ${this.country.name}`);
     return { ok: true, msg: `Received ${trade.gold_offered} gold!` };
+  }
+
+  // ── Win condition & cleanup ───────────────────────────────
+  async _checkWinCondition() {
+    const all = Object.values(this.countries);
+    if (all.length < 2) return; // need at least 2 nations for a "win"
+
+    const alive = all.filter(c => c.is_alive);
+    if (alive.length !== 1) return;
+
+    await this._finishGame(alive[0]);
+  }
+
+  async _finishGame(winner) {
+    // Credit every participant's profile before wiping the game
+    for (const c of Object.values(this.countries)) {
+      const { data: profile } = await sb.from('profiles').select('total_wins, total_pixels_ever, games_played').eq('id', c.player_id).single();
+      if (!profile) continue;
+      await sb.from('profiles').update({
+        total_wins: (profile.total_wins || 0) + (c.id === winner.id ? 1 : 0),
+        total_pixels_ever: (profile.total_pixels_ever || 0) + (c.pixel_count || 0),
+        games_played: (profile.games_played || 0) + 1,
+      }).eq('id', c.player_id);
+    }
+
+    await sb.from('games').update({
+      status: 'finished',
+      is_open: false,
+      winner_id: winner.player_id,
+      finished_at: new Date().toISOString(),
+    }).eq('id', this.gameId);
+
+    await this._logEvent('eliminated', `🏆 ${winner.name} has conquered the realm! This world will close shortly.`);
+
+    // Let connected clients show a victory screen before the data is wiped
+    await sb.channel(`gameover:${this.gameId}`).send({
+      type: 'broadcast', event: 'gameover', payload: { winnerName: winner.name, winnerId: winner.player_id }
+    });
+
+    setTimeout(async () => {
+      await sb.from('games').delete().eq('id', this.gameId);
+    }, 8000);
   }
 
   // ── Helpers ──────────────────────────────────────────────
@@ -356,6 +403,14 @@ class GameEngine {
         event: '*', schema: 'public', table: 'trades',
         filter: `game_id=eq.${this.gameId}`
       }, payload => onTrade(payload))
+      .subscribe();
+    this.realtimeSubs.push(sub);
+    return sub;
+  }
+
+  subscribeToGameOver(onGameOver) {
+    const sub = sb.channel(`gameover:${this.gameId}`)
+      .on('broadcast', { event: 'gameover' }, payload => onGameOver(payload.payload))
       .subscribe();
     this.realtimeSubs.push(sub);
     return sub;

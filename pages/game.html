@@ -253,6 +253,12 @@
     </div>
 
     <div class="pixel-tooltip" id="pixelTooltip"></div>
+
+    <div id="spawnBanner" style="display:none;position:absolute;top:0.75rem;left:50%;transform:translateX(-50%);
+      background:var(--panel);border:1px solid var(--green);border-radius:10px;padding:0.6rem 1.2rem;
+      font-size:0.85rem;align-items:center;gap:0.5rem;z-index:60;white-space:nowrap">
+      🏴 Click a grassy/hill tile to found your nation
+    </div>
   </div>
 
   <!-- RIGHT PANEL -->
@@ -349,6 +355,16 @@
   </div>
 </div>
 
+<!-- Game over modal -->
+<div id="gameOverModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:400;align-items:center;justify-content:center">
+  <div style="background:var(--panel);border:1px solid var(--gold);border-radius:12px;padding:2rem;max-width:380px;width:90%;text-align:center">
+    <div style="font-size:2.5rem;margin-bottom:0.5rem">🏆</div>
+    <h3 style="font-family:'Cinzel',serif;margin-bottom:0.75rem">Game Over</h3>
+    <p style="font-size:0.9rem;color:var(--text);margin-bottom:1.25rem" id="gameOverText"></p>
+    <button class="btn btn-primary btn-full" onclick="window.location.href='lobby.html'">Return to Lobby</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -366,6 +382,7 @@ let selectedBuildTile = null;
 let selectedBuildType = null;
 let leftTab = 'nations';
 let rightTab = 'country';
+let spawnSelectionMode = false;
 
 const INFRA_ICONS = { farm: '🌾', barracks: '⚔️', market: '🏪', wall: '🧱', mine: '⛏️' };
 
@@ -396,9 +413,10 @@ let lastMousePos = null;
   setLoading('Seeding world pixels…');
   await ensurePixelsExist();
 
-  setLoading('Placing your nation…');
-  if (engine.country && engine.country.pixel_count === CONFIG.STARTING_PIXELS) {
-    await placeStartingPixels();
+  // First-time players choose their own starting location
+  if (engine.country) {
+    const myOwned = Object.values(engine.pixelData).filter(p => p.country_id === engine.country.id);
+    if (myOwned.length === 0) spawnSelectionMode = true;
   }
 
   document.getElementById('loadingScreen').style.display = 'none';
@@ -410,6 +428,11 @@ let lastMousePos = null;
   renderLeftPanel();
   renderRightPanel();
   setupRealtime();
+
+  if (spawnSelectionMode) {
+    document.getElementById('spawnBanner').style.display = 'flex';
+    document.querySelector('.mode-bar').style.display = 'none';
+  }
 
   // Income tick every minute
   setInterval(() => { tickIncome(engine); updateTopBar(); }, 60000);
@@ -445,36 +468,41 @@ async function ensurePixelsExist() {
   }
 }
 
-async function placeStartingPixels() {
-  const spawnPts = Object.values(engine.countries)
-    .filter(c => c.id !== engine.country?.id)
-    .flatMap(c => {
-      const owned = Object.values(engine.pixelData).filter(p => p.country_id === c.id);
-      return owned.map(p => ({ x: p.x, y: p.y }));
-    });
+// ── SPAWN SELECTION ───────────────────────────────────
+async function chooseSpawn(tx, ty) {
+  const tile = mapData[ty]?.[tx];
+  if (!tile) return;
+  if (tile.terrain === 'water') { showToast("Can't found your nation on water.", 'error'); return; }
+  if (engine.pixelData[`${tx},${ty}`]?.country_id) { showToast('That tile is already claimed.', 'error'); return; }
 
-  const spawn = mapGen.findSpawn(mapData, spawnPts);
-  if (!spawn) return;
-
-  // Place 5 starting pixels in a cross pattern
   const startTiles = [
-    { x: spawn.x, y: spawn.y },
-    { x: spawn.x+1, y: spawn.y }, { x: spawn.x-1, y: spawn.y },
-    { x: spawn.x, y: spawn.y+1 }, { x: spawn.x, y: spawn.y-1 },
-  ].filter(t => mapData[t.y]?.[t.x]?.terrain !== 'water');
+    { x: tx, y: ty }, { x: tx+1, y: ty }, { x: tx-1, y: ty }, { x: tx, y: ty+1 }, { x: tx, y: ty-1 },
+  ].filter(t => {
+    const t2 = mapData[t.y]?.[t.x];
+    const pd = engine.pixelData[`${t.x},${t.y}`];
+    return t2 && t2.terrain !== 'water' && !pd?.country_id;
+  });
 
-  for (const t of startTiles.slice(0, 5)) {
+  if (startTiles.length < 3) { showToast('Pick a spot with more open land around it.', 'error'); return; }
+
+  for (const t of startTiles) {
     await sb.from('pixels').update({ country_id: engine.country.id, captured_at: new Date().toISOString() })
       .eq('game_id', GAME_ID).eq('x', t.x).eq('y', t.y);
     engine.pixelData[`${t.x},${t.y}`] = { ...engine.pixelData[`${t.x},${t.y}`], country_id: engine.country.id };
   }
 
-  // Center view on spawn
-  setTimeout(() => {
-    offsetX = -(spawn.x * CONFIG.PIXEL_SIZE * scale - canvas.width / 2);
-    offsetY = -(spawn.y * CONFIG.PIXEL_SIZE * scale - canvas.height / 2);
-    renderMap();
-  }, 500);
+  if (startTiles.length !== engine.country.pixel_count) {
+    const { data } = await sb.from('countries').update({ pixel_count: startTiles.length }).eq('id', engine.country.id).select().single();
+    if (data) engine.country = data;
+  }
+
+  spawnSelectionMode = false;
+  document.getElementById('spawnBanner').style.display = 'none';
+  document.querySelector('.mode-bar').style.display = 'flex';
+
+  renderMap();
+  updateTopBar();
+  showToast('Nation founded! Good luck, ruler.', 'ok');
 }
 
 // ── CANVAS ─────────────────────────────────────────────
@@ -641,10 +669,20 @@ function renderMap() {
       // Infrastructure icon
       const infra = engine.infraData?.[`${x},${y}`];
       if (infra && ps > 6) {
-        ctx.font = `${Math.max(8, ps * 0.7)}px sans-serif`;
+        const cx = px + pw / 2, cy = py + pw / 2;
+        const r = pw * 0.42;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fill();
+        ctx.lineWidth = Math.max(1, ps * 0.06);
+        ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+        ctx.stroke();
+
+        ctx.font = `${Math.max(9, ps * 0.8)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(INFRA_ICONS[infra.type] || '🏗️', px + pw / 2, py + pw / 2);
+        ctx.fillText(INFRA_ICONS[infra.type] || '🏗️', cx, cy);
       }
     }
   }
@@ -717,6 +755,8 @@ async function handleClick(e) {
   const ty = Math.floor((my - offsetY) / ps);
 
   if (!engine.country) { showToast('You need to join this game first!', 'error'); return; }
+
+  if (spawnSelectionMode) { chooseSpawn(tx, ty); return; }
 
   if (currentMode === 'expand') {
     const res = await engine.expandTo(tx, ty);
@@ -1124,6 +1164,13 @@ function setupRealtime() {
   engine.subscribeToInfra(i => {
     renderMap();
     if (rightTab === 'infra') renderRightPanel();
+  });
+  engine.subscribeToGameOver(({ winnerName, winnerId }) => {
+    const youWon = winnerId === currentUser.id;
+    document.getElementById('gameOverText').textContent = youWon
+      ? `Victory! Your nation has conquered the entire realm. This world is now closing.`
+      : `${winnerName} has conquered the realm. This world is now closing.`;
+    document.getElementById('gameOverModal').style.display = 'flex';
   });
 }
 
