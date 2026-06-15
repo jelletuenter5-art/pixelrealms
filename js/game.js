@@ -118,9 +118,21 @@ class GameEngine {
     return this.country ? Math.floor(this.country.pending_pixels) : 0;
   }
 
+  // Live-interpolated pending tokens (accrue visually between server syncs)
+  getLivePending() {
+    if (!this.country) return 0;
+    const last = new Date(this.country.last_active);
+    const hoursElapsed = Math.max(0, (Date.now() - last) / 3600000);
+    return Math.min(this.country.pending_pixels + hoursElapsed * CONFIG.PIXELS_PER_HOUR, CONFIG.MAX_STACK);
+  }
+
+  getLiveTokens() {
+    return Math.floor(this.getLivePending());
+  }
+
   // ── Expansion ────────────────────────────────────────────
   async expandTo(x, y) {
-    if (!this.country || this.expansionTokens < 1) {
+    if (!this.country || this.getLiveTokens() < 1) {
       return { ok: false, msg: 'No expansion tokens available. Come back later!' };
     }
 
@@ -162,17 +174,17 @@ class GameEngine {
 
     if (error) return { ok: false, msg: error.message };
 
-    const newPending = this.country.pending_pixels - 1;
+    const newPending = this.getLivePending() - 1;
     const newCount = this.country.pixel_count + 1;
     const { data: updatedCountry } = await sb.from('countries')
-      .update({ pending_pixels: newPending, pixel_count: newCount })
+      .update({ pending_pixels: newPending, pixel_count: newCount, last_active: new Date().toISOString() })
       .eq('id', this.country.id).select().single();
 
     if (updatedCountry) this.country = updatedCountry;
     this.pixelData[key] = { ...pixel, country_id: this.country.id };
 
     await this._logEvent('expand', `${this.country.name} expanded to (${x},${y})`);
-    return { ok: true, msg: `Expanded! Tokens left: ${this.expansionTokens}` };
+    return { ok: true, msg: `Expanded! Tokens left: ${this.getLiveTokens()}` };
   }
 
   // ── Combat ────────────────────────────────────────────────

@@ -450,7 +450,11 @@ let lastMousePos = null;
   }
 
   // Income tick — runs frequently for a smooth gold counter
-  setInterval(() => { tickIncome(engine); updateTopBar(); }, CONFIG.INCOME_TICK_SECONDS * 1000);
+  setInterval(() => {
+    tickIncome(engine);
+    updateTopBar();
+    if (rightTab === 'country') renderRightPanel();
+  }, CONFIG.INCOME_TICK_SECONDS * 1000);
   // Token accrual display tick
   setInterval(updateTopBar, 30000);
 
@@ -899,7 +903,7 @@ function updateTopBar() {
   document.getElementById('myGold').textContent = c.gold.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   document.getElementById('myPixels').textContent = c.pixel_count;
   document.getElementById('myArmy').textContent = c.army_size;
-  document.getElementById('myTokens').textContent = engine.expansionTokens;
+  document.getElementById('myTokens').textContent = engine.getLiveTokens();
 }
 
 // ── LEFT PANEL ─────────────────────────────────────────
@@ -1039,8 +1043,10 @@ function renderMyCountry(body) {
   const c = engine.country;
   if (!c) { body.innerHTML = '<div style="color:var(--muted)">Not in this game</div>'; return; }
 
+  const livePending = engine.getLivePending();
+  const liveTokens = Math.floor(livePending);
   const nextToken = CONFIG.PIXELS_PER_HOUR;
-  const fraction = c.pending_pixels % 1;
+  const fraction = livePending % 1;
   const pct = (fraction / nextToken * 100).toFixed(0);
 
   const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id);
@@ -1065,7 +1071,7 @@ function renderMyCountry(body) {
     <div class="token-bar">
       <div style="display:flex;justify-content:space-between;font-size:0.8rem">
         <span>🎯 Expansion Tokens</span>
-        <span style="color:var(--green);font-weight:700">${engine.expansionTokens} ready</span>
+        <span style="color:var(--green);font-weight:700">${liveTokens} ready</span>
       </div>
       <div class="token-progress"><div class="token-fill" style="width:${pct}%"></div></div>
       <div style="font-size:0.7rem;color:var(--muted);margin-top:0.3rem">+1 per hour · Max ${CONFIG.MAX_STACK}</div>
@@ -1263,13 +1269,19 @@ async function sendChat() {
 
 // ── REALTIME ──────────────────────────────────────────
 function setupRealtime() {
-  engine.subscribeToMap(p => { renderMap(); });
+  engine.subscribeToMap(p => {
+    renderMap();
+    if (rightTab === 'country') renderRightPanel();
+  });
   engine.subscribeToEvents(e => {
     if (leftTab === 'events') renderLeftPanel();
   });
   engine.subscribeToCountries(c => {
-    if (c.player_id === currentUser.id) updateTopBar();
-    renderNations(document.getElementById('leftPanelBody'));
+    if (c.player_id === currentUser.id) {
+      updateTopBar();
+      if (rightTab === 'country') renderRightPanel();
+    }
+    if (leftTab === 'nations') renderNations(document.getElementById('leftPanelBody'));
     renderMap();
   });
   engine.subscribeToMessages(m => {
