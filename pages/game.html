@@ -417,6 +417,7 @@ let lastMousePos = null;
   const { map_seed, map_width, map_height } = engine.game;
   mapGen = new MapGenerator(map_seed, map_width, map_height);
   mapData = mapGen.generate();
+  engine.mapData = mapData;
 
   setLoading('Seeding world pixels…');
   const backfilled = await ensurePixelsExist();
