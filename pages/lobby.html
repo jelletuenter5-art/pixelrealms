@@ -104,6 +104,10 @@
     justify-content: center; font-size: 1.3rem; background: var(--panel2); border: 2px solid transparent;
     cursor: pointer; transition: all 0.15s; }
   .avatar-option.selected { border-color: var(--green); }
+  .avatar-option.admin-avatar { background: linear-gradient(135deg, rgba(245,158,11,0.15), var(--panel2)); border-color: rgba(245,158,11,0.3); }
+  .avatar-option.admin-avatar.selected { border-color: var(--gold); box-shadow: 0 0 10px rgba(245,158,11,0.4); }
+  .section-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); font-weight: 600; margin-bottom: 0.5rem; }
   .feedback-item { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
     padding: 1rem; margin-bottom: 0.75rem; }
   .feedback-meta { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--muted); margin-bottom: 0.5rem; }
@@ -251,6 +255,7 @@ const CATEGORY_CONFIG = {
 };
 
 const AVATAR_EMOJIS = ['🙂','😎','🤖','👑','🐉','🦁','🦅','🐺','🦊','🧙','💀','👽','🥷','🎯','⚔️','🛡️','🏴','🌍'];
+const ADMIN_AVATAR_EMOJIS = ['🔱','⚡','🌟','🎖️','👁️','🔮','🦾','💎','🧬','☄️'];
 
 (async () => {
   const { data: { session } } = await sb.auth.getSession();
@@ -583,9 +588,21 @@ function initSettings() {
   document.getElementById('settingsUsername').value = currentProfile?.username || '';
 
   const avatarPicker = document.getElementById('avatarPicker');
+  const currentEmoji = currentProfile?.avatar_emoji || '🙂';
   avatarPicker.innerHTML = AVATAR_EMOJIS.map(e =>
-    `<div class="avatar-option ${e === (currentProfile?.avatar_emoji || '🙂') ? 'selected' : ''}" data-emoji="${e}" onclick="pickAvatar(this)">${e}</div>`
+    `<div class="avatar-option ${e === currentEmoji ? 'selected' : ''}" data-emoji="${e}" onclick="pickAvatar(this)">${e}</div>`
   ).join('');
+
+  if (currentProfile?.is_admin) {
+    avatarPicker.insertAdjacentHTML('afterend',
+      `<div class="section-label" style="margin-top:0.75rem">👑 Admin Icons</div>
+       <div class="avatar-picker" id="adminAvatarPicker">` +
+       ADMIN_AVATAR_EMOJIS.map(e =>
+         `<div class="avatar-option admin-avatar ${e === currentEmoji ? 'selected' : ''}" data-emoji="${e}" onclick="pickAvatar(this)" title="Admin icon">${e}</div>`
+       ).join('') +
+       `</div>`
+    );
+  }
 
   const colorPicker = document.getElementById('colorPickerSettings');
   colorPicker.innerHTML = CONFIG.COUNTRY_COLORS.map(c =>
@@ -597,7 +614,7 @@ function initSettings() {
 }
 
 function pickAvatar(el) {
-  document.querySelectorAll('#avatarPicker .avatar-option').forEach(o => o.classList.remove('selected'));
+  document.querySelectorAll('#avatarPicker .avatar-option, #adminAvatarPicker .avatar-option').forEach(o => o.classList.remove('selected'));
   el.classList.add('selected');
   window._settingsAvatar = el.dataset.emoji;
 }
