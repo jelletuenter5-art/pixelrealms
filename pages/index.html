@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PixelRealms — Login</title>
+<meta name="description" content="Claim territory, build your nation, and battle for the map in PixelRealms — a free real-time multiplayer strategy game.">
+<meta property="og:title" content="PixelRealms">
+<meta property="og:description" content="Claim territory, build your nation, and battle for the map in this free real-time multiplayer strategy game.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -69,6 +74,12 @@
     margin-top: 0.4rem;
     letter-spacing: 0.2em;
     text-transform: uppercase;
+  }
+
+  .beta-notice {
+    margin-top: 1rem; padding: 0.6rem 1rem; border-radius: 8px;
+    background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3);
+    color: #f59e0b; font-size: 0.78rem; max-width: 380px; text-align: center; line-height: 1.5;
   }
 
   .auth-card {
@@ -218,6 +229,10 @@
   <div class="logo">
     <h1>PixelRealms</h1>
     <p>Conquer the world, one pixel at a time</p>
+  </div>
+
+  <div class="beta-notice">
+    🚧 Early test phase — expect changes, bugs, and occasional world/account resets as we tune the game.
   </div>
 
   <div class="auth-card">

@@ -29,6 +29,9 @@
   .topbar-user { display: flex; align-items: center; gap: 1rem; }
   .username-badge { font-size: 0.85rem; color: var(--muted); }
   .username-badge strong { color: var(--text); }
+
+  .beta-banner { background: rgba(245,158,11,0.12); border-bottom: 1px solid rgba(245,158,11,0.3);
+    color: var(--gold); font-size: 0.8rem; text-align: center; padding: 0.6rem 1rem; }
   .btn-sm { padding: 0.45rem 1rem; border-radius: 6px; border: 1px solid var(--border);
     background: transparent; color: var(--muted); cursor: pointer; font-size: 0.8rem;
     font-family: 'Inter', sans-serif; transition: all 0.2s; }
@@ -161,8 +164,14 @@
   <span class="topbar-logo">PixelRealms</span>
   <div class="topbar-user">
     <span class="username-badge">Ruler: <strong id="topUsername">—</strong></span>
+    <button class="btn-sm" onclick="inviteFriends()">🔗 Invite Friends</button>
     <button class="btn-sm" onclick="logout()">Sign Out</button>
   </div>
+</div>
+
+<div class="beta-banner">
+  🚧 PixelRealms is in <strong>early test phase</strong> — things may change, break, or reset without warning.
+  Worlds and accounts could be wiped as we tune the game. Thanks for helping us test!
 </div>
 
 <div class="main">
@@ -299,6 +308,21 @@ const ADMIN_AVATAR_EMOJIS = ['🔱','⚡','🌟','🎖️','👁️','🔮','�
 async function logout() {
   await sb.auth.signOut();
   window.location.href = 'index.html';
+}
+
+async function inviteFriends() {
+  const url = window.location.origin + window.location.pathname.replace(/lobby\.html$/, 'index.html');
+  const text = `Join me on PixelRealms — claim territory, build your nation, and battle for the map! ${url}`;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: 'PixelRealms', text, url });
+      return;
+    }
+    await navigator.clipboard.writeText(url);
+    showToast('Invite link copied to clipboard!');
+  } catch (e) {
+    showToast(url);
+  }
 }
 
 function showSection(id) {
