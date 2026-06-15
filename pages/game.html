@@ -51,10 +51,15 @@
     display: flex; flex-direction: column; overflow: hidden;
   }
   .panel-tabs { display: flex; border-bottom: 1px solid var(--border); }
-  .panel-tab { flex: 1; padding: 0.6rem; text-align: center; cursor: pointer;
+  .panel-tab { position: relative; flex: 1; padding: 0.6rem; text-align: center; cursor: pointer;
     font-size: 0.75rem; color: var(--muted); border: none; background: transparent;
     border-bottom: 2px solid transparent; transition: all 0.15s; }
   .panel-tab.active { color: var(--green); border-bottom-color: var(--green); }
+  .panel-toggle { position: relative; }
+  .notif-dot { display: none; position: absolute; top: 4px; right: 8px;
+    width: 9px; height: 9px; border-radius: 50%; background: var(--red);
+    border: 1px solid var(--panel); }
+  .notif-dot.show { display: block; }
   .panel-body { flex: 1; overflow-y: auto; padding: 0.75rem; }
   .panel-body::-webkit-scrollbar { width: 4px; }
   .panel-body::-webkit-scrollbar-track { background: transparent; }
@@ -242,7 +247,7 @@
 <div class="layout" id="appLayout" style="display:none">
   <!-- TOP BAR -->
   <div class="topbar">
-    <button class="btn-xs panel-toggle" onclick="toggleLeftPanel()">☰</button>
+    <button class="btn-xs panel-toggle" onclick="toggleLeftPanel()">☰<span class="notif-dot" id="leftToggleNotifDot"></span></button>
     <span class="logo">PR</span>
     <span class="game-title" id="gameTitle">—</span>
     <div class="topbar-stats">
@@ -265,7 +270,7 @@
     <div class="panel-tabs">
       <button class="panel-tab active" onclick="switchLeftTab('nations')">Nations</button>
       <button class="panel-tab" onclick="switchLeftTab('events')">Events</button>
-      <button class="panel-tab" onclick="switchLeftTab('trade')">Trade</button>
+      <button class="panel-tab" onclick="switchLeftTab('trade')">Trade<span class="notif-dot" id="tradeNotifDot"></span></button>
     </div>
     <div class="panel-body" id="leftPanelBody">
       <div style="color:var(--muted)">Loading…</div>
@@ -479,6 +484,7 @@ let lastMousePos = null;
   renderLeftPanel();
   renderRightPanel();
   setupRealtime();
+  checkPendingTrades();
 
   if (spawnSelectionMode) {
     document.getElementById('spawnBanner').style.display = 'flex';
@@ -983,7 +989,23 @@ function switchLeftTab(tab) {
   document.querySelectorAll('.left-panel .panel-tab').forEach((t, i) => {
     t.classList.toggle('active', ['nations','events','trade'][i] === tab);
   });
+  if (tab === 'trade') updateTradeNotif(false);
   renderLeftPanel();
+}
+
+// ── TRADE NOTIFICATIONS ─────────────────────────────────
+function updateTradeNotif(show) {
+  document.getElementById('tradeNotifDot')?.classList.toggle('show', show);
+  document.getElementById('leftToggleNotifDot')?.classList.toggle('show', show);
+}
+
+async function checkPendingTrades() {
+  if (!engine.country) return;
+  const { count } = await sb.from('trades')
+    .select('id', { count: 'exact', head: true })
+    .eq('to_country_id', engine.country.id)
+    .eq('status', 'pending');
+  updateTradeNotif((count || 0) > 0 && leftTab !== 'trade');
 }
 
 function renderLeftPanel() {
@@ -1411,6 +1433,7 @@ function setupRealtime() {
   });
   engine.subscribeTrades(payload => {
     if (leftTab === 'trade') renderLeftPanel();
+    checkPendingTrades();
   });
   engine.subscribeToInfra(i => {
     renderMap();
