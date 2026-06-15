@@ -499,14 +499,27 @@ async function chooseSpawn(tx, ty) {
 
   if (startTiles.length < 3) { showToast('Pick a spot with more open land around it.', 'error'); return; }
 
+  // Only claim tiles still unowned in the database — guards against a race
+  // where another player claimed one of these tiles since the page loaded.
+  const claimed = [];
   for (const t of startTiles) {
-    await sb.from('pixels').update({ country_id: engine.country.id, captured_at: new Date().toISOString() })
-      .eq('game_id', GAME_ID).eq('x', t.x).eq('y', t.y);
-    engine.pixelData[`${t.x},${t.y}`] = { ...engine.pixelData[`${t.x},${t.y}`], country_id: engine.country.id };
+    const { data } = await sb.from('pixels')
+      .update({ country_id: engine.country.id, captured_at: new Date().toISOString() })
+      .eq('game_id', GAME_ID).eq('x', t.x).eq('y', t.y).is('country_id', null)
+      .select();
+    if (data && data.length) {
+      engine.pixelData[`${t.x},${t.y}`] = data[0];
+      claimed.push(t);
+    }
   }
 
-  if (startTiles.length !== engine.country.pixel_count) {
-    const { data } = await sb.from('countries').update({ pixel_count: startTiles.length }).eq('id', engine.country.id).select().single();
+  if (claimed.length < 3) {
+    showToast('That spot just got claimed by someone else — try another.', 'error');
+    return;
+  }
+
+  if (claimed.length !== engine.country.pixel_count) {
+    const { data } = await sb.from('countries').update({ pixel_count: claimed.length }).eq('id', engine.country.id).select().single();
     if (data) engine.country = data;
   }
 
