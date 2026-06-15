@@ -335,8 +335,7 @@
 
     <div class="section-label">💰 Economy</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Every pixel generates gold per hour based on your income rate (terrain affects this too —
-      grass and hills are best, deserts and mountains worse). Your army costs gold upkeep per
+      Every pixel generates gold per hour based on your income rate. Your army costs gold upkeep per
       pixel every hour. Watch the <strong>Net income</strong> in <strong>My Realm</strong> —
       if it's negative, your gold will slowly drain. Build mines for a quick flat boost, farms
       once you're large, or markets to cut upkeep if your army is expensive.
@@ -1049,10 +1048,7 @@ function renderMyCountry(body) {
   const markets = myInfra.filter(i => i.type === 'market').length;
   const flatIncome = mines * CONFIG.INFRA_COSTS.mine.flatIncome;
 
-  const terrainWeight = Object.values(engine.pixelData)
-    .filter(p => p.country_id === c.id)
-    .reduce((sum, p) => sum + (CONFIG.TERRAIN_INCOME[p.terrain] ?? 1), 0);
-  const pixelIncome = (c.income_per_pixel * terrainWeight);
+  const pixelIncome = (c.income_per_pixel * c.pixel_count);
   const incomePerHr = (pixelIncome + flatIncome).toFixed(1);
   const upkeep = (c.army_upkeep_per_pixel * c.pixel_count).toFixed(1);
 
@@ -1085,7 +1081,7 @@ function renderMyCountry(body) {
 
     <div class="section-label">Income Breakdown</div>
     <div style="font-size:0.78rem;color:var(--muted);line-height:1.8">
-      Per-pixel: ${c.income_per_pixel}/pixel × ${terrainWeight.toFixed(1)} terrain-weighted pixels = <span style="color:var(--gold)">${pixelIncome.toFixed(1)} gold/hr</span>${farms > 0 ? ` <span style="color:var(--muted)">(${farms} 🌾 farm${farms>1?'s':''})</span>` : ''}<br>
+      Per-pixel: ${c.income_per_pixel}/pixel × ${c.pixel_count} pixels = <span style="color:var(--gold)">${pixelIncome.toFixed(1)} gold/hr</span>${farms > 0 ? ` <span style="color:var(--muted)">(${farms} 🌾 farm${farms>1?'s':''})</span>` : ''}<br>
       ${mines > 0 ? `Mines: +${flatIncome} gold/hr <span style="color:var(--muted)">(${mines} ⛏️ mine${mines>1?'s':''})</span><br>` : ''}
       Army upkeep: −${upkeep} gold/hr${markets > 0 ? ` <span style="color:var(--muted)">(reduced by ${markets} 🏪 market${markets>1?'s':''})</span>` : ''}<br>
       Net: <span style="color:var(--green)">${(parseFloat(incomePerHr) - parseFloat(upkeep)).toFixed(1)} gold/hr</span>
