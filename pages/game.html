@@ -1011,7 +1011,7 @@ async function renderNations(body) {
 async function renderEvents(body) {
   const { data } = await sb.from('game_events')
     .select('*').eq('game_id', GAME_ID)
-    .in('type', ['attack', 'eliminated', 'join'])
+    .in('type', ['attack', 'eliminated', 'join', 'trade'])
     .order('created_at', { ascending: false }).limit(50);
 
   if (!data?.length) { body.innerHTML = '<div style="color:var(--muted)">No events yet</div>'; return; }
@@ -1034,6 +1034,18 @@ async function renderTrade(body) {
     .eq('to_country_id', engine.country.id)
     .eq('status', 'pending');
 
+  const { data: sent } = await sb.from('trades')
+    .select('*, to_country:to_country_id(name, color)')
+    .eq('from_country_id', engine.country.id)
+    .eq('status', 'pending');
+
+  const { data: history } = await sb.from('trades')
+    .select('*, from_country:from_country_id(name, color), to_country:to_country_id(name, color)')
+    .or(`from_country_id.eq.${engine.country.id},to_country_id.eq.${engine.country.id}`)
+    .neq('status', 'pending')
+    .order('resolved_at', { ascending: false })
+    .limit(20);
+
   const countries = Object.values(engine.countries).filter(c => c.id !== engine.country.id);
 
   body.innerHTML = `
@@ -1048,6 +1060,16 @@ async function renderTrade(body) {
       </div>
     </div>`).join('') || '<div style="color:var(--muted);font-size:0.8rem">No pending offers</div>'}
 
+    <div class="section-label" style="margin-top:1rem">Your Pending Offers (${sent?.length || 0})</div>
+    ${(sent || []).map(t => `<div class="trade-offer">
+      <div class="trade-offer-header">
+        <span style="font-size:0.8rem">💰 <strong>${t.gold_offered}</strong> to <span style="color:${t.to_country?.color}">${t.to_country?.name}</span></span>
+        <div class="trade-btns">
+          <button class="btn-reject" onclick="cancelTrade('${t.id}')">Cancel</button>
+        </div>
+      </div>
+    </div>`).join('') || '<div style="color:var(--muted);font-size:0.8rem">No offers sent</div>'}
+
     <div class="section-label" style="margin-top:1rem">Send Gold</div>
     <div class="form-group" style="margin-bottom:0.5rem">
       <select id="tradeTarget" style="width:100%;margin-bottom:0.5rem;font-size:0.8rem">
@@ -1057,6 +1079,20 @@ async function renderTrade(body) {
       <input type="number" id="tradeAmount" placeholder="Gold amount" min="1" max="${engine.country.gold}" style="width:100%">
     </div>
     <button class="btn btn-gold btn-full" onclick="sendTrade()">Send Gold Offer</button>
+
+    <div class="section-label" style="margin-top:1rem">Your Trade History (${history?.length || 0})</div>
+    ${(history || []).map(t => {
+      const outgoing = t.from_country_id === engine.country.id;
+      const other = outgoing ? t.to_country : t.from_country;
+      const statusLabel = { accepted: '✅ Completed', rejected: '✕ Rejected', cancelled: '⊘ Cancelled' }[t.status] || t.status;
+      const dir = outgoing ? `Sent to <span style="color:${other?.color}">${other?.name}</span>` : `Received from <span style="color:${other?.color}">${other?.name}</span>`;
+      return `<div class="trade-offer">
+        <div class="trade-offer-header">
+          <span style="font-size:0.8rem">💰 <strong>${t.gold_offered}</strong> — ${dir}</span>
+          <span style="font-size:0.72rem;color:var(--muted)">${statusLabel}</span>
+        </div>
+      </div>`;
+    }).join('') || '<div style="color:var(--muted);font-size:0.8rem">No trade history yet</div>'}
   `;
 }
 
@@ -1069,6 +1105,15 @@ async function acceptTrade(id) {
 
 async function rejectTrade(id) {
   await sb.from('trades').update({ status: 'rejected', resolved_at: new Date().toISOString() }).eq('id', id);
+  renderLeftPanel();
+}
+
+async function cancelTrade(id) {
+  await sb.from('trades')
+    .update({ status: 'cancelled', resolved_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('from_country_id', engine.country.id)
+    .eq('status', 'pending');
   renderLeftPanel();
 }
 
