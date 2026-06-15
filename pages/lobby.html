@@ -445,6 +445,7 @@ async function submitJoin(gameId) {
     flag_emoji: flag,
     gold: CONFIG.STARTING_GOLD,
     pixel_count: CONFIG.STARTING_PIXELS,
+    pending_pixels: CONFIG.STARTING_EXPANSION_TOKENS,
   }).select().single();
 
   if (error) { document.getElementById('joinError').textContent = error.message; return; }
