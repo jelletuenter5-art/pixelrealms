@@ -105,8 +105,14 @@ class GameEngine {
       CONFIG.MAX_STACK
     );
 
+    // Gold also accrues while offline, based on the same elapsed time
+    const mines = Object.values(this.infraData || {}).filter(i => i.country_id === this.country.id && i.type === 'mine').length;
+    const flatIncomePerHour = mines * CONFIG.INFRA_COSTS.mine.flatIncome;
+    const hourlyIncome = this.country.income_per_pixel * this.country.pixel_count + flatIncomePerHour;
+    const newGold = Math.round((this.country.gold + hourlyIncome * hoursOffline) * 10000) / 10000;
+
     const { data } = await sb.from('countries')
-      .update({ pending_pixels: newTokens, last_active: now.toISOString() })
+      .update({ pending_pixels: newTokens, gold: newGold, last_active: now.toISOString() })
       .eq('id', this.country.id)
       .select().single();
 
