@@ -25,6 +25,8 @@ CREATE TABLE games (
   code TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
   status TEXT DEFAULT 'waiting' CHECK (status IN ('waiting','active','finished')),
+  category TEXT CHECK (category IN ('small','medium','big')),
+  is_open BOOLEAN DEFAULT FALSE,         -- TRUE = the current joinable world for this category
   map_width INTEGER DEFAULT 100,
   map_height INTEGER DEFAULT 80,
   map_seed BIGINT DEFAULT floor(random() * 9999999),
@@ -35,6 +37,9 @@ CREATE TABLE games (
   started_at TIMESTAMPTZ,
   finished_at TIMESTAMPTZ
 );
+
+-- Only one open (joinable) world per category at a time
+CREATE UNIQUE INDEX idx_games_open_category ON games(category) WHERE is_open = TRUE;
 
 -- ============================================================
 -- COUNTRIES (a player's nation inside a game)
@@ -201,3 +206,14 @@ ALTER PUBLICATION supabase_realtime ADD TABLE messages;
 ALTER PUBLICATION supabase_realtime ADD TABLE countries;
 ALTER PUBLICATION supabase_realtime ADD TABLE attacks;
 ALTER PUBLICATION supabase_realtime ADD TABLE trades;
+
+-- ============================================================
+-- INITIAL WORLDS (small / medium / big)
+-- These are the 3 always-available worlds players can join.
+-- When one fills up, the app automatically opens a new world
+-- in the same category.
+-- ============================================================
+INSERT INTO games (code, name, category, is_open, map_width, map_height, max_players, status) VALUES
+  ('PR-SM01', 'Small Realm #1',  'small',  TRUE, 60,  50,  20, 'waiting'),
+  ('PR-MD01', 'Medium Realm #1', 'medium', TRUE, 100, 80,  35, 'waiting'),
+  ('PR-BG01', 'Grand Realm #1',  'big',    TRUE, 150, 120, 50, 'waiting');
