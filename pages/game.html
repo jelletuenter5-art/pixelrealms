@@ -219,6 +219,7 @@
       <div class="stat-pill" title="Expansion tokens available">🎯 <span class="val" id="myTokens">—</span></div>
     </div>
     <div class="topbar-btns">
+      <button class="btn-xs" onclick="openTutorial()">❓ How to Play</button>
       <button class="btn-xs" onclick="window.location.href='lobby.html'">← Lobby</button>
     </div>
   </div>
@@ -287,6 +288,67 @@
   </div>
 </div>
 
+<!-- Tutorial modal -->
+<div id="tutorialModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;align-items:center;justify-content:center">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.5rem;max-width:520px;width:90%;max-height:85vh;overflow-y:auto">
+    <h3 style="font-family:'Cinzel',serif;margin-bottom:1rem">How to Play PixelRealms</h3>
+
+    <div class="section-label" style="margin-top:0">🌱 Expand</div>
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
+      You earn <strong>1 expansion token per hour</strong> (max 24 stacked) — shown as 🎯 in the top bar.
+      Switch to <strong>Expand</strong> mode and click an unclaimed tile next to your territory to
+      claim it for 1 token. Water tiles can't be claimed.
+    </p>
+
+    <div class="section-label">⚔️ Attack</div>
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
+      Switch to <strong>Attack</strong> mode and click an enemy tile next to your territory.
+      Each attack costs gold. Your army size vs. their army size (modified by terrain defense —
+      hills and mountains defend better) decides the outcome. Winning captures the tile and
+      damages both armies; losing still costs you troops. Eliminate a nation by taking all
+      their pixels and reducing their army to 1.
+    </p>
+
+    <div class="section-label">🏗️ Build</div>
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
+      Switch to <strong>Build</strong> mode and click one of <strong>your own tiles</strong>,
+      then open the <strong>Build</strong> tab on the right and choose a structure:
+    </p>
+    <ul style="font-size:0.82rem;color:var(--muted);line-height:1.8;margin-left:1.2rem">
+      <li>🌾 <strong>Farm</strong> — increases income per pixel</li>
+      <li>⚔️ <strong>Barracks</strong> — instantly adds army units</li>
+      <li>🏪 <strong>Market</strong> — boosts trade income</li>
+      <li>🧱 <strong>Wall</strong> — boosts defense on that tile</li>
+      <li>⛏️ <strong>Mine</strong> — instant gold + flat income boost</li>
+    </ul>
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
+      Only one building per tile. Buildings appear on the map for every player to see.
+    </p>
+
+    <div class="section-label">💰 Economy</div>
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
+      Every pixel generates gold per hour based on your income rate. Your army costs gold
+      upkeep per pixel. Watch the Net income in <strong>My Realm</strong> — if it's negative,
+      build farms/mines or shrink your army's upkeep burden.
+    </p>
+
+    <div class="section-label">🤝 Trade</div>
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
+      Send gold to other nations from the <strong>Trade</strong> tab — useful for alliances
+      or buying peace.
+    </p>
+
+    <div class="section-label">🗺️ Map</div>
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
+      Each nation's territory is outlined in grey with its name shown over its land.
+      Scroll to zoom, drag to pan, and click a nation in the <strong>Nations</strong> tab
+      to jump to it.
+    </p>
+
+    <button class="btn btn-primary btn-full" onclick="closeTutorial()">Got it!</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -304,6 +366,8 @@ let selectedBuildTile = null;
 let selectedBuildType = null;
 let leftTab = 'nations';
 let rightTab = 'country';
+
+const INFRA_ICONS = { farm: '🌾', barracks: '⚔️', market: '🏪', wall: '🧱', mine: '⛏️' };
 
 // Canvas & viewport
 let canvas, ctx;
@@ -351,6 +415,8 @@ let lastMousePos = null;
   setInterval(() => { tickIncome(engine); updateTopBar(); }, 60000);
   // Token accrual display tick
   setInterval(updateTopBar, 30000);
+
+  if (!localStorage.getItem('pr_tutorial_seen')) openTutorial();
 })();
 
 function setLoading(msg) {
@@ -531,6 +597,25 @@ function renderMap() {
           ctx.lineWidth = 0.5;
           ctx.strokeRect(px, py, pw, pw);
         }
+
+        // Grey border between this nation and neighboring tiles it doesn't own
+        ctx.strokeStyle = 'rgba(148,163,184,0.85)';
+        ctx.lineWidth = Math.max(1, ps * 0.08);
+        const edges = [
+          [0, -1, px, py, px + pw, py],             // top
+          [0, 1, px, py + pw, px + pw, py + pw],    // bottom
+          [-1, 0, px, py, px, py + pw],             // left
+          [1, 0, px + pw, py, px + pw, py + pw],    // right
+        ];
+        for (const [dx, dy, x1, y1, x2, y2] of edges) {
+          const neighbor = engine.pixelData[`${x + dx},${y + dy}`];
+          if (!neighbor || neighbor.country_id !== ownerId) {
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+          }
+        }
       } else {
         ctx.fillStyle = getTerrainColor(tile.terrain, x, y, tile.elevation);
         ctx.fillRect(px, py, pw, pw);
@@ -552,7 +637,50 @@ function renderMap() {
         ctx.fillRect(px, py, pw, 0.5);
         ctx.fillRect(px, py, 0.5, pw);
       }
+
+      // Infrastructure icon
+      const infra = engine.infraData?.[`${x},${y}`];
+      if (infra && ps > 6) {
+        ctx.font = `${Math.max(8, ps * 0.7)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(INFRA_ICONS[infra.type] || '🏗️', px + pw / 2, py + pw / 2);
+      }
     }
+  }
+
+  renderCountryLabels(x0, y0, x1, y1, ps);
+}
+
+// ── COUNTRY NAME LABELS ─────────────────────────────────
+function renderCountryLabels(x0, y0, x1, y1, ps) {
+  const centroids = {};
+  for (const p of Object.values(engine.pixelData)) {
+    if (!p.country_id) continue;
+    if (p.x < x0 || p.x >= x1 || p.y < y0 || p.y >= y1) continue;
+    const c = centroids[p.country_id] || (centroids[p.country_id] = { sx: 0, sy: 0, n: 0 });
+    c.sx += p.x; c.sy += p.y; c.n++;
+  }
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const [id, c] of Object.entries(centroids)) {
+    const country = engine.countries[id];
+    if (!country || c.n < 2) continue;
+
+    const cx = c.sx / c.n, cy = c.sy / c.n;
+    const sx = offsetX + (cx + 0.5) * ps;
+    const sy = offsetY + (cy + 0.5) * ps;
+
+    const fontSize = Math.max(10, Math.min(16, ps * 0.5));
+    ctx.font = `700 ${fontSize}px Inter, sans-serif`;
+    const label = `${country.flag_emoji || ''} ${country.name}`;
+
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+    ctx.strokeText(label, sx, sy);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(label, sx, sy);
   }
 }
 
@@ -621,7 +749,8 @@ async function handleClick(e) {
 function showBuildMenu() {
   if (rightTab !== 'infra') {
     switchRightTab('infra');
-    document.querySelectorAll('.panel-tab')[1].click();
+  } else {
+    renderRightPanel();
   }
   showToast('Tile selected! Choose a building from the Build panel →');
 }
@@ -638,11 +767,22 @@ function openBuildModal(type) {
     const res = await engine.buildInfra(selectedBuildType, selectedBuildTile.x, selectedBuildTile.y);
     showToast(res.msg, res.ok ? 'ok' : 'error');
     closeBuildModal();
+    if (res.ok) {
+      selectedBuildTile = null;
+      renderMap();
+    }
     updateTopBar();
     renderRightPanel();
   };
 }
 function closeBuildModal() { document.getElementById('buildModal').style.display = 'none'; }
+
+// ── TUTORIAL ──────────────────────────────────────────
+function openTutorial() { document.getElementById('tutorialModal').style.display = 'flex'; }
+function closeTutorial() {
+  document.getElementById('tutorialModal').style.display = 'none';
+  localStorage.setItem('pr_tutorial_seen', '1');
+}
 
 // ── MODE ──────────────────────────────────────────────
 function setMode(mode) {
@@ -878,16 +1018,30 @@ function renderInfra(body) {
   const c = engine.country;
   if (!c) { body.innerHTML = '<div style="color:var(--muted)">Join the game first.</div>'; return; }
 
+  const existing = selectedBuildTile ? engine.infraData?.[`${selectedBuildTile.x},${selectedBuildTile.y}`] : null;
+
+  let statusHtml;
+  if (!selectedBuildTile) {
+    statusHtml = '👇 Switch to 🏗️ Build mode on the map, then click one of your tiles.';
+  } else if (existing) {
+    statusHtml = `⚠️ Tile (${selectedBuildTile.x}, ${selectedBuildTile.y}) already has a ${INFRA_ICONS[existing.type] || ''} ${existing.type}. Choose another tile.`;
+  } else {
+    statusHtml = `✅ Tile selected: (${selectedBuildTile.x}, ${selectedBuildTile.y})`;
+  }
+
   body.innerHTML = `
-    <div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.75rem">
-      ${selectedBuildTile ? `✅ Tile selected: (${selectedBuildTile.x}, ${selectedBuildTile.y})` : '👇 Click a tile on the map in Build mode, then choose a building.'}
-    </div>
+    <div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.75rem">${statusHtml}</div>
     ${Object.entries(CONFIG.INFRA_COSTS).map(([type, info]) => {
       const canAfford = (c.gold || 0) >= info.gold;
-      const icons = { farm:'🌾', barracks:'⚔️', market:'🏪', wall:'🧱', mine:'⛏️' };
-      return `<div class="infra-item" onclick="${canAfford ? `openBuildModal('${type}')` : `showToast('Need ${info.gold} gold','error')`}" style="${canAfford ? '' : 'opacity:0.5;cursor:not-allowed'}">
+      const enabled = canAfford && selectedBuildTile && !existing;
+      let onclick;
+      if (!selectedBuildTile) onclick = `showToast('Select one of your tiles in Build mode first','error')`;
+      else if (existing) onclick = `showToast('A building already stands here','error')`;
+      else if (!canAfford) onclick = `showToast('Need ${info.gold} gold','error')`;
+      else onclick = `openBuildModal('${type}')`;
+      return `<div class="infra-item" onclick="${onclick}" style="${enabled ? '' : 'opacity:0.5;cursor:not-allowed'}">
         <div class="infra-header">
-          <span class="infra-name">${icons[type] || '🏗️'} ${type.charAt(0).toUpperCase() + type.slice(1)}</span>
+          <span class="infra-name">${INFRA_ICONS[type] || '🏗️'} ${type.charAt(0).toUpperCase() + type.slice(1)}</span>
           <span class="infra-cost">💰 ${info.gold}</span>
         </div>
         <div class="infra-desc">${info.effect}</div>
@@ -966,6 +1120,10 @@ function setupRealtime() {
   });
   engine.subscribeTrades(payload => {
     if (leftTab === 'trade') renderLeftPanel();
+  });
+  engine.subscribeToInfra(i => {
+    renderMap();
+    if (rightTab === 'infra') renderRightPanel();
   });
 }
 

@@ -251,6 +251,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE messages;
 ALTER PUBLICATION supabase_realtime ADD TABLE countries;
 ALTER PUBLICATION supabase_realtime ADD TABLE attacks;
 ALTER PUBLICATION supabase_realtime ADD TABLE trades;
+ALTER PUBLICATION supabase_realtime ADD TABLE infrastructure;
 
 -- ============================================================
 -- INITIAL WORLDS (small / medium / big)

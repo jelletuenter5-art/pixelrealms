@@ -15,11 +15,12 @@ class GameEngine {
 
   // ── Bootstrap ────────────────────────────────────────────
   async load() {
-    const [gameRes, countryRes, pixelsRes, countriesRes] = await Promise.all([
+    const [gameRes, countryRes, pixelsRes, countriesRes, infraRes] = await Promise.all([
       sb.from('games').select('*').eq('id', this.gameId).single(),
       sb.from('countries').select('*').eq('game_id', this.gameId).eq('player_id', this.playerId).single(),
       sb.from('pixels').select('*').eq('game_id', this.gameId),
       sb.from('countries').select('*').eq('game_id', this.gameId).eq('is_alive', true),
+      sb.from('infrastructure').select('*').eq('game_id', this.gameId),
     ]);
 
     this.game = gameRes.data;
@@ -33,6 +34,12 @@ class GameEngine {
     // Index countries
     (countriesRes.data || []).forEach(c => {
       this.countries[c.id] = c;
+    });
+
+    // Index infrastructure (one building per tile)
+    this.infraData = {};
+    (infraRes.data || []).forEach(i => {
+      this.infraData[`${i.pixel_x},${i.pixel_y}`] = i;
     });
 
     // Calculate pending pixels from time offline
@@ -206,13 +213,18 @@ class GameEngine {
     if (this.pixelData[key]?.country_id !== this.country.id) {
       return { ok: false, msg: 'You must own this tile to build here.' };
     }
+    if (this.infraData[key]) {
+      return { ok: false, msg: 'A building already stands on this tile.' };
+    }
 
-    const { error } = await sb.from('infrastructure').insert({
+    const { data: infra, error } = await sb.from('infrastructure').insert({
       country_id: this.country.id,
       game_id: this.gameId,
       type, pixel_x: x, pixel_y: y,
-    });
+    }).select().single();
     if (error) return { ok: false, msg: error.message };
+
+    this.infraData[key] = infra;
 
     const newGold = this.country.gold - cost.gold;
     let updates = { gold: newGold };
@@ -320,6 +332,20 @@ class GameEngine {
         filter: `game_id=eq.${this.gameId}`
       }, payload => onMessage(payload.new))
       .subscribe();
+    this.realtimeSubs.push(sub);
+    return sub;
+  }
+
+  subscribeToInfra(onInfra) {
+    const sub = sb.channel(`infra:${this.gameId}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'infrastructure',
+        filter: `game_id=eq.${this.gameId}`
+      }, payload => {
+        const i = payload.new;
+        this.infraData[`${i.pixel_x},${i.pixel_y}`] = i;
+        onInfra(i);
+      }).subscribe();
     this.realtimeSubs.push(sub);
     return sub;
   }
