@@ -172,6 +172,26 @@ CREATE POLICY "profiles_read" ON profiles FOR SELECT USING (true);
 CREATE POLICY "profiles_insert" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
 CREATE POLICY "profiles_update" ON profiles FOR UPDATE USING (auth.uid() = id);
 
+-- ============================================================
+-- USERNAME LOGIN
+-- Looks up the auth email for a given username so players can
+-- sign in with just their username + password.
+-- ============================================================
+CREATE OR REPLACE FUNCTION get_email_for_username(input_username TEXT)
+RETURNS TEXT
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT au.email
+  FROM auth.users au
+  JOIN public.profiles p ON p.id = au.id
+  WHERE p.username = input_username
+  LIMIT 1;
+$$;
+
+GRANT EXECUTE ON FUNCTION get_email_for_username(TEXT) TO anon, authenticated;
+
 -- Games: everyone can read
 CREATE POLICY "games_read" ON games FOR SELECT USING (true);
 CREATE POLICY "games_insert" ON games FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
