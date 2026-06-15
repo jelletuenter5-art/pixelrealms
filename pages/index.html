@@ -353,6 +353,8 @@ async function doRegister() {
   }
 
   if (data.session) {
+    // Ensure the profile row exists (the auth.users trigger may not always fire)
+    await sb.from('profiles').upsert({ id: data.user.id, username }, { onConflict: 'id', ignoreDuplicates: true });
     window.location.href = 'lobby.html';
     return;
   }

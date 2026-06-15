@@ -176,7 +176,15 @@ const CATEGORY_CONFIG = {
   if (!session) { window.location.href = 'index.html'; return; }
   currentUser = session.user;
 
-  const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  let { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  if (!profile) {
+    // Self-heal: profile row wasn't created at signup time for some reason
+    const fallbackUsername = currentUser.user_metadata?.username || `Ruler${currentUser.id.slice(0, 6)}`;
+    const { data: created } = await sb.from('profiles')
+      .upsert({ id: currentUser.id, username: fallbackUsername }, { onConflict: 'id' })
+      .select().single();
+    profile = created;
+  }
   currentProfile = profile;
   document.getElementById('topUsername').textContent = profile?.username || 'Ruler';
 
