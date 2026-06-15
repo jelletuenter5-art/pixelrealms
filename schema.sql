@@ -11,6 +11,7 @@ CREATE TABLE profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
   avatar_color TEXT DEFAULT '#4ade80',
+  is_admin BOOLEAN DEFAULT FALSE,
   total_wins INTEGER DEFAULT 0,
   total_pixels_ever INTEGER DEFAULT 0,
   games_played INTEGER DEFAULT 0,
