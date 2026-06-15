@@ -126,6 +126,20 @@
   .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
     border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* MOBILE RESPONSIVE */
+  @media (max-width: 700px) {
+    .main { padding: 1rem 0.75rem; }
+    .topbar { padding: 0.75rem 1rem; }
+    .topbar-logo { font-size: 1.05rem; }
+    .username-badge { display: none; }
+    .page-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; padding-bottom: 0.5rem; }
+    .page-tab { padding: 0.6rem 0.9rem; font-size: 0.8rem; white-space: nowrap; flex: 0 0 auto; }
+    .game-grid { grid-template-columns: 1fr; }
+    .lb-header, .lb-row { grid-template-columns: 36px 1fr 70px 70px; }
+    .lb-header div:nth-child(5), .lb-header div:nth-child(6),
+    .lb-row div:nth-child(5), .lb-row div:nth-child(6) { display: none; }
+  }
 </style>
 </head>
 <body>
