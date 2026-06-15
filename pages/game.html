@@ -180,11 +180,11 @@
   .token-progress { background: var(--border); border-radius: 4px; height: 6px; margin-top: 0.5rem; overflow: hidden; }
   .token-fill { height: 100%; background: linear-gradient(90deg, var(--green), #16a34a); border-radius: 4px; transition: width 0.5s; }
 
-  .toast { position: fixed; bottom: calc(1rem + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(80px);
+  .toast { position: fixed; bottom: calc(1rem + env(safe-area-inset-bottom)); left: 50%; transform: translate(-50%, 150%);
     background: var(--panel2); border: 1px solid var(--green); color: var(--green);
     padding: 0.75rem 1.5rem; border-radius: 10px; font-size: 0.85rem; z-index: 9999;
-    transition: transform 0.3s; max-width: 90vw; text-align: center; }
-  .toast.show { transform: translateX(-50%) translateY(0); }
+    transition: transform 0.3s, visibility 0.3s; max-width: 90vw; text-align: center; visibility: hidden; }
+  .toast.show { transform: translate(-50%, 0); visibility: visible; }
   .toast.error { border-color: var(--red); color: var(--red); }
 
   .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.3);
