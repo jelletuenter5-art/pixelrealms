@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelRealms — Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/config.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0e1a;
+    --panel: #111827;
+    --panel2: #1a2235;
+    --border: #2d3748;
+    --green: #4ade80;
+    --gold: #f59e0b;
+    --red: #ef4444;
+    --blue: #38bdf8;
+    --text: #e2e8f0;
+    --muted: #64748b;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* Animated pixel background */
+  .bg-canvas {
+    position: fixed; inset: 0; z-index: 0;
+    overflow: hidden;
+  }
+  .bg-canvas canvas { width: 100%; height: 100%; opacity: 0.15; }
+
+  .page {
+    position: relative; z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+
+  .logo {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+  .logo h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 3rem;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    background: linear-gradient(135deg, var(--green), var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+  }
+  .logo p {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-top: 0.4rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .auth-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+  }
+
+  .tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 2rem;
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 4px;
+  }
+  .tab {
+    flex: 1;
+    padding: 0.6rem;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--muted);
+    transition: all 0.2s;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+  }
+  .tab.active {
+    background: var(--panel2);
+    color: var(--text);
+  }
+
+  .form-group {
+    margin-bottom: 1.2rem;
+  }
+  label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+  input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  input:focus { border-color: var(--green); }
+  input::placeholder { color: var(--muted); }
+
+  .btn {
+    width: 100%;
+    padding: 0.85rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: 'Cinzel', serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+    margin-top: 0.5rem;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #166534, #15803d);
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(74, 222, 128, 0.2);
+  }
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #15803d, #16a34a);
+    box-shadow: 0 4px 20px rgba(74, 222, 128, 0.35);
+    transform: translateY(-1px);
+  }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .error-msg {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    margin-top: 1rem;
+    display: none;
+  }
+  .success-msg {
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    color: var(--green);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    margin-top: 1rem;
+    display: none;
+  }
+
+  .divider {
+    display: flex; align-items: center; gap: 1rem;
+    color: var(--muted); font-size: 0.8rem;
+    margin: 1.5rem 0;
+  }
+  .divider::before, .divider::after {
+    content: ''; flex: 1;
+    height: 1px; background: var(--border);
+  }
+
+  .stats-strip {
+    display: flex; gap: 2rem; justify-content: center;
+    margin-top: 3rem;
+    color: var(--muted); font-size: 0.8rem;
+  }
+  .stats-strip span strong { color: var(--green); font-family: 'Cinzel', serif; }
+
+  .spinner {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="bg-canvas"><canvas id="bgCanvas"></canvas></div>
+
+<div class="page">
+  <div class="logo">
+    <h1>PixelRealms</h1>
+    <p>Conquer the world, one pixel at a time</p>
+  </div>
+
+  <div class="auth-card">
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('login')">Sign In</button>
+      <button class="tab" onclick="showTab('register')">Create Account</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="loginForm">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="loginEmail" placeholder="ruler@realm.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary" id="loginBtn" onclick="doLogin()">Enter the Realm</button>
+      <div class="error-msg" id="loginError"></div>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="registerForm" style="display:none">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="regUsername" placeholder="Emperor Augustus" maxlength="24">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="regEmail" placeholder="ruler@realm.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="regPassword" placeholder="Min. 8 characters" autocomplete="new-password">
+      </div>
+      <button class="btn btn-primary" id="registerBtn" onclick="doRegister()">Forge My Legacy</button>
+      <div class="error-msg" id="registerError"></div>
+      <div class="success-msg" id="registerSuccess"></div>
+    </div>
+  </div>
+
+  <div class="stats-strip">
+    <span>Players Online: <strong id="onlineCount">—</strong></span>
+    <span>Active Games: <strong id="activeGames">—</strong></span>
+    <span>Pixels Claimed: <strong id="totalPixels">—</strong></span>
+  </div>
+</div>
+
+<script>
+// Check if already logged in
+(async () => {
+  const { data } = await sb.auth.getSession();
+  if (data.session) window.location.href = 'lobby.html';
+})();
+
+// Fetch live stats
+async function loadStats() {
+  const [gamesRes, pixelsRes] = await Promise.all([
+    sb.from('games').select('id', { count: 'exact' }).eq('status', 'active'),
+    sb.from('countries').select('pixel_count'),
+  ]);
+  document.getElementById('activeGames').textContent = gamesRes.count || 0;
+  const total = (pixelsRes.data || []).reduce((s, c) => s + c.pixel_count, 0);
+  document.getElementById('totalPixels').textContent = total.toLocaleString();
+}
+loadStats();
+
+function showTab(tab) {
+  document.getElementById('loginForm').style.display = tab === 'login' ? '' : 'none';
+  document.getElementById('registerForm').style.display = tab === 'register' ? '' : 'none';
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'register' && i === 1));
+  });
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const btn = document.getElementById('loginBtn');
+  const err = document.getElementById('loginError');
+
+  if (!email || !password) { showError(err, 'Please fill in all fields.'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Entering...';
+
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) {
+    showError(err, error.message);
+    btn.disabled = false;
+    btn.textContent = 'Enter the Realm';
+  } else {
+    window.location.href = 'lobby.html';
+  }
+}
+
+async function doRegister() {
+  const username = document.getElementById('regUsername').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const btn = document.getElementById('registerBtn');
+  const err = document.getElementById('registerError');
+  const ok = document.getElementById('registerSuccess');
+
+  if (!username || !email || !password) { showError(err, 'Please fill all fields.'); return; }
+  if (username.length < 2) { showError(err, 'Username too short.'); return; }
+  if (password.length < 8) { showError(err, 'Password must be at least 8 characters.'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Forging...';
+
+  // Check username taken
+  const { data: existing } = await sb.from('profiles').select('id').eq('username', username).single();
+  if (existing) { showError(err, 'Username already taken.'); btn.disabled = false; btn.textContent = 'Forge My Legacy'; return; }
+
+  const { data, error } = await sb.auth.signUp({ email, password });
+  if (error) {
+    showError(err, error.message);
+    btn.disabled = false;
+    btn.textContent = 'Forge My Legacy';
+    return;
+  }
+
+  if (data.user) {
+    await sb.from('profiles').insert({ id: data.user.id, username });
+    ok.style.display = 'block';
+    ok.textContent = '✅ Account created! Check your email to confirm, then sign in.';
+  }
+  btn.disabled = false;
+  btn.textContent = 'Forge My Legacy';
+}
+
+function showError(el, msg) {
+  el.style.display = 'block';
+  el.textContent = msg;
+}
+
+// Animated pixel background
+const canvas = document.getElementById('bgCanvas');
+const ctx = canvas.getContext('2d');
+const pixels = [];
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+const colors = ['#4ade80','#f59e0b','#ef4444','#38bdf8','#8b5cf6'];
+for (let i = 0; i < 80; i++) {
+  pixels.push({
+    x: Math.random() * window.innerWidth,
+    y: Math.random() * window.innerHeight,
+    size: Math.random() * 6 + 3,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    vx: (Math.random() - 0.5) * 0.3,
+    vy: (Math.random() - 0.5) * 0.3,
+    alpha: Math.random() * 0.5 + 0.1,
+  });
+}
+
+function animateBg() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  pixels.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0) p.x = canvas.width;
+    if (p.x > canvas.width) p.x = 0;
+    if (p.y < 0) p.y = canvas.height;
+    if (p.y > canvas.height) p.y = 0;
+    ctx.globalAlpha = p.alpha;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x, p.y, p.size, p.size);
+  });
+  ctx.globalAlpha = 1;
+  requestAnimationFrame(animateBg);
+}
+animateBg();
+
+// Enter key support
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const loginVisible = document.getElementById('loginForm').style.display !== 'none';
+    if (loginVisible) doLogin(); else doRegister();
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelRealms</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/config.js"></script>
+<script src="../js/mapgen.js"></script>
+<script src="../js/game.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0e1a; --panel: #111827; --panel2: #1a2235;
+    --border: #2d3748; --green: #4ade80; --gold: #f59e0b;
+    --red: #ef4444; --blue: #38bdf8; --text: #e2e8f0; --muted: #64748b;
+  }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; }
+
+  /* LAYOUT */
+  .layout { display: grid; grid-template-columns: 260px 1fr 280px; grid-template-rows: 50px 1fr; height: 100vh; }
+
+  /* TOP BAR */
+  .topbar {
+    grid-column: 1 / -1;
+    background: var(--panel); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 1rem; padding: 0 1rem;
+    z-index: 10;
+  }
+  .logo { font-family: 'Cinzel', serif; font-size: 1.1rem; font-weight: 900;
+    background: linear-gradient(135deg, var(--green), var(--gold));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .game-title { font-size: 0.85rem; color: var(--muted); }
+  .topbar-stats { display: flex; gap: 1rem; margin-left: auto; }
+  .stat-pill { display: flex; align-items: center; gap: 0.4rem; background: var(--panel2);
+    border: 1px solid var(--border); border-radius: 20px; padding: 0.3rem 0.8rem;
+    font-size: 0.8rem; }
+  .stat-pill .val { font-weight: 600; color: var(--green); font-family: 'Cinzel', serif; }
+  .stat-pill.gold-stat .val { color: var(--gold); }
+  .stat-pill.red-stat .val { color: var(--red); }
+  .topbar-btns { display: flex; gap: 0.5rem; }
+  .btn-xs { padding: 0.3rem 0.75rem; border-radius: 6px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer; font-size: 0.75rem;
+    font-family: 'Inter'; transition: all 0.2s; }
+  .btn-xs:hover { border-color: var(--green); color: var(--green); }
+
+  /* LEFT PANEL */
+  .left-panel {
+    background: var(--panel); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .panel-tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .panel-tab { flex: 1; padding: 0.6rem; text-align: center; cursor: pointer;
+    font-size: 0.75rem; color: var(--muted); border: none; background: transparent;
+    border-bottom: 2px solid transparent; transition: all 0.15s; }
+  .panel-tab.active { color: var(--green); border-bottom-color: var(--green); }
+  .panel-body { flex: 1; overflow-y: auto; padding: 0.75rem; }
+  .panel-body::-webkit-scrollbar { width: 4px; }
+  .panel-body::-webkit-scrollbar-track { background: transparent; }
+  .panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* MAP */
+  .map-area {
+    position: relative; overflow: hidden; background: #0d1b3e;
+  }
+  #mapCanvas {
+    position: absolute; top: 0; left: 0;
+    image-rendering: pixelated;
+    cursor: crosshair;
+  }
+  .map-overlay {
+    position: absolute; bottom: 1rem; left: 1rem;
+    display: flex; flex-direction: column; gap: 0.5rem;
+  }
+  .map-btn { width: 34px; height: 34px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 1rem; transition: all 0.2s; }
+  .map-btn:hover { border-color: var(--green); }
+  .mode-bar {
+    position: absolute; top: 0.75rem; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 0.5rem; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 20px; padding: 0.3rem;
+  }
+  .mode-btn { padding: 0.3rem 0.85rem; border-radius: 15px; border: none; cursor: pointer;
+    font-size: 0.75rem; font-weight: 600; background: transparent; color: var(--muted);
+    transition: all 0.2s; }
+  .mode-btn.active { background: var(--panel2); color: var(--text); }
+  .mode-btn.expand-mode.active { color: var(--green); }
+  .mode-btn.attack-mode.active { color: var(--red); }
+  .mode-btn.build-mode.active { color: var(--gold); }
+  .pixel-tooltip {
+    position: absolute; background: var(--panel2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.6rem 0.9rem; font-size: 0.78rem; pointer-events: none;
+    white-space: nowrap; z-index: 50; display: none;
+  }
+
+  /* RIGHT PANEL */
+  .right-panel {
+    background: var(--panel); border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+
+  /* COUNTRIES LIST */
+  .country-item { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.5rem;
+    border-radius: 8px; cursor: pointer; transition: background 0.15s; }
+  .country-item:hover { background: var(--panel2); }
+  .country-flag { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+  .country-info { flex: 1; min-width: 0; }
+  .country-name { font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .country-stats { font-size: 0.7rem; color: var(--muted); }
+  .country-item.me .country-name { color: var(--green); }
+
+  /* INFRA SHOP */
+  .infra-item { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.75rem; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.2s; }
+  .infra-item:hover { border-color: var(--gold); }
+  .infra-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem; }
+  .infra-name { font-size: 0.85rem; font-weight: 600; }
+  .infra-cost { font-size: 0.75rem; color: var(--gold); font-weight: 600; }
+  .infra-desc { font-size: 0.72rem; color: var(--muted); }
+
+  /* CHAT */
+  .chat-messages { flex: 1; overflow-y: auto; padding: 0.5rem;
+    display: flex; flex-direction: column; gap: 0.4rem; }
+  .chat-messages::-webkit-scrollbar { width: 3px; }
+  .chat-messages::-webkit-scrollbar-thumb { background: var(--border); }
+  .chat-msg { background: var(--panel2); border-radius: 8px; padding: 0.5rem 0.7rem; font-size: 0.78rem; }
+  .chat-msg .sender { font-weight: 600; margin-bottom: 0.15rem; }
+  .chat-msg .body { color: var(--text); }
+  .chat-msg.system { background: transparent; color: var(--muted); font-style: italic; border-left: 2px solid var(--border); border-radius: 0; padding-left: 0.6rem; }
+  .chat-input-row { display: flex; gap: 0.5rem; padding: 0.5rem; border-top: 1px solid var(--border); }
+  .chat-input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 0.5rem 0.75rem; color: var(--text); font-family: 'Inter'; font-size: 0.8rem; outline: none; }
+  .chat-input:focus { border-color: var(--green); }
+  .chat-send { padding: 0.5rem 0.75rem; border-radius: 6px; border: none; background: var(--green);
+    color: #000; cursor: pointer; font-size: 0.8rem; font-weight: 600; }
+
+  /* EVENTS FEED */
+  .event-item { padding: 0.5rem 0; border-bottom: 1px solid rgba(45,55,72,0.4); font-size: 0.78rem; }
+  .event-item .time { color: var(--muted); font-size: 0.7rem; margin-top: 0.2rem; }
+  .event-expand { color: var(--green); }
+  .event-attack { color: var(--red); }
+  .event-build { color: var(--gold); }
+  .event-trade { color: var(--blue); }
+  .event-eliminated { color: var(--red); font-weight: 700; }
+
+  /* TRADE PANEL */
+  .trade-offer { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.75rem; margin-bottom: 0.5rem; }
+  .trade-offer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+  .trade-btns { display: flex; gap: 0.4rem; }
+  .btn-accept { padding: 0.25rem 0.6rem; border-radius: 5px; border: none; background: var(--green);
+    color: #000; cursor: pointer; font-size: 0.75rem; font-weight: 600; }
+  .btn-reject { padding: 0.25rem 0.6rem; border-radius: 5px; border: 1px solid var(--red);
+    color: var(--red); cursor: pointer; font-size: 0.75rem; background: transparent; }
+
+  /* UTILITY */
+  .section-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); font-weight: 600; margin-bottom: 0.5rem; margin-top: 0.75rem; }
+  .btn { padding: 0.6rem 1rem; border-radius: 7px; border: none; cursor: pointer;
+    font-family: 'Cinzel', serif; font-size: 0.8rem; font-weight: 700; transition: all 0.2s; }
+  .btn-primary { background: linear-gradient(135deg, #166534, #15803d); color: #fff; }
+  .btn-primary:hover { background: linear-gradient(135deg, #15803d, #16a34a); }
+  .btn-danger { background: linear-gradient(135deg, #7f1d1d, #991b1b); color: #fff; }
+  .btn-danger:hover { background: linear-gradient(135deg, #991b1b, #dc2626); }
+  .btn-gold { background: linear-gradient(135deg, #78350f, #92400e); color: #fff; }
+  .btn-gold:hover { background: linear-gradient(135deg, #92400e, #b45309); }
+  .btn-full { width: 100%; margin-top: 0.5rem; }
+  input { background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 0.5rem 0.75rem; color: var(--text); font-family: 'Inter'; font-size: 0.85rem; outline: none; }
+  input:focus { border-color: var(--green); }
+  .token-bar { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.75rem; margin-bottom: 0.75rem; }
+  .token-progress { background: var(--border); border-radius: 4px; height: 6px; margin-top: 0.5rem; overflow: hidden; }
+  .token-fill { height: 100%; background: linear-gradient(90deg, var(--green), #16a34a); border-radius: 4px; transition: width 0.5s; }
+
+  .toast { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--panel2); border: 1px solid var(--green); color: var(--green);
+    padding: 0.75rem 1.5rem; border-radius: 10px; font-size: 0.85rem; z-index: 9999;
+    transition: transform 0.3s; max-width: 90vw; text-align: center; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { border-color: var(--red); color: var(--red); }
+
+  .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-screen {
+    position: fixed; inset: 0; background: var(--bg); z-index: 1000;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem;
+  }
+  .loading-logo { font-family: 'Cinzel', serif; font-size: 2.5rem; font-weight: 900;
+    background: linear-gradient(135deg, var(--green), var(--gold));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .loading-bar { width: 200px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .loading-fill { height: 100%; background: var(--green); border-radius: 2px; animation: load 2s ease-in-out; }
+  @keyframes load { from { width: 0; } to { width: 100%; } }
+</style>
+</head>
+<body>
+
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-logo">PixelRealms</div>
+  <div style="color:var(--muted);font-size:0.85rem" id="loadingMsg">Generating world…</div>
+  <div class="loading-bar"><div class="loading-fill"></div></div>
+</div>
+
+<div class="layout" id="appLayout" style="display:none">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <span class="logo">PR</span>
+    <span class="game-title" id="gameTitle">—</span>
+    <div class="topbar-stats">
+      <div class="stat-pill"><span id="myCountryFlag">🏳️</span> <span id="myCountryName" style="color:var(--text)">—</span></div>
+      <div class="stat-pill gold-stat">💰 <span class="val" id="myGold">—</span></div>
+      <div class="stat-pill"><span>🗺️</span> <span class="val" id="myPixels">—</span></div>
+      <div class="stat-pill red-stat">⚔️ <span class="val" id="myArmy">—</span></div>
+      <div class="stat-pill" title="Expansion tokens available">🎯 <span class="val" id="myTokens">—</span></div>
+    </div>
+    <div class="topbar-btns">
+      <button class="btn-xs" onclick="window.location.href='lobby.html'">← Lobby</button>
+    </div>
+  </div>
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div class="panel-tabs">
+      <button class="panel-tab active" onclick="switchLeftTab('nations')">Nations</button>
+      <button class="panel-tab" onclick="switchLeftTab('events')">Events</button>
+      <button class="panel-tab" onclick="switchLeftTab('trade')">Trade</button>
+    </div>
+    <div class="panel-body" id="leftPanelBody">
+      <div style="color:var(--muted)">Loading…</div>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="map-area" id="mapArea">
+    <canvas id="mapCanvas"></canvas>
+
+    <div class="mode-bar">
+      <button class="mode-btn expand-mode active" onclick="setMode('expand')" id="modeExpand">🌱 Expand</button>
+      <button class="mode-btn attack-mode" onclick="setMode('attack')" id="modeAttack">⚔️ Attack</button>
+      <button class="mode-btn build-mode" onclick="setMode('build')" id="modeBuild">🏗️ Build</button>
+    </div>
+
+    <div class="map-overlay">
+      <div class="map-btn" onclick="zoom(1.2)" title="Zoom in">+</div>
+      <div class="map-btn" onclick="zoom(0.8)" title="Zoom out">−</div>
+      <div class="map-btn" onclick="resetView()" title="Reset view">⌂</div>
+    </div>
+
+    <div class="pixel-tooltip" id="pixelTooltip"></div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="panel-tabs">
+      <button class="panel-tab active" onclick="switchRightTab('country')">My Realm</button>
+      <button class="panel-tab" onclick="switchRightTab('infra')">Build</button>
+      <button class="panel-tab" onclick="switchRightTab('chat')">Chat</button>
+    </div>
+    <div id="rightPanelBody" style="flex:1;overflow-y:auto;padding:0.75rem;display:flex;flex-direction:column">
+      <!-- dynamic -->
+    </div>
+    <div id="chatFooter" style="display:none">
+      <div class="chat-input-row">
+        <input class="chat-input" type="text" id="chatInput" placeholder="Say something…" maxlength="200"
+          onkeydown="if(event.key==='Enter') sendChat()">
+        <button class="chat-send" onclick="sendChat()">→</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Infra build modal -->
+<div id="buildModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:center;justify-content:center">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.5rem;max-width:380px;width:90%">
+    <h3 style="font-family:'Cinzel',serif;margin-bottom:1rem" id="buildModalTitle">Build Structure</h3>
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem" id="buildModalDesc"></p>
+    <p style="font-size:0.8rem;color:var(--gold);margin-bottom:1rem" id="buildModalCost"></p>
+    <div style="display:flex;gap:0.5rem">
+      <button class="btn btn-gold" id="buildModalConfirm">Build</button>
+      <button class="btn-xs" onclick="closeBuildModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── GLOBALS ──────────────────────────────────────────
+const params = new URLSearchParams(location.search);
+const GAME_ID = params.get('game');
+if (!GAME_ID) window.location.href = 'lobby.html';
+
+let engine = null;
+let currentUser = null;
+let mapData = null;
+let mapGen = null;
+let currentMode = 'expand';
+let selectedBuildTile = null;
+let selectedBuildType = null;
+let leftTab = 'nations';
+let rightTab = 'country';
+
+// Canvas & viewport
+let canvas, ctx;
+let scale = 1;
+let offsetX = 0, offsetY = 0;
+let isDragging = false, dragStart = null;
+let lastMousePos = null;
+
+// ── BOOT ─────────────────────────────────────────────
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = 'index.html'; return; }
+  currentUser = session.user;
+
+  setLoading('Loading game data…');
+  engine = new GameEngine(GAME_ID, currentUser.id);
+  await engine.load();
+
+  if (!engine.game) { alert('Game not found.'); window.location.href = 'lobby.html'; return; }
+
+  setLoading('Generating map…');
+  const { map_seed, map_width, map_height } = engine.game;
+  mapGen = new MapGenerator(map_seed, map_width, map_height);
+  mapData = mapGen.generate();
+
+  setLoading('Seeding world pixels…');
+  await ensurePixelsExist();
+
+  setLoading('Placing your nation…');
+  if (engine.country && engine.country.pixel_count === CONFIG.STARTING_PIXELS) {
+    await placeStartingPixels();
+  }
+
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('appLayout').style.display = 'grid';
+
+  initCanvas();
+  renderMap();
+  updateTopBar();
+  renderLeftPanel();
+  renderRightPanel();
+  setupRealtime();
+
+  // Income tick every minute
+  setInterval(() => { tickIncome(engine); updateTopBar(); }, 60000);
+  // Token accrual display tick
+  setInterval(updateTopBar, 30000);
+})();
+
+function setLoading(msg) {
+  document.getElementById('loadingMsg').textContent = msg;
+}
+
+// ── PIXEL SEEDING ─────────────────────────────────────
+async function ensurePixelsExist() {
+  // Check if pixels already exist for this game
+  const { count } = await sb.from('pixels').select('id', { count: 'exact', head: true })
+    .eq('game_id', GAME_ID);
+
+  if (count && count > 0) return; // already seeded
+
+  // Batch insert all map tiles
+  const batch = [];
+  for (let y = 0; y < mapData.length; y++) {
+    for (let x = 0; x < mapData[y].length; x++) {
+      batch.push({ game_id: GAME_ID, x, y, terrain: mapData[y][x].terrain });
+    }
+  }
+
+  // Insert in chunks of 500
+  for (let i = 0; i < batch.length; i += 500) {
+    await sb.from('pixels').insert(batch.slice(i, i + 500));
+  }
+}
+
+async function placeStartingPixels() {
+  const spawnPts = Object.values(engine.countries)
+    .filter(c => c.id !== engine.country?.id)
+    .flatMap(c => {
+      const owned = Object.values(engine.pixelData).filter(p => p.country_id === c.id);
+      return owned.map(p => ({ x: p.x, y: p.y }));
+    });
+
+  const spawn = mapGen.findSpawn(mapData, spawnPts);
+  if (!spawn) return;
+
+  // Place 5 starting pixels in a cross pattern
+  const startTiles = [
+    { x: spawn.x, y: spawn.y },
+    { x: spawn.x+1, y: spawn.y }, { x: spawn.x-1, y: spawn.y },
+    { x: spawn.x, y: spawn.y+1 }, { x: spawn.x, y: spawn.y-1 },
+  ].filter(t => mapData[t.y]?.[t.x]?.terrain !== 'water');
+
+  for (const t of startTiles.slice(0, 5)) {
+    await sb.from('pixels').update({ country_id: engine.country.id, captured_at: new Date().toISOString() })
+      .eq('game_id', GAME_ID).eq('x', t.x).eq('y', t.y);
+    engine.pixelData[`${t.x},${t.y}`] = { ...engine.pixelData[`${t.x},${t.y}`], country_id: engine.country.id };
+  }
+
+  // Center view on spawn
+  setTimeout(() => {
+    offsetX = -(spawn.x * CONFIG.PIXEL_SIZE * scale - canvas.width / 2);
+    offsetY = -(spawn.y * CONFIG.PIXEL_SIZE * scale - canvas.height / 2);
+    renderMap();
+  }, 500);
+}
+
+// ── CANVAS ─────────────────────────────────────────────
+function initCanvas() {
+  canvas = document.getElementById('mapCanvas');
+  ctx = canvas.getContext('2d');
+  const area = document.getElementById('mapArea');
+
+  function resize() {
+    canvas.width = area.clientWidth;
+    canvas.height = area.clientHeight;
+    renderMap();
+  }
+  resize();
+  new ResizeObserver(resize).observe(area);
+
+  // Center map initially
+  const totalW = engine.game.map_width * CONFIG.PIXEL_SIZE;
+  const totalH = engine.game.map_height * CONFIG.PIXEL_SIZE;
+  offsetX = (canvas.width - totalW) / 2;
+  offsetY = (canvas.height - totalH) / 2;
+
+  // Mouse events
+  canvas.addEventListener('mousedown', e => {
+    isDragging = false;
+    dragStart = { x: e.clientX, y: e.clientY, ox: offsetX, oy: offsetY };
+  });
+  canvas.addEventListener('mousemove', e => {
+    lastMousePos = { x: e.clientX, y: e.clientY };
+    if (dragStart) {
+      const dx = e.clientX - dragStart.x, dy = e.clientY - dragStart.y;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        isDragging = true;
+        offsetX = dragStart.ox + dx;
+        offsetY = dragStart.oy + dy;
+        renderMap();
+      }
+    }
+    showTooltip(e);
+  });
+  canvas.addEventListener('mouseup', e => {
+    if (!isDragging) handleClick(e);
+    dragStart = null;
+    isDragging = false;
+  });
+  canvas.addEventListener('mouseleave', () => {
+    dragStart = null;
+    document.getElementById('pixelTooltip').style.display = 'none';
+  });
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.1 : 0.9;
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    offsetX = mx - (mx - offsetX) * factor;
+    offsetY = my - (my - offsetY) * factor;
+    scale *= factor;
+    scale = Math.max(0.3, Math.min(6, scale));
+    renderMap();
+  }, { passive: false });
+
+  // Touch zoom
+  let lastDist = 0;
+  canvas.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) lastDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    else dragStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, ox: offsetX, oy: offsetY };
+  });
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      const factor = dist / lastDist;
+      scale = Math.max(0.3, Math.min(6, scale * factor));
+      lastDist = dist;
+      renderMap();
+    } else if (dragStart) {
+      offsetX = dragStart.ox + e.touches[0].clientX - dragStart.x;
+      offsetY = dragStart.oy + e.touches[0].clientY - dragStart.y;
+      isDragging = true;
+      renderMap();
+    }
+  }, { passive: false });
+  canvas.addEventListener('touchend', () => { dragStart = null; isDragging = false; });
+}
+
+// ── RENDER ─────────────────────────────────────────────
+function renderMap() {
+  if (!ctx || !mapData) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const ps = CONFIG.PIXEL_SIZE * scale;
+  const W = engine.game.map_width, H = engine.game.map_height;
+
+  // Visible range
+  const x0 = Math.max(0, Math.floor(-offsetX / ps));
+  const y0 = Math.max(0, Math.floor(-offsetY / ps));
+  const x1 = Math.min(W, Math.ceil((canvas.width - offsetX) / ps));
+  const y1 = Math.min(H, Math.ceil((canvas.height - offsetY) / ps));
+
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      const tile = mapData[y]?.[x];
+      if (!tile) continue;
+
+      const px = Math.floor(offsetX + x * ps);
+      const py = Math.floor(offsetY + y * ps);
+      const pw = Math.ceil(ps);
+
+      const pData = engine.pixelData[`${x},${y}`];
+      const ownerId = pData?.country_id;
+
+      if (ownerId) {
+        const country = engine.countries[ownerId];
+        ctx.fillStyle = country ? country.color : '#888';
+        ctx.fillRect(px, py, pw, pw);
+
+        // Border highlight for own country
+        if (ownerId === engine.country?.id) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+          ctx.lineWidth = 0.5;
+          ctx.strokeRect(px, py, pw, pw);
+        }
+      } else {
+        ctx.fillStyle = getTerrainColor(tile.terrain, x, y, tile.elevation);
+        ctx.fillRect(px, py, pw, pw);
+
+        // Subtle terrain variation
+        if (tile.terrain === 'water' && tile.elevation < 0.30) {
+          ctx.fillStyle = 'rgba(10,30,100,0.3)';
+          ctx.fillRect(px, py, pw, pw);
+        }
+        if (tile.terrain === 'mountain') {
+          ctx.fillStyle = 'rgba(255,255,255,0.08)';
+          ctx.fillRect(px, py, pw/2, pw/2);
+        }
+      }
+
+      // Grid at high zoom
+      if (ps > 10) {
+        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        ctx.fillRect(px, py, pw, 0.5);
+        ctx.fillRect(px, py, 0.5, pw);
+      }
+    }
+  }
+}
+
+// ── TOOLTIP ──────────────────────────────────────────
+function showTooltip(e) {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const ps = CONFIG.PIXEL_SIZE * scale;
+  const tx = Math.floor((mx - offsetX) / ps);
+  const ty = Math.floor((my - offsetY) / ps);
+
+  const tile = mapData[ty]?.[tx];
+  if (!tile) { document.getElementById('pixelTooltip').style.display = 'none'; return; }
+
+  const pData = engine.pixelData[`${tx},${ty}`];
+  const owner = pData?.country_id ? engine.countries[pData.country_id] : null;
+
+  const tip = document.getElementById('pixelTooltip');
+  const defMult = CONFIG.TERRAIN_DEFENSE[tile.terrain] || 1;
+  tip.innerHTML = `<strong>${tile.terrain.toUpperCase()}</strong> (${tx}, ${ty})<br>
+    ${owner ? `<span style="color:${owner.color}">●</span> ${owner.name}` : '<span style="color:var(--muted)">Unclaimed</span>'}<br>
+    🛡️ Def ×${defMult.toFixed(1)}`;
+  tip.style.display = 'block';
+  tip.style.left = (e.clientX - rect.left + 12) + 'px';
+  tip.style.top = (e.clientY - rect.top - 10) + 'px';
+}
+
+// ── CLICK HANDLER ─────────────────────────────────────
+async function handleClick(e) {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const ps = CONFIG.PIXEL_SIZE * scale;
+  const tx = Math.floor((mx - offsetX) / ps);
+  const ty = Math.floor((my - offsetY) / ps);
+
+  if (!engine.country) { showToast('You need to join this game first!', 'error'); return; }
+
+  if (currentMode === 'expand') {
+    const res = await engine.expandTo(tx, ty);
+    if (res.needsAttack) {
+      setMode('attack');
+      showToast(res.msg);
+    } else {
+      showToast(res.msg, res.ok ? 'ok' : 'error');
+      if (res.ok) { renderMap(); updateTopBar(); }
+    }
+  } else if (currentMode === 'attack') {
+    const pData = engine.pixelData[`${tx},${ty}`];
+    if (!pData?.country_id || pData.country_id === engine.country.id) {
+      showToast('Select an enemy tile to attack.', 'error'); return;
+    }
+    const res = await engine.attack(tx, ty);
+    showToast(res.msg, res.ok && res.success ? 'ok' : 'error');
+    if (res.ok) { renderMap(); updateTopBar(); }
+  } else if (currentMode === 'build') {
+    const pData = engine.pixelData[`${tx},${ty}`];
+    if (!pData?.country_id || pData.country_id !== engine.country.id) {
+      showToast('Select one of your own tiles to build on.', 'error'); return;
+    }
+    selectedBuildTile = { x: tx, y: ty };
+    showBuildMenu();
+  }
+}
+
+// ── BUILD MENU ─────────────────────────────────────────
+function showBuildMenu() {
+  if (rightTab !== 'infra') {
+    switchRightTab('infra');
+    document.querySelectorAll('.panel-tab')[1].click();
+  }
+  showToast('Tile selected! Choose a building from the Build panel →');
+}
+
+function openBuildModal(type) {
+  if (!selectedBuildTile) { showToast('First select a tile on the map.', 'error'); return; }
+  const cost = CONFIG.INFRA_COSTS[type];
+  selectedBuildType = type;
+  document.getElementById('buildModal').style.display = 'flex';
+  document.getElementById('buildModalTitle').textContent = `Build ${type.charAt(0).toUpperCase() + type.slice(1)}`;
+  document.getElementById('buildModalDesc').textContent = cost.effect;
+  document.getElementById('buildModalCost').textContent = `Cost: ${cost.gold} gold (you have ${engine.country?.gold || 0})`;
+  document.getElementById('buildModalConfirm').onclick = async () => {
+    const res = await engine.buildInfra(selectedBuildType, selectedBuildTile.x, selectedBuildTile.y);
+    showToast(res.msg, res.ok ? 'ok' : 'error');
+    closeBuildModal();
+    updateTopBar();
+    renderRightPanel();
+  };
+}
+function closeBuildModal() { document.getElementById('buildModal').style.display = 'none'; }
+
+// ── MODE ──────────────────────────────────────────────
+function setMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`mode${mode.charAt(0).toUpperCase() + mode.slice(1)}`).classList.add('active');
+  canvas.style.cursor = mode === 'attack' ? 'crosshair' : mode === 'build' ? 'cell' : 'crosshair';
+}
+
+// ── ZOOM ──────────────────────────────────────────────
+function zoom(factor) {
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  offsetX = cx - (cx - offsetX) * factor;
+  offsetY = cy - (cy - offsetY) * factor;
+  scale = Math.max(0.3, Math.min(6, scale * factor));
+  renderMap();
+}
+function resetView() {
+  scale = 1; offsetX = 0; offsetY = 0;
+  const totalW = engine.game.map_width * CONFIG.PIXEL_SIZE;
+  const totalH = engine.game.map_height * CONFIG.PIXEL_SIZE;
+  offsetX = (canvas.width - totalW) / 2;
+  offsetY = (canvas.height - totalH) / 2;
+  renderMap();
+}
+
+// ── TOP BAR ───────────────────────────────────────────
+function updateTopBar() {
+  const c = engine.country;
+  document.getElementById('gameTitle').textContent = engine.game?.name || '';
+  if (!c) return;
+  document.getElementById('myCountryFlag').textContent = c.flag_emoji || '🏳️';
+  document.getElementById('myCountryName').textContent = c.name;
+  document.getElementById('myGold').textContent = Math.floor(c.gold).toLocaleString();
+  document.getElementById('myPixels').textContent = c.pixel_count;
+  document.getElementById('myArmy').textContent = c.army_size;
+  document.getElementById('myTokens').textContent = engine.expansionTokens;
+}
+
+// ── LEFT PANEL ─────────────────────────────────────────
+function switchLeftTab(tab) {
+  leftTab = tab;
+  document.querySelectorAll('.left-panel .panel-tab').forEach((t, i) => {
+    t.classList.toggle('active', ['nations','events','trade'][i] === tab);
+  });
+  renderLeftPanel();
+}
+
+function renderLeftPanel() {
+  const body = document.getElementById('leftPanelBody');
+  if (leftTab === 'nations') renderNations(body);
+  else if (leftTab === 'events') renderEvents(body);
+  else if (leftTab === 'trade') renderTrade(body);
+}
+
+async function renderNations(body) {
+  const countries = Object.values(engine.countries).sort((a,b) => b.pixel_count - a.pixel_count);
+  if (!countries.length) { body.innerHTML = '<div style="color:var(--muted)">No nations yet</div>'; return; }
+
+  const myId = engine.country?.id;
+  body.innerHTML = `<div class="section-label">Nations (${countries.length})</div>` +
+    countries.map(c => `<div class="country-item ${c.id === myId ? 'me' : ''}" onclick="focusCountry('${c.id}')">
+      <div class="country-flag" style="background:${c.color}"></div>
+      <div class="country-info">
+        <div class="country-name">${c.flag_emoji || ''} ${c.name} ${c.id === myId ? '(You)' : ''}</div>
+        <div class="country-stats">🗺️ ${c.pixel_count}px · ⚔️ ${c.army_size} · 💰 ${Math.floor(c.gold)}</div>
+      </div>
+    </div>`).join('');
+}
+
+async function renderEvents(body) {
+  const { data } = await sb.from('game_events')
+    .select('*').eq('game_id', GAME_ID)
+    .order('created_at', { ascending: false }).limit(50);
+
+  if (!data?.length) { body.innerHTML = '<div style="color:var(--muted)">No events yet</div>'; return; }
+
+  body.innerHTML = data.map(e => {
+    const cls = `event-${e.type}`;
+    const time = new Date(e.created_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    return `<div class="event-item">
+      <div class="${cls}">${e.message}</div>
+      <div class="time">${time}</div>
+    </div>`;
+  }).join('');
+}
+
+async function renderTrade(body) {
+  if (!engine.country) { body.innerHTML = '<div style="color:var(--muted)">Join the game first</div>'; return; }
+
+  const { data: pending } = await sb.from('trades')
+    .select('*, from_country:from_country_id(name, color)')
+    .eq('to_country_id', engine.country.id)
+    .eq('status', 'pending');
+
+  const countries = Object.values(engine.countries).filter(c => c.id !== engine.country.id);
+
+  body.innerHTML = `
+    <div class="section-label">Incoming Offers (${pending?.length || 0})</div>
+    ${(pending || []).map(t => `<div class="trade-offer">
+      <div class="trade-offer-header">
+        <span style="font-size:0.8rem">💰 <strong>${t.gold_offered}</strong> from <span style="color:${t.from_country?.color}">${t.from_country?.name}</span></span>
+        <div class="trade-btns">
+          <button class="btn-accept" onclick="acceptTrade('${t.id}')">Accept</button>
+          <button class="btn-reject" onclick="rejectTrade('${t.id}')">✕</button>
+        </div>
+      </div>
+    </div>`).join('') || '<div style="color:var(--muted);font-size:0.8rem">No pending offers</div>'}
+
+    <div class="section-label" style="margin-top:1rem">Send Gold</div>
+    <div class="form-group" style="margin-bottom:0.5rem">
+      <select id="tradeTarget" style="width:100%;margin-bottom:0.5rem;font-size:0.8rem">
+        <option value="">Select nation…</option>
+        ${countries.map(c => `<option value="${c.id}">${c.flag_emoji || ''} ${c.name}</option>`).join('')}
+      </select>
+      <input type="number" id="tradeAmount" placeholder="Gold amount" min="1" max="${engine.country.gold}" style="width:100%">
+    </div>
+    <button class="btn btn-gold btn-full" onclick="sendTrade()">Send Gold Offer</button>
+  `;
+}
+
+async function acceptTrade(id) {
+  const res = await engine.acceptTrade(id);
+  showToast(res.msg, res.ok ? 'ok' : 'error');
+  renderLeftPanel();
+  updateTopBar();
+}
+
+async function rejectTrade(id) {
+  await sb.from('trades').update({ status: 'rejected', resolved_at: new Date().toISOString() }).eq('id', id);
+  renderLeftPanel();
+}
+
+async function sendTrade() {
+  const toId = document.getElementById('tradeTarget').value;
+  const amount = parseInt(document.getElementById('tradeAmount').value);
+  if (!toId || !amount || amount < 1) { showToast('Fill in both fields.', 'error'); return; }
+  const res = await engine.offerTrade(toId, amount);
+  showToast(res.msg, res.ok ? 'ok' : 'error');
+  renderLeftPanel();
+}
+
+function focusCountry(id) {
+  const owned = Object.values(engine.pixelData).filter(p => p.country_id === id);
+  if (!owned.length) return;
+  const avgX = owned.reduce((s,p) => s + p.x, 0) / owned.length;
+  const avgY = owned.reduce((s,p) => s + p.y, 0) / owned.length;
+  const ps = CONFIG.PIXEL_SIZE * scale;
+  offsetX = canvas.width / 2 - avgX * ps;
+  offsetY = canvas.height / 2 - avgY * ps;
+  renderMap();
+}
+
+// ── RIGHT PANEL ─────────────────────────────────────────
+function switchRightTab(tab) {
+  rightTab = tab;
+  document.querySelectorAll('.right-panel .panel-tab').forEach((t, i) => {
+    t.classList.toggle('active', ['country','infra','chat'][i] === tab);
+  });
+  document.getElementById('chatFooter').style.display = tab === 'chat' ? 'block' : 'none';
+  renderRightPanel();
+}
+
+async function renderRightPanel() {
+  const body = document.getElementById('rightPanelBody');
+  if (rightTab === 'country') renderMyCountry(body);
+  else if (rightTab === 'infra') renderInfra(body);
+  else if (rightTab === 'chat') renderChat(body);
+}
+
+function renderMyCountry(body) {
+  const c = engine.country;
+  if (!c) { body.innerHTML = '<div style="color:var(--muted)">Not in this game</div>'; return; }
+
+  const nextToken = CONFIG.PIXELS_PER_HOUR;
+  const fraction = c.pending_pixels % 1;
+  const pct = (fraction / nextToken * 100).toFixed(0);
+  const incomePerHr = (c.income_per_pixel * c.pixel_count).toFixed(1);
+  const upkeep = (c.army_upkeep_per_pixel * c.pixel_count).toFixed(1);
+
+  body.innerHTML = `
+    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
+      <div style="width:40px;height:40px;background:${c.color};border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.4rem">${c.flag_emoji}</div>
+      <div>
+        <div style="font-family:'Cinzel',serif;font-weight:700">${c.name}</div>
+        <div style="font-size:0.75rem;color:var(--muted)">Founded ${new Date(c.created_at).toLocaleDateString()}</div>
+      </div>
+    </div>
+
+    <div class="token-bar">
+      <div style="display:flex;justify-content:space-between;font-size:0.8rem">
+        <span>🎯 Expansion Tokens</span>
+        <span style="color:var(--green);font-weight:700">${engine.expansionTokens} ready</span>
+      </div>
+      <div class="token-progress"><div class="token-fill" style="width:${pct}%"></div></div>
+      <div style="font-size:0.7rem;color:var(--muted);margin-top:0.3rem">+1 per hour · Max ${CONFIG.MAX_STACK}</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem">
+      ${statCard('💰 Gold', Math.floor(c.gold), 'gold')}
+      ${statCard('🗺️ Pixels', c.pixel_count, 'green')}
+      ${statCard('⚔️ Army', c.army_size, 'red')}
+      ${statCard('📈 Income/hr', incomePerHr, 'blue')}
+      ${statCard('🔧 Upkeep/hr', upkeep, 'muted')}
+      ${statCard('🏗️ Infra lvl', c.infrastructure_level, 'gold')}
+    </div>
+
+    <div class="section-label">Income Breakdown</div>
+    <div style="font-size:0.78rem;color:var(--muted);line-height:1.8">
+      Base: ${c.income_per_pixel}/pixel × ${c.pixel_count} = <span style="color:var(--gold)">${incomePerHr} gold/hr</span><br>
+      Army upkeep: −${upkeep} gold/hr<br>
+      Net: <span style="color:var(--green)">${(parseFloat(incomePerHr) - parseFloat(upkeep)).toFixed(1)} gold/hr</span>
+    </div>
+
+    <div class="section-label" style="margin-top:1rem">Danger Zones</div>
+    <div style="font-size:0.78rem;color:var(--muted)">
+      ${c.pixel_count > 30 ? '⚠️ Large territory — harder to defend' : '✅ Manageable size'}<br>
+      ${c.army_size < c.pixel_count ? '⚠️ Army too small for territory!' : '✅ Army strength adequate'}<br>
+      ${c.gold < 20 ? '⚠️ Low gold — build mines!' : '✅ Treasury healthy'}
+    </div>
+  `;
+}
+
+function statCard(label, val, color) {
+  const colors = { gold: 'var(--gold)', green: 'var(--green)', red: 'var(--red)', blue: 'var(--blue)', muted: 'var(--muted)' };
+  return `<div style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:0.6rem;text-align:center">
+    <div style="font-size:0.7rem;color:var(--muted)">${label}</div>
+    <div style="font-size:1.1rem;font-weight:700;color:${colors[color] || 'var(--text)'}">${val}</div>
+  </div>`;
+}
+
+function renderInfra(body) {
+  const c = engine.country;
+  if (!c) { body.innerHTML = '<div style="color:var(--muted)">Join the game first.</div>'; return; }
+
+  body.innerHTML = `
+    <div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.75rem">
+      ${selectedBuildTile ? `✅ Tile selected: (${selectedBuildTile.x}, ${selectedBuildTile.y})` : '👇 Click a tile on the map in Build mode, then choose a building.'}
+    </div>
+    ${Object.entries(CONFIG.INFRA_COSTS).map(([type, info]) => {
+      const canAfford = (c.gold || 0) >= info.gold;
+      const icons = { farm:'🌾', barracks:'⚔️', market:'🏪', wall:'🧱', mine:'⛏️' };
+      return `<div class="infra-item" onclick="${canAfford ? `openBuildModal('${type}')` : `showToast('Need ${info.gold} gold','error')`}" style="${canAfford ? '' : 'opacity:0.5;cursor:not-allowed'}">
+        <div class="infra-header">
+          <span class="infra-name">${icons[type] || '🏗️'} ${type.charAt(0).toUpperCase() + type.slice(1)}</span>
+          <span class="infra-cost">💰 ${info.gold}</span>
+        </div>
+        <div class="infra-desc">${info.effect}</div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+let chatMessages = [];
+async function renderChat(body) {
+  const { data } = await sb.from('messages')
+    .select('*').eq('game_id', GAME_ID)
+    .order('created_at', { ascending: true }).limit(80);
+
+  chatMessages = data || [];
+
+  body.style.display = 'flex';
+  body.style.flexDirection = 'column';
+  body.style.padding = '0';
+  body.innerHTML = `<div class="chat-messages" id="chatMsgs">
+    ${chatMessages.map(m => chatMsgHtml(m)).join('')}
+  </div>`;
+
+  const chatDiv = document.getElementById('chatMsgs');
+  chatDiv.scrollTop = chatDiv.scrollHeight;
+}
+
+function chatMsgHtml(m) {
+  const c = engine.countries[m.country_id] || {};
+  return `<div class="chat-msg">
+    <div class="sender" style="color:${c.color || 'var(--green)'}">
+      ${c.flag_emoji || ''}${m.player_name}
+    </div>
+    <div class="body">${escapeHtml(m.content)}</div>
+  </div>`;
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const content = input.value.trim();
+  if (!content || !engine.country) return;
+
+  const { data: profile } = await sb.from('profiles').select('username').eq('id', currentUser.id).single();
+  await sb.from('messages').insert({
+    game_id: GAME_ID,
+    country_id: engine.country.id,
+    player_name: profile.username,
+    content,
+  });
+  input.value = '';
+}
+
+// ── REALTIME ──────────────────────────────────────────
+function setupRealtime() {
+  engine.subscribeToMap(p => { renderMap(); });
+  engine.subscribeToEvents(e => {
+    if (leftTab === 'events') renderLeftPanel();
+  });
+  engine.subscribeToCountries(c => {
+    if (c.player_id === currentUser.id) updateTopBar();
+    renderNations(document.getElementById('leftPanelBody'));
+    renderMap();
+  });
+  engine.subscribeToMessages(m => {
+    if (rightTab === 'chat') {
+      const chatDiv = document.getElementById('chatMsgs');
+      if (chatDiv) {
+        chatDiv.insertAdjacentHTML('beforeend', chatMsgHtml(m));
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+      }
+    }
+  });
+  engine.subscribeTrades(payload => {
+    if (leftTab === 'trade') renderLeftPanel();
+  });
+}
+
+// ── TOAST ─────────────────────────────────────────────
+function showToast(msg, type = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type === 'error' ? 'error' : ''} show`;
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>

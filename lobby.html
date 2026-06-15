@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelRealms — Lobby</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/config.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0e1a; --panel: #111827; --panel2: #1a2235;
+    --border: #2d3748; --green: #4ade80; --gold: #f59e0b;
+    --red: #ef4444; --blue: #38bdf8; --text: #e2e8f0; --muted: #64748b;
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; }
+
+  .topbar {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 0.9rem 1.5rem;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-logo { font-family: 'Cinzel', serif; font-size: 1.3rem; font-weight: 900;
+    background: linear-gradient(135deg, var(--green), var(--gold));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .topbar-user { display: flex; align-items: center; gap: 1rem; }
+  .username-badge { font-size: 0.85rem; color: var(--muted); }
+  .username-badge strong { color: var(--text); }
+  .btn-sm { padding: 0.45rem 1rem; border-radius: 6px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer; font-size: 0.8rem;
+    font-family: 'Inter', sans-serif; transition: all 0.2s; }
+  .btn-sm:hover { border-color: var(--green); color: var(--green); }
+
+  .main { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  .page-tabs { display: flex; gap: 0.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+  .page-tab { padding: 0.75rem 1.5rem; cursor: pointer; font-size: 0.9rem; font-weight: 500;
+    color: var(--muted); border: none; background: transparent; border-bottom: 2px solid transparent;
+    margin-bottom: -1px; transition: all 0.2s; }
+  .page-tab.active { color: var(--green); border-bottom-color: var(--green); }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* MY GAMES */
+  .game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+  .game-card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .game-card:hover { border-color: var(--green); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(74,222,128,0.1); }
+  .game-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; }
+  .game-name { font-family: 'Cinzel', serif; font-size: 1rem; font-weight: 700; }
+  .badge { padding: 0.25rem 0.6rem; border-radius: 20px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .badge-active { background: rgba(74,222,128,0.15); color: var(--green); }
+  .badge-waiting { background: rgba(245,158,11,0.15); color: var(--gold); }
+  .badge-finished { background: rgba(100,116,139,0.15); color: var(--muted); }
+  .game-meta { display: flex; gap: 1rem; font-size: 0.8rem; color: var(--muted); }
+  .game-meta span { display: flex; align-items: center; gap: 0.3rem; }
+  .country-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .game-code { font-family: monospace; font-size: 0.8rem; color: var(--muted); letter-spacing: 0.1em; }
+
+  .empty-state { text-align: center; padding: 4rem 2rem; color: var(--muted); }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+  .empty-state p { margin-bottom: 1.5rem; }
+
+  /* BROWSE GAMES */
+  .search-bar { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; }
+  .search-input { flex: 1; background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.7rem 1rem; color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.9rem; outline: none; }
+  .search-input:focus { border-color: var(--green); }
+  .search-input::placeholder { color: var(--muted); }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-weight: 500; }
+  td { padding: 0.9rem 1rem; border-bottom: 1px solid rgba(45,55,72,0.5); font-size: 0.9rem; }
+  tr:hover td { background: var(--panel); }
+
+  /* CREATE GAME */
+  .create-panel { max-width: 500px; }
+  .form-group { margin-bottom: 1.25rem; }
+  label { display: block; font-size: 0.78rem; font-weight: 500; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.5rem; }
+  input, select { width: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.75rem 1rem; color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.9rem;
+    outline: none; transition: border-color 0.2s; }
+  input:focus, select:focus { border-color: var(--green); }
+  select option { background: var(--panel2); }
+
+  .btn { padding: 0.8rem 1.5rem; border-radius: 8px; border: none; cursor: pointer;
+    font-family: 'Cinzel', serif; font-size: 0.9rem; font-weight: 700; transition: all 0.2s; }
+  .btn-primary { background: linear-gradient(135deg, #166534, #15803d); color: #fff;
+    box-shadow: 0 4px 15px rgba(74,222,128,0.2); }
+  .btn-primary:hover { background: linear-gradient(135deg, #15803d, #16a34a); transform: translateY(-1px); }
+  .btn-gold { background: linear-gradient(135deg, #92400e, #b45309); color: #fff; }
+  .btn-gold:hover { background: linear-gradient(135deg, #b45309, #d97706); transform: translateY(-1px); }
+
+  /* LEADERBOARD */
+  .lb-header { display: grid; grid-template-columns: 60px 1fr 120px 120px 100px 100px;
+    gap: 0.5rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
+  .lb-row { display: grid; grid-template-columns: 60px 1fr 120px 120px 100px 100px;
+    gap: 0.5rem; padding: 0.9rem 1rem; border-bottom: 1px solid rgba(45,55,72,0.4);
+    align-items: center; transition: background 0.15s; }
+  .lb-row:hover { background: var(--panel); border-radius: 8px; }
+  .rank { font-family: 'Cinzel', serif; font-weight: 700; font-size: 1.1rem; color: var(--muted); }
+  .rank.gold { color: #fbbf24; }
+  .rank.silver { color: #cbd5e1; }
+  .rank.bronze { color: #d97706; }
+  .lb-name { font-weight: 600; }
+  .lb-stat { color: var(--muted); font-size: 0.9rem; }
+  .lb-stat.highlight { color: var(--green); font-weight: 600; }
+
+  .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--panel2); border: 1px solid var(--green);
+    color: var(--green); padding: 0.9rem 1.5rem; border-radius: 10px; font-size: 0.9rem;
+    z-index: 1000; transform: translateX(200%); transition: transform 0.3s; max-width: 300px; }
+  .toast.show { transform: translateX(0); }
+
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* join-by-code */
+  .join-code-bar { display: flex; gap: 0.75rem; margin-bottom: 2rem; padding: 1.25rem;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px; align-items: flex-end; }
+  .join-code-bar .form-group { flex: 1; margin: 0; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="topbar-logo">PixelRealms</span>
+  <div class="topbar-user">
+    <span class="username-badge">Ruler: <strong id="topUsername">—</strong></span>
+    <button class="btn-sm" onclick="logout()">Sign Out</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-tabs">
+    <button class="page-tab active" onclick="showSection('myGames')">⚔️ My Realms</button>
+    <button class="page-tab" onclick="showSection('browse')">🌍 Browse Games</button>
+    <button class="page-tab" onclick="showSection('create')">➕ Create Game</button>
+    <button class="page-tab" onclick="showSection('leaderboard')">🏆 Leaderboard</button>
+  </div>
+
+  <!-- MY GAMES -->
+  <div id="myGames" class="section active">
+    <div id="myGamesGrid" class="game-grid">
+      <div style="color:var(--muted); padding:2rem">Loading your realms…</div>
+    </div>
+  </div>
+
+  <!-- BROWSE -->
+  <div id="browse" class="section">
+    <div class="join-code-bar">
+      <div class="form-group">
+        <label>Have a Game Code?</label>
+        <input type="text" id="joinCodeInput" placeholder="e.g. REALM-7X3K" maxlength="12" style="text-transform:uppercase">
+      </div>
+      <button class="btn btn-gold" onclick="joinByCode()">Join Game</button>
+    </div>
+
+    <div class="search-bar">
+      <input class="search-input" type="text" id="searchInput" placeholder="Search games…" oninput="filterGames()">
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Game Name</th>
+          <th>Code</th>
+          <th>Players</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="gamesTableBody">
+        <tr><td colspan="5" style="color:var(--muted)">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- CREATE GAME -->
+  <div id="create" class="section">
+    <div class="create-panel">
+      <h2 style="font-family:'Cinzel',serif; margin-bottom:1.5rem">Found a New World</h2>
+      <div class="form-group">
+        <label>Game Name</label>
+        <input type="text" id="newGameName" placeholder="The Northern Wars" maxlength="40">
+      </div>
+      <div class="form-group">
+        <label>Max Players</label>
+        <select id="maxPlayers">
+          <option value="5">5 players</option>
+          <option value="10">10 players</option>
+          <option value="20" selected>20 players</option>
+          <option value="30">30 players</option>
+          <option value="50">50 players</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Map Size</label>
+        <select id="mapSize">
+          <option value="small">Small (60×50)</option>
+          <option value="medium" selected>Medium (100×80)</option>
+          <option value="large">Large (150×120)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="createGame()">⚔️ Create Game</button>
+      <div id="createResult" style="margin-top:1rem; color:var(--green); font-size:0.9rem"></div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div id="leaderboard" class="section">
+    <h2 style="font-family:'Cinzel',serif; margin-bottom:1.5rem">Hall of Conquerors</h2>
+    <div class="lb-header">
+      <div>Rank</div>
+      <div>Ruler</div>
+      <div>Total Wins</div>
+      <div>Total Pixels</div>
+      <div>Games</div>
+      <div>Joined</div>
+    </div>
+    <div id="leaderboardList"><div style="color:var(--muted); padding:1rem">Loading…</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let currentUser = null;
+let currentProfile = null;
+let allGames = [];
+
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = 'index.html'; return; }
+  currentUser = session.user;
+
+  const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  currentProfile = profile;
+  document.getElementById('topUsername').textContent = profile?.username || 'Ruler';
+
+  await loadMyGames();
+  await loadAllGames();
+  await loadLeaderboard();
+})();
+
+async function logout() {
+  await sb.auth.signOut();
+  window.location.href = 'index.html';
+}
+
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── MY GAMES ──────────────────────────────────────
+async function loadMyGames() {
+  const { data: countries } = await sb.from('countries')
+    .select('*, games(*)')
+    .eq('player_id', currentUser.id)
+    .order('created_at', { ascending: false });
+
+  const grid = document.getElementById('myGamesGrid');
+  if (!countries || countries.length === 0) {
+    grid.innerHTML = `<div class="empty-state">
+      <div class="icon">🏴</div>
+      <p>You haven't joined any games yet.</p>
+      <button class="btn btn-primary" onclick="showSection('browse')">Find a Game</button>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = countries.map(c => {
+    const g = c.games;
+    const statusClass = `badge-${g.status}`;
+    const statusLabel = g.status.charAt(0).toUpperCase() + g.status.slice(1);
+    return `<div class="game-card" onclick="enterGame('${g.id}')">
+      <div class="game-card-header">
+        <span class="game-name">${g.name}</span>
+        <span class="badge ${statusClass}">${statusLabel}</span>
+      </div>
+      <div class="game-meta">
+        <span><span class="country-dot" style="background:${c.color}"></span> ${c.name}</span>
+        <span>🗺️ ${c.pixel_count} pixels</span>
+        <span>💰 ${c.gold} gold</span>
+      </div>
+      <div style="margin-top:0.75rem; display:flex; justify-content:space-between; align-items:center">
+        <span class="game-code">${g.code}</span>
+        <span style="font-size:0.75rem; color:var(--muted)">${g.current_players}/${g.max_players} players</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── BROWSE GAMES ──────────────────────────────────
+async function loadAllGames() {
+  const { data } = await sb.from('games')
+    .select('*')
+    .in('status', ['waiting', 'active'])
+    .order('created_at', { ascending: false });
+
+  allGames = data || [];
+  renderGamesTable(allGames);
+}
+
+function renderGamesTable(games) {
+  const tbody = document.getElementById('gamesTableBody');
+  if (games.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted); text-align:center; padding:2rem">No games found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = games.map(g => `<tr>
+    <td style="font-weight:600">${g.name}</td>
+    <td><code style="color:var(--gold); font-family:monospace">${g.code}</code></td>
+    <td>${g.current_players} / ${g.max_players}</td>
+    <td><span class="badge badge-${g.status}">${g.status}</span></td>
+    <td><button class="btn-sm" style="color:var(--green); border-color:var(--green)" onclick="joinGame('${g.id}')">Join</button></td>
+  </tr>`).join('');
+}
+
+function filterGames() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  renderGamesTable(allGames.filter(g => g.name.toLowerCase().includes(q) || g.code.toLowerCase().includes(q)));
+}
+
+async function joinByCode() {
+  const code = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+  if (!code) return;
+  const { data: game } = await sb.from('games').select('*').eq('code', code).single();
+  if (!game) { showToast('Game not found with that code.', 'error'); return; }
+  joinGame(game.id);
+}
+
+async function joinGame(gameId) {
+  // Check if already in this game
+  const { data: existing } = await sb.from('countries')
+    .select('id').eq('game_id', gameId).eq('player_id', currentUser.id).single();
+  if (existing) { enterGame(gameId); return; }
+
+  // Check game capacity
+  const { data: game } = await sb.from('games').select('*').eq('id', gameId).single();
+  if (game.current_players >= game.max_players) { showToast('This game is full!', 'error'); return; }
+  if (game.status === 'finished') { showToast('This game has ended.', 'error'); return; }
+
+  // Open country creation modal
+  showCreateCountryModal(gameId, game.name);
+}
+
+function showCreateCountryModal(gameId, gameName) {
+  const existing = document.getElementById('countryModal');
+  if (existing) existing.remove();
+
+  const usedColors = [];
+  const availableColors = CONFIG.COUNTRY_COLORS.filter(c => !usedColors.includes(c));
+
+  const modal = document.createElement('div');
+  modal.id = 'countryModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:200;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = `<div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:2rem;width:100%;max-width:440px;">
+    <h3 style="font-family:'Cinzel',serif;margin-bottom:1.5rem">Join "${gameName}"</h3>
+    <div class="form-group">
+      <label>Country Name</label>
+      <input type="text" id="countryName" placeholder="The Iron Empire" maxlength="30">
+    </div>
+    <div class="form-group">
+      <label>Nation Color</label>
+      <div id="colorPicker" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem">
+        ${CONFIG.COUNTRY_COLORS.map(c => `<div class="color-swatch" data-color="${c}"
+          style="width:30px;height:30px;background:${c};border-radius:4px;cursor:pointer;border:2px solid transparent;transition:all 0.15s"
+          onclick="selectColor(this,'${c}')"></div>`).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Flag Emoji</label>
+      <input type="text" id="flagEmoji" placeholder="🏴" maxlength="4" style="width:100px">
+    </div>
+    <div style="display:flex;gap:0.75rem;margin-top:1rem">
+      <button class="btn btn-primary" style="flex:1" onclick="submitJoin('${gameId}')">Found My Country</button>
+      <button class="btn-sm" onclick="document.getElementById('countryModal').remove()">Cancel</button>
+    </div>
+    <div id="joinError" style="color:var(--red);font-size:0.85rem;margin-top:0.75rem"></div>
+  </div>`;
+  document.body.appendChild(modal);
+  window._selectedColor = CONFIG.COUNTRY_COLORS[0];
+  document.querySelector('.color-swatch').style.borderColor = '#fff';
+}
+
+function selectColor(el, color) {
+  document.querySelectorAll('.color-swatch').forEach(s => s.style.borderColor = 'transparent');
+  el.style.borderColor = '#fff';
+  window._selectedColor = color;
+}
+
+async function submitJoin(gameId) {
+  const name = document.getElementById('countryName').value.trim();
+  const color = window._selectedColor || CONFIG.COUNTRY_COLORS[0];
+  const flag = document.getElementById('flagEmoji').value.trim() || '🏳️';
+
+  if (!name) { document.getElementById('joinError').textContent = 'Enter a country name.'; return; }
+
+  // Insert country
+  const { data: country, error } = await sb.from('countries').insert({
+    game_id: gameId,
+    player_id: currentUser.id,
+    name, color,
+    flag_emoji: flag,
+    gold: CONFIG.STARTING_GOLD,
+    pixel_count: CONFIG.STARTING_PIXELS,
+  }).select().single();
+
+  if (error) { document.getElementById('joinError').textContent = error.message; return; }
+
+  // Update player count
+  const { data: game } = await sb.from('games').select('current_players').eq('id', gameId).single();
+  await sb.from('games').update({
+    current_players: (game.current_players || 0) + 1,
+    status: 'active',
+  }).eq('id', gameId);
+
+  document.getElementById('countryModal').remove();
+  enterGame(gameId);
+}
+
+function enterGame(gameId) {
+  window.location.href = `game.html?game=${gameId}`;
+}
+
+// ── CREATE GAME ──────────────────────────────────
+function generateCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'PR-';
+  for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+async function createGame() {
+  const name = document.getElementById('newGameName').value.trim();
+  const maxPlayers = parseInt(document.getElementById('maxPlayers').value);
+  const sizeKey = document.getElementById('mapSize').value;
+  const sizes = { small: [60,50], medium: [100,80], large: [150,120] };
+  const [w, h] = sizes[sizeKey];
+
+  if (!name) { document.getElementById('createResult').style.color = 'var(--red)';
+    document.getElementById('createResult').textContent = 'Please enter a game name.'; return; }
+
+  const code = generateCode();
+  const seed = Math.floor(Math.random() * 9999999);
+
+  const { data: game, error } = await sb.from('games').insert({
+    name, code, max_players: maxPlayers,
+    map_width: w, map_height: h, map_seed: seed,
+    status: 'waiting',
+  }).select().single();
+
+  if (error) {
+    document.getElementById('createResult').style.color = 'var(--red)';
+    document.getElementById('createResult').textContent = error.message;
+    return;
+  }
+
+  document.getElementById('createResult').style.color = 'var(--green)';
+  document.getElementById('createResult').innerHTML = `✅ Game created! Code: <strong style="font-family:monospace;font-size:1.1rem">${code}</strong><br>
+    <button class="btn btn-primary" style="margin-top:0.75rem" onclick="joinGame('${game.id}')">Join Now</button>`;
+}
+
+// ── LEADERBOARD ───────────────────────────────────
+async function loadLeaderboard() {
+  const { data } = await sb.from('profiles')
+    .select('*')
+    .order('total_wins', { ascending: false })
+    .limit(50);
+
+  const list = document.getElementById('leaderboardList');
+  if (!data || data.length === 0) { list.innerHTML = '<div style="color:var(--muted);padding:1rem">No data yet</div>'; return; }
+
+  const rankClass = (i) => i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+  const rankEmoji = (i) => i === 0 ? '👑' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+
+  list.innerHTML = data.map((p, i) => `<div class="lb-row">
+    <div class="rank ${rankClass(i)}">${rankEmoji(i) || '#' + (i+1)}</div>
+    <div class="lb-name">${p.username}</div>
+    <div class="lb-stat highlight">${p.total_wins}</div>
+    <div class="lb-stat highlight">${(p.total_pixels_ever || 0).toLocaleString()}</div>
+    <div class="lb-stat">${p.games_played}</div>
+    <div class="lb-stat">${new Date(p.created_at).toLocaleDateString()}</div>
+  </div>`).join('');
+}
+
+function showToast(msg, type = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderColor = type === 'error' ? 'var(--red)' : 'var(--green)';
+  t.style.color = type === 'error' ? 'var(--red)' : 'var(--green)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>
