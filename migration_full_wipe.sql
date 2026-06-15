@@ -15,16 +15,20 @@ DELETE FROM auth.users;
 
 -- ============================================================
 -- AFTER RUNNING THIS:
---   1. Go to the live site and register a brand new account
---      (pick whatever username/password you want).
---   2. Run the query below, replacing the email with the one you
---      just signed up with, to make that account an admin.
+--   1. Go to the live site and register a brand new account with
+--      whatever username/password you want (signup only needs a
+--      username + password — an internal placeholder email is
+--      generated automatically, you never see/use it).
+--   2. Find the id of the account you just created:
 --
---      This ties the admin flag to YOUR specific account (via the
---      email/password you registered with), not just a username —
---      so if your account is ever deleted and someone else later
---      registers the same username, they will NOT inherit admin.
+--      SELECT id, username, created_at FROM profiles ORDER BY created_at DESC LIMIT 1;
+--
+--   3. Grant admin to that specific account by its id:
+--
+--      UPDATE profiles SET is_admin = true WHERE id = 'paste-the-id-here';
+--
+--      This ties the admin flag to that specific account row (its
+--      UUID), not just the username — so if this account is ever
+--      deleted and someone else later registers the same username,
+--      they will NOT inherit admin.
 -- ============================================================
-
--- UPDATE profiles SET is_admin = true
--- WHERE id = (SELECT id FROM auth.users WHERE email = 'your-signup-email@example.com');
