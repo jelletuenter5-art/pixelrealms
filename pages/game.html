@@ -264,9 +264,10 @@
   <!-- RIGHT PANEL -->
   <div class="right-panel">
     <div class="panel-tabs">
-      <button class="panel-tab active" onclick="switchRightTab('country')">My Realm</button>
-      <button class="panel-tab" onclick="switchRightTab('infra')">Build</button>
-      <button class="panel-tab" onclick="switchRightTab('chat')">Chat</button>
+      <button class="panel-tab active" data-tab="country" onclick="switchRightTab('country')">My Realm</button>
+      <button class="panel-tab" data-tab="infra" onclick="switchRightTab('infra')">Build</button>
+      <button class="panel-tab" data-tab="chat" onclick="switchRightTab('chat')">Chat</button>
+      <button class="panel-tab" data-tab="admin" id="adminTabBtn" style="display:none" onclick="switchRightTab('admin')">🛠️ Admin</button>
     </div>
     <div id="rightPanelBody" style="flex:1;overflow-y:auto;padding:0.75rem;display:flex;flex-direction:column">
       <!-- dynamic -->
@@ -375,6 +376,7 @@ if (!GAME_ID) window.location.href = 'lobby.html';
 
 let engine = null;
 let currentUser = null;
+let currentProfile = null;
 let mapData = null;
 let mapGen = null;
 let currentMode = 'expand';
@@ -399,6 +401,12 @@ let lastMousePos = null;
   if (!session) { window.location.href = 'index.html'; return; }
   currentUser = session.user;
 
+  const { data: profileData } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  currentProfile = profileData;
+  if (currentProfile?.is_admin) {
+    document.getElementById('adminTabBtn').style.display = '';
+  }
+
   setLoading('Loading game data…');
   engine = new GameEngine(GAME_ID, currentUser.id);
   await engine.load();
@@ -411,7 +419,11 @@ let lastMousePos = null;
   mapData = mapGen.generate();
 
   setLoading('Seeding world pixels…');
-  await ensurePixelsExist();
+  const backfilled = await ensurePixelsExist();
+  if (backfilled) {
+    const { data: pixels } = await sb.from('pixels').select('*').eq('game_id', GAME_ID);
+    (pixels || []).forEach(p => { engine.pixelData[`${p.x},${p.y}`] = p; });
+  }
 
   // First-time players choose their own starting location
   if (engine.country) {
@@ -449,12 +461,13 @@ function setLoading(msg) {
 // ── PIXEL SEEDING ─────────────────────────────────────
 async function ensurePixelsExist() {
   // Check if pixels already exist for this game
+  const total = engine.game.map_width * engine.game.map_height;
   const { count } = await sb.from('pixels').select('id', { count: 'exact', head: true })
     .eq('game_id', GAME_ID);
 
-  if (count && count > 0) return; // already seeded
+  if (count && count >= total) return false; // fully seeded
 
-  // Batch insert all map tiles
+  // Batch insert all map tiles (upsert so partially-seeded games get backfilled)
   const batch = [];
   for (let y = 0; y < mapData.length; y++) {
     for (let x = 0; x < mapData[y].length; x++) {
@@ -462,10 +475,11 @@ async function ensurePixelsExist() {
     }
   }
 
-  // Insert in chunks of 500
+  // Upsert in chunks of 500, skipping tiles that already exist
   for (let i = 0; i < batch.length; i += 500) {
-    await sb.from('pixels').insert(batch.slice(i, i + 500));
+    await sb.from('pixels').upsert(batch.slice(i, i + 500), { onConflict: 'game_id,x,y', ignoreDuplicates: true });
   }
+  return true;
 }
 
 // ── SPAWN SELECTION ───────────────────────────────────
@@ -989,8 +1003,8 @@ function focusCountry(id) {
 // ── RIGHT PANEL ─────────────────────────────────────────
 function switchRightTab(tab) {
   rightTab = tab;
-  document.querySelectorAll('.right-panel .panel-tab').forEach((t, i) => {
-    t.classList.toggle('active', ['country','infra','chat'][i] === tab);
+  document.querySelectorAll('.right-panel .panel-tab').forEach((t) => {
+    t.classList.toggle('active', t.dataset.tab === tab);
   });
   document.getElementById('chatFooter').style.display = tab === 'chat' ? 'block' : 'none';
   renderRightPanel();
@@ -1001,6 +1015,7 @@ async function renderRightPanel() {
   if (rightTab === 'country') renderMyCountry(body);
   else if (rightTab === 'infra') renderInfra(body);
   else if (rightTab === 'chat') renderChat(body);
+  else if (rightTab === 'admin') renderAdmin(body);
 }
 
 function renderMyCountry(body) {
@@ -1054,6 +1069,64 @@ function renderMyCountry(body) {
       ${c.gold < 20 ? '⚠️ Low gold — build mines!' : '✅ Treasury healthy'}
     </div>
   `;
+}
+
+function renderAdmin(body) {
+  const countries = Object.values(engine.countries).filter(c => c.is_alive);
+  body.innerHTML = `
+    <div class="section-label">🛠️ Admin Tools</div>
+    <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.75rem">Grant resources to any nation in this game.</div>
+    <label style="font-size:0.78rem;color:var(--muted)">Target nation</label>
+    <select id="adminTarget" style="width:100%;padding:0.4rem;margin:0.3rem 0 0.75rem;background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--text)">
+      ${countries.map(c => `<option value="${c.id}" ${c.id === engine.country?.id ? 'selected' : ''}>${c.flag_emoji} ${c.name}${c.id === engine.country?.id ? ' (you)' : ''}</option>`).join('')}
+    </select>
+
+    <label style="font-size:0.78rem;color:var(--muted)">Gold amount</label>
+    <div style="display:flex;gap:0.4rem;margin:0.3rem 0 0.75rem">
+      <input id="adminGoldAmount" type="number" value="100" style="flex:1;padding:0.4rem;background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--text)">
+      <button class="btn" onclick="adminGiveGold()">💰 Give</button>
+    </div>
+
+    <label style="font-size:0.78rem;color:var(--muted)">Expansion tokens</label>
+    <div style="display:flex;gap:0.4rem;margin:0.3rem 0 0.75rem">
+      <input id="adminTokenAmount" type="number" value="5" style="flex:1;padding:0.4rem;background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--text)">
+      <button class="btn" onclick="adminGiveTokens()">🎯 Give</button>
+    </div>
+
+    <div id="adminMsg" style="font-size:0.78rem;color:var(--green)"></div>
+  `;
+}
+
+async function adminGiveGold() {
+  const targetId = document.getElementById('adminTarget').value;
+  const amount = parseFloat(document.getElementById('adminGoldAmount').value);
+  if (!targetId || !amount) return;
+  const target = engine.countries[targetId];
+  const newGold = (target.gold || 0) + amount;
+  const { data, error } = await sb.from('countries').update({ gold: newGold }).eq('id', targetId).select().single();
+  const msg = document.getElementById('adminMsg');
+  if (error) { msg.style.color = 'var(--red)'; msg.textContent = 'Error: ' + error.message; return; }
+  engine.countries[targetId] = data;
+  if (engine.country?.id === targetId) engine.country = data;
+  msg.style.color = 'var(--green)';
+  msg.textContent = `✅ Gave ${amount} gold to ${target.name}.`;
+  updateTopBar(); renderRightPanel();
+}
+
+async function adminGiveTokens() {
+  const targetId = document.getElementById('adminTarget').value;
+  const amount = parseFloat(document.getElementById('adminTokenAmount').value);
+  if (!targetId || !amount) return;
+  const target = engine.countries[targetId];
+  const newPending = Math.min(CONFIG.MAX_STACK, (target.pending_pixels || 0) + amount);
+  const { data, error } = await sb.from('countries').update({ pending_pixels: newPending }).eq('id', targetId).select().single();
+  const msg = document.getElementById('adminMsg');
+  if (error) { msg.style.color = 'var(--red)'; msg.textContent = 'Error: ' + error.message; return; }
+  engine.countries[targetId] = data;
+  if (engine.country?.id === targetId) engine.country = data;
+  msg.style.color = 'var(--green)';
+  msg.textContent = `✅ Gave ${amount} expansion tokens to ${target.name}.`;
+  updateTopBar(); renderRightPanel();
 }
 
 function statCard(label, val, color) {
