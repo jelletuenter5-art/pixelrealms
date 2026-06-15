@@ -11,6 +11,7 @@ CREATE TABLE profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
   avatar_color TEXT DEFAULT '#4ade80',
+  avatar_emoji TEXT DEFAULT '🙂',
   is_admin BOOLEAN DEFAULT FALSE,
   total_wins INTEGER DEFAULT 0,
   total_pixels_ever INTEGER DEFAULT 0,
@@ -144,6 +145,20 @@ CREATE TABLE game_events (
 CREATE INDEX idx_events_game ON game_events(game_id, created_at DESC);
 
 -- ============================================================
+-- FEEDBACK
+-- ============================================================
+CREATE TABLE feedback (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  username TEXT NOT NULL,
+  message TEXT NOT NULL,
+  status TEXT DEFAULT 'open' CHECK (status IN ('open','resolved')),
+  admin_reply TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  resolved_at TIMESTAMPTZ
+);
+
+-- ============================================================
 -- MESSAGES (in-game chat)
 -- ============================================================
 CREATE TABLE messages (
@@ -167,6 +182,7 @@ ALTER TABLE trades ENABLE ROW LEVEL SECURITY;
 ALTER TABLE infrastructure ENABLE ROW LEVEL SECURITY;
 ALTER TABLE game_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: anyone can read, only owner can write
 CREATE POLICY "profiles_read" ON profiles FOR SELECT USING (true);
@@ -242,6 +258,16 @@ CREATE POLICY "events_read" ON game_events FOR SELECT USING (true);
 CREATE POLICY "events_insert" ON game_events FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 CREATE POLICY "messages_all" ON messages FOR ALL USING (true);
 
+-- Feedback: players see/insert their own, admins see/update all
+CREATE POLICY "feedback_read" ON feedback FOR SELECT USING (
+  user_id = auth.uid()
+  OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_admin = true)
+);
+CREATE POLICY "feedback_insert" ON feedback FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "feedback_update" ON feedback FOR UPDATE USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_admin = true)
+);
+
 -- ============================================================
 -- REALTIME
 -- ============================================================
@@ -252,6 +278,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE countries;
 ALTER PUBLICATION supabase_realtime ADD TABLE attacks;
 ALTER PUBLICATION supabase_realtime ADD TABLE trades;
 ALTER PUBLICATION supabase_realtime ADD TABLE infrastructure;
+ALTER PUBLICATION supabase_realtime ADD TABLE feedback;
 
 -- ============================================================
 -- INITIAL WORLDS (small / medium / big)
@@ -280,7 +307,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   public.trades,
   public.infrastructure,
   public.game_events,
-  public.messages
+  public.messages,
+  public.feedback
 TO anon, authenticated;
 
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
