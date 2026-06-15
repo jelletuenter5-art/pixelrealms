@@ -487,10 +487,7 @@ async function tickIncome(engine) {
   const c = engine.country;
   const mines = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id && i.type === 'mine').length;
   const flatIncomePerHour = mines * CONFIG.INFRA_COSTS.mine.flatIncome;
-  const terrainWeight = Object.values(engine.pixelData)
-    .filter(p => p.country_id === c.id)
-    .reduce((sum, p) => sum + (CONFIG.TERRAIN_INCOME[p.terrain] ?? 1), 0);
-  const minuteIncome = (c.income_per_pixel * terrainWeight + flatIncomePerHour) / 60;
+  const minuteIncome = (c.income_per_pixel * c.pixel_count + flatIncomePerHour) / 60;
   const newGold = Math.floor(c.gold + minuteIncome);
   if (newGold === c.gold) return;
 
