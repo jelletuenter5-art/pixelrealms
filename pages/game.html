@@ -422,8 +422,8 @@ let lastMousePos = null;
   setLoading('Seeding world pixels…');
   const backfilled = await ensurePixelsExist();
   if (backfilled) {
-    const { data: pixels } = await sb.from('pixels').select('*').eq('game_id', GAME_ID);
-    (pixels || []).forEach(p => { engine.pixelData[`${p.x},${p.y}`] = p; });
+    const pixels = await engine._fetchAllPixels();
+    pixels.forEach(p => { engine.pixelData[`${p.x},${p.y}`] = p; });
   }
 
   // First-time players choose their own starting location

@@ -14,11 +14,29 @@ class GameEngine {
   }
 
   // ── Bootstrap ────────────────────────────────────────────
+  // Pixels table can hold many thousands of rows per game (e.g. 150x120),
+  // far beyond Supabase's default 1000-row response limit — page through
+  // all of them so the full map and territory state load correctly.
+  async _fetchAllPixels() {
+    const pageSize = 1000;
+    let all = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await sb.from('pixels').select('*')
+        .eq('game_id', this.gameId).range(from, from + pageSize - 1);
+      if (error || !data || data.length === 0) break;
+      all = all.concat(data);
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+    return all;
+  }
+
   async load() {
-    const [gameRes, countryRes, pixelsRes, countriesRes, infraRes] = await Promise.all([
+    const [gameRes, countryRes, pixels, countriesRes, infraRes] = await Promise.all([
       sb.from('games').select('*').eq('id', this.gameId).single(),
       sb.from('countries').select('*').eq('game_id', this.gameId).eq('player_id', this.playerId).single(),
-      sb.from('pixels').select('*').eq('game_id', this.gameId),
+      this._fetchAllPixels(),
       sb.from('countries').select('*').eq('game_id', this.gameId).eq('is_alive', true),
       sb.from('infrastructure').select('*').eq('game_id', this.gameId),
     ]);
@@ -27,7 +45,7 @@ class GameEngine {
     this.country = countryRes.data;
 
     // Index pixel data
-    (pixelsRes.data || []).forEach(p => {
+    pixels.forEach(p => {
       this.pixelData[`${p.x},${p.y}`] = p;
     });
 
