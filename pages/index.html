@@ -342,7 +342,10 @@ async function doRegister() {
   const { data: existing } = await sb.from('profiles').select('id').eq('username', username).single();
   if (existing) { showError(err, 'Username already taken.'); btn.disabled = false; btn.textContent = 'Forge My Legacy'; return; }
 
-  const { data, error } = await sb.auth.signUp({ email, password });
+  const { data, error } = await sb.auth.signUp({
+    email, password,
+    options: { data: { username } },
+  });
   if (error) {
     showError(err, error.message);
     btn.disabled = false;
@@ -351,7 +354,6 @@ async function doRegister() {
   }
 
   if (data.user) {
-    await sb.from('profiles').insert({ id: data.user.id, username });
     ok.style.display = 'block';
     ok.textContent = '✅ Account created! Check your email to confirm, then sign in.';
   }
