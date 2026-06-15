@@ -244,11 +244,7 @@
     <div id="registerForm" style="display:none">
       <div class="form-group">
         <label>Username</label>
-        <input type="text" id="regUsername" placeholder="Emperor Augustus" maxlength="24">
-      </div>
-      <div class="form-group">
-        <label>Email</label>
-        <input type="email" id="regEmail" placeholder="ruler@realm.com" autocomplete="email">
+        <input type="text" id="regUsername" placeholder="Emperor Augustus" maxlength="24" autocomplete="username">
       </div>
       <div class="form-group">
         <label>Password</label>
@@ -325,13 +321,12 @@ async function doLogin() {
 
 async function doRegister() {
   const username = document.getElementById('regUsername').value.trim();
-  const email = document.getElementById('regEmail').value.trim();
   const password = document.getElementById('regPassword').value;
   const btn = document.getElementById('registerBtn');
   const err = document.getElementById('registerError');
   const ok = document.getElementById('registerSuccess');
 
-  if (!username || !email || !password) { showError(err, 'Please fill all fields.'); return; }
+  if (!username || !password) { showError(err, 'Please fill all fields.'); return; }
   if (username.length < 2) { showError(err, 'Username too short.'); return; }
   if (password.length < 8) { showError(err, 'Password must be at least 8 characters.'); return; }
 
@@ -342,8 +337,12 @@ async function doRegister() {
   const { data: existing } = await sb.from('profiles').select('id').eq('username', username).single();
   if (existing) { showError(err, 'Username already taken.'); btn.disabled = false; btn.textContent = 'Forge My Legacy'; return; }
 
+  // Supabase requires an email internally — generate a hidden placeholder from the username.
+  const slug = username.toLowerCase().replace(/[^a-z0-9]/g, '') || 'player';
+  const placeholderEmail = `${slug}.${Date.now().toString(36)}@pixelrealms.local`;
+
   const { data, error } = await sb.auth.signUp({
-    email, password,
+    email: placeholderEmail, password,
     options: { data: { username } },
   });
   if (error) {
@@ -353,9 +352,14 @@ async function doRegister() {
     return;
   }
 
+  if (data.session) {
+    window.location.href = 'lobby.html';
+    return;
+  }
+
   if (data.user) {
     ok.style.display = 'block';
-    ok.textContent = '✅ Account created! Check your email to confirm, then sign in.';
+    ok.textContent = '✅ Account created! You can now sign in.';
   }
   btn.disabled = false;
   btn.textContent = 'Forge My Legacy';
