@@ -12,6 +12,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ============================================================
 const CONFIG = {
   PIXEL_SIZE: 8,                  // px per map tile
+  INCOME_TICK_SECONDS: 10,        // how often gold income is applied
   PIXELS_PER_HOUR: 1,             // expansion tokens per hour offline
   MAX_STACK: 24,                  // max stacked expansion tokens
   STARTING_PIXELS: 5,             // pixels at country creation

@@ -459,6 +459,11 @@ async function submitJoin(gameId) {
 
   if (error) { document.getElementById('joinError').textContent = error.message; return; }
 
+  await sb.from('game_events').insert({
+    game_id: gameId, type: 'join', country_id: country.id,
+    message: `${flag} ${name} has joined the realm!`,
+  });
+
   // Update player count
   const { data: game } = await sb.from('games').select('*').eq('id', gameId).single();
   const newCount = (game.current_players || 0) + 1;

@@ -481,14 +481,15 @@ class GameEngine {
   }
 }
 
-// ── Income ticker (runs client-side every minute) ─────────
+// ── Income ticker (runs client-side every few seconds for a smooth counter) ─
 async function tickIncome(engine) {
   if (!engine.country) return;
   const c = engine.country;
   const mines = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id && i.type === 'mine').length;
   const flatIncomePerHour = mines * CONFIG.INFRA_COSTS.mine.flatIncome;
-  const minuteIncome = (c.income_per_pixel * c.pixel_count + flatIncomePerHour) / 60;
-  const newGold = Math.floor(c.gold + minuteIncome);
+  const hourlyIncome = c.income_per_pixel * c.pixel_count + flatIncomePerHour;
+  const tickIncome = hourlyIncome * (CONFIG.INCOME_TICK_SECONDS / 3600);
+  const newGold = Math.round((c.gold + tickIncome) * 100) / 100;
   if (newGold === c.gold) return;
 
   await sb.from('countries').update({ gold: newGold }).eq('id', c.id);
