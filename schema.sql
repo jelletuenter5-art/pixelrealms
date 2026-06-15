@@ -251,6 +251,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE messages;
 ALTER PUBLICATION supabase_realtime ADD TABLE countries;
 ALTER PUBLICATION supabase_realtime ADD TABLE attacks;
 ALTER PUBLICATION supabase_realtime ADD TABLE trades;
+ALTER PUBLICATION supabase_realtime ADD TABLE infrastructure;
 
 -- ============================================================
 -- INITIAL WORLDS (small / medium / big)
@@ -262,3 +263,24 @@ INSERT INTO games (code, name, category, is_open, map_width, map_height, max_pla
   ('PR-SM01', 'Small Realm #1',  'small',  TRUE, 60,  50,  20, 'waiting'),
   ('PR-MD01', 'Medium Realm #1', 'medium', TRUE, 100, 80,  35, 'waiting'),
   ('PR-BG01', 'Grand Realm #1',  'big',    TRUE, 150, 120, 50, 'waiting');
+
+-- ============================================================
+-- TABLE GRANTS
+-- RLS policies alone aren't enough — the anon/authenticated
+-- roles also need the underlying GRANT privileges.
+-- ============================================================
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON
+  public.profiles,
+  public.games,
+  public.countries,
+  public.pixels,
+  public.attacks,
+  public.trades,
+  public.infrastructure,
+  public.game_events,
+  public.messages
+TO anon, authenticated;
+
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
