@@ -1381,16 +1381,44 @@ function renderMyCountry(body) {
       ${statCard('🏗️ Buildings', myInfra.length, 'gold')}
     </div>
 
-    <div class="section-label">Income Breakdown</div>
-    <div style="font-size:0.78rem;color:var(--muted);line-height:1.8">
-      Per-pixel: ${c.income_per_pixel}/pixel × ${c.pixel_count} pixels = <span style="color:var(--gold)">${pixelIncome.toFixed(1)} gold/hr</span>${farms > 0 ? ` (${farms} 🌾)` : ''}<br>
-      ${mines > 0 ? `Mines: +${flatIncome} gold/hr (${mines} ⛏️)<br>` : ''}
-      Army upkeep: −${upkeep} gold/hr${markets > 0 ? ` (reduced by ${markets} 🏪)` : ''}<br>
-      <span style="font-size:0.72rem;color:var(--muted)">Base: 0.2g/pixel/hr — Markets reduce by ${CONFIG.INFRA_COSTS.market.upkeepReduction}/pixel each (min 0.02)</span><br>
-      Net: <span style="color:var(--green);font-weight:600">${(parseFloat(incomePerHr) - parseFloat(upkeep)).toFixed(1)} gold/hr</span>
+    <div class="section-label">📈 Income</div>
+    <div style="font-size:0.8rem;line-height:2;margin-bottom:0.75rem">
+      <div style="display:flex;justify-content:space-between">
+        <span style="color:var(--muted)">🗺️ Pixels × farms${farms > 0 ? ` (${farms} 🌾)` : ''}</span>
+        <span style="color:var(--gold)">+${pixelIncome.toFixed(1)} g/hr</span>
+      </div>
+      ${mines > 0 ? `<div style="display:flex;justify-content:space-between">
+        <span style="color:var(--muted)">⛏️ Mines (${mines})</span>
+        <span style="color:var(--gold)">+${flatIncome} g/hr</span>
+      </div>` : ''}
+      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
+        <span style="color:var(--text);font-weight:600">Total income</span>
+        <span style="color:var(--gold);font-weight:700">+${incomePerHr} g/hr</span>
+      </div>
     </div>
 
-    <div class="section-label" style="margin-top:1rem">Danger Zones</div>
+    <div class="section-label">📉 Upkeep</div>
+    <div style="font-size:0.8rem;line-height:2;margin-bottom:0.75rem">
+      <div style="display:flex;justify-content:space-between">
+        <span style="color:var(--muted)">⚔️ Army base (0.2 × ${c.pixel_count} px)</span>
+        <span style="color:var(--red)">−${(0.2 * c.pixel_count).toFixed(1)} g/hr</span>
+      </div>
+      ${markets > 0 ? `<div style="display:flex;justify-content:space-between">
+        <span style="color:var(--muted)">🏪 Market savings (${markets} × ${CONFIG.INFRA_COSTS.market.upkeepReduction} × ${c.pixel_count} px)</span>
+        <span style="color:var(--green)">+${(markets * CONFIG.INFRA_COSTS.market.upkeepReduction * c.pixel_count).toFixed(1)} g/hr</span>
+      </div>` : ''}
+      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
+        <span style="color:var(--text);font-weight:600">Net upkeep</span>
+        <span style="color:var(--red);font-weight:700">−${upkeep} g/hr</span>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.75rem;margin-bottom:1rem">
+      <span style="font-weight:700;font-size:0.85rem">💹 Net gold/hr</span>
+      <span style="font-weight:800;font-size:1.1rem;color:${parseFloat(incomePerHr) - parseFloat(upkeep) >= 0 ? 'var(--green)' : 'var(--red)'}">${parseFloat(incomePerHr) - parseFloat(upkeep) >= 0 ? '+' : ''}${(parseFloat(incomePerHr) - parseFloat(upkeep)).toFixed(1)}</span>
+    </div>
+
+    <div class="section-label">Danger Zones</div>
     <div style="font-size:0.78rem;color:var(--muted)">
       ${c.pixel_count > 30 ? '⚠️ Large territory — harder to defend' : '✅ Manageable size'}<br>
       ${c.army_size < c.pixel_count ? '⚠️ Army too small for territory!' : '✅ Army strength adequate'}<br>
