@@ -1282,13 +1282,14 @@ async function sendTrade() {
 
 function focusCountry(id) {
   const owned = Object.values(engine.pixelData).filter(p => p.country_id === id);
-  if (!owned.length) return;
-  const avgX = owned.reduce((s,p) => s + p.x, 0) / owned.length;
-  const avgY = owned.reduce((s,p) => s + p.y, 0) / owned.length;
-  const ps = CONFIG.PIXEL_SIZE * scale;
-  offsetX = canvas.width / 2 - avgX * ps;
-  offsetY = canvas.height / 2 - avgY * ps;
-  renderMap();
+  if (owned.length) {
+    const avgX = owned.reduce((s,p) => s + p.x, 0) / owned.length;
+    const avgY = owned.reduce((s,p) => s + p.y, 0) / owned.length;
+    const ps = CONFIG.PIXEL_SIZE * scale;
+    offsetX = canvas.width / 2 - avgX * ps;
+    offsetY = canvas.height / 2 - avgY * ps;
+    renderMap();
+  }
   if (SPECTATE) spectateCountry(id, true);
 }
 
