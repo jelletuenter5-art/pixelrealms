@@ -190,7 +190,7 @@
     <button class="page-tab" onclick="showSection('browse', event)">🌍 Worlds</button>
     <button class="page-tab" onclick="showSection('leaderboard', event)">🏆 Leaderboard</button>
     <button class="page-tab" onclick="showSection('settings', event)">⚙️ Settings</button>
-    <button class="page-tab" onclick="showSection('feedback', event)">💬 Feedback<span class="notif-dot-tab" id="feedbackDot"></span></button>
+    <button class="page-tab" onclick="showSection('feedback', event)">🎫 Issues<span class="notif-dot-tab" id="feedbackDot"></span></button>
     <button class="page-tab" onclick="showSection('updates', event)">📋 Updates<span class="notif-dot-tab" id="updatesDot"></span></button>
     <button class="page-tab" id="adminTab" onclick="showSection('admin', event)" style="display:none">🛠️ Admin<span class="notif-dot-tab" id="adminDot"></span></button>
   </div>
@@ -259,13 +259,13 @@
 
   <!-- FEEDBACK -->
   <div id="feedback" class="section">
-    <h2 style="font-family:'Cinzel',serif; margin-bottom:1.5rem">Feedback</h2>
+    <h2 style="font-family:'Cinzel',serif; margin-bottom:1.5rem">🎫 Issues</h2>
     <div style="max-width:520px; margin-bottom:2rem">
       <div class="form-group">
-        <label>Send feedback to the admins</label>
-        <textarea id="feedbackInput" rows="4" maxlength="1000" placeholder="Bugs, ideas, suggestions…"></textarea>
+        <label>Describe your issue or question</label>
+        <textarea id="feedbackInput" rows="4" maxlength="1000" placeholder="Describe a bug, ask a question, or report an issue…"></textarea>
       </div>
-      <button class="btn btn-primary" onclick="submitFeedback()">Send Feedback</button>
+      <button class="btn btn-primary" onclick="submitFeedback()">Submit Issue</button>
       <div id="feedbackMsg" style="margin-top:0.75rem; font-size:0.85rem"></div>
     </div>
     <h3 style="font-family:'Cinzel',serif; margin-bottom:1rem; font-size:1rem; color:var(--muted)">Your Submissions</h3>
@@ -298,7 +298,7 @@
     <h3 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:1rem">🌍 All Games</h3>
     <div id="adminGamesList"><div style="color:var(--muted)">Loading…</div></div>
     <hr style="border-color:var(--border); margin:1.5rem 0">
-    <h3 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:1rem; color:var(--muted)">Player Feedback</h3>
+    <h3 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:1rem; color:var(--muted)">Player Issues</h3>
     <div id="adminFeedbackList"><div style="color:var(--muted)">Loading…</div></div>
   </div>
 </div>
@@ -862,7 +862,7 @@ async function submitFeedback() {
 
   input.value = '';
   msg.style.color = 'var(--green)';
-  msg.textContent = 'Sent! Thanks for the feedback.';
+  msg.textContent = 'Issue submitted! We will get back to you soon.';
   loadMyFeedback();
 }
 
@@ -948,7 +948,7 @@ async function loadAdminFeedback() {
     .order('created_at', { ascending: false });
 
   const list = document.getElementById('adminFeedbackList');
-  if (!tickets?.length) { list.innerHTML = '<div style="color:var(--muted)">No feedback yet.</div>'; return; }
+  if (!tickets?.length) { list.innerHTML = '<div style="color:var(--muted)">No issues yet.</div>'; return; }
 
   const ids = tickets.map(t => t.id);
   const { data: msgs } = await sb.from('feedback_messages')
@@ -975,7 +975,7 @@ async function loadAdminFeedback() {
       <div class="feedback-msg">${escapeHtmlLobby(f.message)}</div>
       ${threadHtml}
       <div style="margin-top:0.6rem;display:flex;gap:0.5rem;flex-wrap:wrap">
-        <input type="text" id="reply-${f.id}" placeholder="Reply to player…" style="flex:1;min-width:120px" onkeydown="if(event.key==='Enter')replyFeedback('${f.id}')">
+        <input type="text" id="reply-${f.id}" placeholder="Reply to player's issue…" style="flex:1;min-width:120px" onkeydown="if(event.key==='Enter')replyFeedback('${f.id}')">
         <button class="btn-sm" onclick="replyFeedback('${f.id}')">Reply</button>
         ${f.status === 'open' ? `<button class="btn-sm" onclick="resolveFeedback('${f.id}')">Mark Resolved</button>` : ''}
         <button class="btn-sm" style="background:var(--red);color:#fff" onclick="deleteFeedback('${f.id}')">Delete</button>
