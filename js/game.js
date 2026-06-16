@@ -358,8 +358,9 @@ class GameEngine {
   }
 
   async _finishGame(winner) {
-    // Credit every participant's profile before wiping the game
-    for (const c of Object.values(this.countries)) {
+    // Fetch ALL countries (alive + eliminated) so everyone gets credited
+    const { data: allCountries } = await sb.from('countries').select('*').eq('game_id', this.gameId);
+    for (const c of (allCountries || [])) {
       const { data: profile } = await sb.from('profiles').select('total_wins, total_pixels_ever, games_played').eq('id', c.player_id).single();
       if (!profile) continue;
       await sb.from('profiles').update({
