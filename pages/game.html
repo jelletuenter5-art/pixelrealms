@@ -455,6 +455,7 @@ let engine = null;
 let currentUser = null;
 let currentProfile = null;
 let allCountriesCache = {}; // id -> country, used in spectate mode
+let spectateTargetId = null; // currently viewed nation in spectate mode
 let mapData = null;
 let mapGen = null;
 let currentMode = 'expand';
@@ -528,6 +529,12 @@ let lastMousePos = null;
     document.body.appendChild(specBanner);
     document.getElementById('appLayout').style.marginTop = '24px';
     document.getElementById('appLayout').style.height = 'calc(100dvh - 24px)';
+    // Replace right panel tabs with spectate-only tabs
+    document.querySelector('.right-panel .panel-tabs').innerHTML = `
+      <button class="panel-tab active" data-tab="spectate" onclick="switchRightTab('spectate')">👁️ Stats</button>
+      <button class="panel-tab" data-tab="admin" id="adminTabBtn" onclick="switchRightTab('admin')">🛠️ Admin</button>
+    `;
+    rightTab = 'spectate';
   }
 
   initCanvas();
@@ -1245,12 +1252,19 @@ function focusCountry(id) {
   offsetX = canvas.width / 2 - avgX * ps;
   offsetY = canvas.height / 2 - avgY * ps;
   renderMap();
-  if (SPECTATE) spectateCountry(id);
+  if (SPECTATE) spectateCountry(id, true);
 }
 
-function spectateCountry(id) {
-  const c = allCountriesCache[id] || engine.countries[id];
+function spectateCountry(id, fromClick = false) {
+  // Pull freshest data: realtime updates go into engine.countries for alive nations
+  const c = engine.countries[id] || allCountriesCache[id];
   if (!c) return;
+  spectateTargetId = id;
+  if (fromClick) {
+    switchRightTab('spectate');
+    document.querySelector('.right-panel').classList.add('open');
+    document.getElementById('panelBackdrop').classList.add('show');
+  }
   const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id);
   const mines = myInfra.filter(i => i.type === 'mine').length;
   const farms = myInfra.filter(i => i.type === 'farm').length;
@@ -1261,9 +1275,6 @@ function spectateCountry(id) {
   const upkeep = (c.army_upkeep_per_pixel * c.pixel_count).toFixed(1);
 
   const body = document.getElementById('rightPanelBody');
-  // On mobile the right panel is a drawer — open it
-  document.querySelector('.right-panel').classList.add('open');
-  document.getElementById('panelBackdrop').classList.add('show');
   body.innerHTML = `
     <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
       <div style="width:40px;height:40px;background:${c.color};border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.4rem">${c.flag_emoji || ''}</div>
@@ -1311,7 +1322,8 @@ function switchRightTab(tab) {
 
 async function renderRightPanel() {
   const body = document.getElementById('rightPanelBody');
-  if (rightTab === 'country') renderMyCountry(body);
+  if (rightTab === 'spectate') { if (spectateTargetId) spectateCountry(spectateTargetId); else body.innerHTML = '<div style="color:var(--muted);padding:1rem">Click a nation in the Nations tab to view their stats.</div>'; }
+  else if (rightTab === 'country') renderMyCountry(body);
   else if (rightTab === 'infra') renderInfra(body);
   else if (rightTab === 'chat') renderChat(body);
   else if (rightTab === 'admin') renderAdmin(body);
@@ -1382,7 +1394,8 @@ function renderMyCountry(body) {
 }
 
 function renderAdmin(body) {
-  const countries = Object.values(engine.countries).filter(c => c.is_alive);
+  const allC = SPECTATE ? Object.values(allCountriesCache) : Object.values(engine.countries);
+  const countries = allC.filter(c => c.is_alive);
   body.innerHTML = `
     <div class="section-label">🛠️ Admin Tools</div>
     <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.75rem">Grant resources to any nation in this game.</div>
@@ -1411,7 +1424,7 @@ async function adminGiveGold() {
   const targetId = document.getElementById('adminTarget').value;
   const amount = parseFloat(document.getElementById('adminGoldAmount').value);
   if (!targetId || !amount) return;
-  const target = engine.countries[targetId];
+  const target = engine.countries[targetId] || allCountriesCache[targetId];
   const newGold = (target.gold || 0) + amount;
   const { data, error } = await sb.from('countries').update({ gold: newGold }).eq('id', targetId).select().single();
   const msg = document.getElementById('adminMsg');
@@ -1427,7 +1440,7 @@ async function adminGiveTokens() {
   const targetId = document.getElementById('adminTarget').value;
   const amount = parseFloat(document.getElementById('adminTokenAmount').value);
   if (!targetId || !amount) return;
-  const target = engine.countries[targetId];
+  const target = engine.countries[targetId] || allCountriesCache[targetId];
   const newPending = Math.min(CONFIG.MAX_STACK, (target.pending_pixels || 0) + amount);
   const { data, error } = await sb.from('countries').update({ pending_pixels: newPending }).eq('id', targetId).select().single();
   const msg = document.getElementById('adminMsg');
@@ -1557,12 +1570,18 @@ function setupRealtime() {
     if (leftTab === 'events') renderLeftPanel();
   });
   engine.subscribeToCountries(c => {
-    if (c.player_id === currentUser.id) {
-      if (!c.is_alive && engine.country?.is_alive) {
-        document.getElementById('eliminatedModal').style.display = 'flex';
+    // Keep cache fresh for spectate mode
+    if (allCountriesCache[c.id]) allCountriesCache[c.id] = { ...allCountriesCache[c.id], ...c };
+    if (SPECTATE) {
+      if (spectateTargetId === c.id && rightTab === 'spectate') spectateCountry(c.id);
+    } else {
+      if (c.player_id === currentUser.id) {
+        if (!c.is_alive && engine.country?.is_alive) {
+          document.getElementById('eliminatedModal').style.display = 'flex';
+        }
+        updateTopBar();
+        if (rightTab === 'country') renderRightPanel();
       }
-      updateTopBar();
-      if (rightTab === 'country') renderRightPanel();
     }
     if (leftTab === 'nations') renderNations(document.getElementById('leftPanelBody'));
     renderMap();
