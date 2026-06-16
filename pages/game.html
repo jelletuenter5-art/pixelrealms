@@ -454,6 +454,7 @@ if (!GAME_ID) window.location.href = 'lobby.html';
 let engine = null;
 let currentUser = null;
 let currentProfile = null;
+let allCountriesCache = {}; // id -> country, used in spectate mode
 let mapData = null;
 let mapGen = null;
 let currentMode = 'expand';
@@ -1086,6 +1087,9 @@ async function renderNations(body) {
     .select('*, profiles(username)').eq('game_id', GAME_ID);
   if (!allCountries?.length) { body.innerHTML = '<div style="color:var(--muted)">No nations yet</div>'; return; }
 
+  // Cache all countries for spectate mode lookup
+  allCountries.forEach(c => { allCountriesCache[c.id] = c; });
+
   const alive = allCountries.filter(c => c.is_alive).sort((a,b) => b.pixel_count - a.pixel_count);
   const dead = allCountries.filter(c => !c.is_alive).sort((a,b) => a.name.localeCompare(b.name));
   const myId = engine.country?.id;
@@ -1245,8 +1249,7 @@ function focusCountry(id) {
 }
 
 function spectateCountry(id) {
-  // Find country in alive list, or fetch from allCountries cache
-  const c = engine.countries[id];
+  const c = allCountriesCache[id] || engine.countries[id];
   if (!c) return;
   const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id);
   const mines = myInfra.filter(i => i.type === 'mine').length;

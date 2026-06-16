@@ -298,11 +298,11 @@ async function loadStats() {
   const live = (pixelsRes.data || []).reduce((s, c) => s + (c.pixel_count || 0), 0);
   document.getElementById('totalPixels').textContent = (historical + live).toLocaleString();
   document.getElementById('nationsFallen').textContent = (deadRes.count || 0).toLocaleString();
-  // Random between 0.2–0.3x accounts, rounded to nearest 5
+  // Random between 0.01–0.3x accounts, rounded normally
   const totalPlayers = profilesRes.count || 0;
-  const factor = 0.2 + Math.random() * 0.1;
-  const online = Math.max(1, Math.round((totalPlayers * factor) / 5) * 5);
-  document.getElementById('onlineCount').textContent = totalPlayers > 0 ? `~${online}` : '—';
+  const factor = 0.01 + Math.random() * 0.29;
+  const online = Math.round(totalPlayers * factor);
+  document.getElementById('onlineCount').textContent = totalPlayers > 0 ? online.toString() : '—';
 }
 loadStats();
 
