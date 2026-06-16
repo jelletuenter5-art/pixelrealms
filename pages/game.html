@@ -1030,7 +1030,7 @@ function setMode(mode) {
   currentMode = mode;
   document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(`mode${mode.charAt(0).toUpperCase() + mode.slice(1)}`).classList.add('active');
-  canvas.style.cursor = mode === 'attack' ? 'crosshair' : mode === 'build' ? 'cell' : 'crosshair';
+  canvas.style.cursor = mode === 'attack' ? 'url("data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'32\' height=\'32\' viewBox=\'0 0 32 32\'><text y=\'28\' font-size=\'28\'>⚔️</text></svg>") 16 16, crosshair' : mode === 'build' ? 'cell' : 'crosshair';
 }
 
 // ── ZOOM ──────────────────────────────────────────────
@@ -1623,14 +1623,15 @@ function renderInfra(body) {
 }
 
 async function deleteBuilding(infraId, type, x, y) {
-  if (!confirm(`Permanently delete ${type} at (${x},${y})? This cannot be undone.`)) return;
+  const refund = Math.floor(CONFIG.INFRA_COSTS[type].gold * 0.25);
+  if (!confirm(`Permanently delete ${type} at (${x},${y})? You'll get ${refund}g back (25% refund).`)) return;
   const { error } = await sb.from('infrastructure').delete().eq('id', infraId);
   if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
 
   delete engine.infraData[`${x},${y}`];
 
   const c = engine.country;
-  const updates = {};
+  const updates = { gold: Math.round((c.gold + refund) * 10000) / 10000 };
   if (type === 'farm') {
     updates.income_per_pixel = Math.max(0, Math.round((c.income_per_pixel - CONFIG.INFRA_COSTS.farm.incomeBonus) * 10000) / 10000);
   } else if (type === 'market') {
@@ -1639,12 +1640,10 @@ async function deleteBuilding(infraId, type, x, y) {
     updates.army_size = Math.max(0, c.army_size - CONFIG.INFRA_COSTS.barracks.armyBonus);
   }
 
-  if (Object.keys(updates).length > 0) {
-    await sb.from('countries').update(updates).eq('id', c.id);
-    Object.assign(engine.country, updates);
-  }
+  await sb.from('countries').update(updates).eq('id', c.id);
+  Object.assign(engine.country, updates);
 
-  showToast(`${type.charAt(0).toUpperCase()+type.slice(1)} deleted.`, 'success');
+  showToast(`${type.charAt(0).toUpperCase()+type.slice(1)} deleted. +${refund}g refunded.`, 'success');
   renderRightPanel();
 }
 
@@ -1671,9 +1670,10 @@ function chatMsgHtml(m) {
   const c = engine.countries[m.country_id] || {};
   const nation = c.name ? `${c.flag_emoji || ''}${c.name}` : (m.player_name || 'Unknown');
   const userLabel = m.player_name ? ` <span style="color:var(--muted);font-weight:400;font-size:0.85em">(${escapeHtml(m.player_name)})</span>` : '';
+  const time = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
   return `<div class="chat-msg">
     <div class="sender" style="color:${c.color || 'var(--green)'}">
-      ${nation}${userLabel}
+      ${nation}${userLabel}<span style="color:var(--muted);font-weight:400;font-size:0.75em;margin-left:0.4em">${time}</span>
     </div>
     <div class="body">${escapeHtml(m.content)}</div>
   </div>`;
@@ -1725,7 +1725,8 @@ function setupRealtime() {
     renderMap();
   });
   engine.subscribeToMessages(m => {
-    if (rightTab === 'chat') {
+    const panelOpen = document.querySelector('.right-panel')?.classList.contains('open');
+    if (rightTab === 'chat' && panelOpen) {
       const chatDiv = document.getElementById('chatMsgs');
       if (chatDiv) {
         chatDiv.insertAdjacentHTML('beforeend', chatMsgHtml(m));

@@ -36,6 +36,10 @@
     background: transparent; color: var(--muted); cursor: pointer; font-size: 0.8rem;
     font-family: 'Inter', sans-serif; transition: all 0.2s; }
   .btn-sm:hover { border-color: var(--green); color: var(--green); }
+  .btn-archive { font-size: 0.72rem; padding: 0.25rem 0.65rem; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--panel2); color: var(--muted);
+    cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; transition: all 0.2s; }
+  .btn-archive:hover { border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,0.08); }
 
   .main { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
 
@@ -461,7 +465,7 @@ async function loadMyGames() {
       ${deleteWarning}
       <div style="margin-top:0.75rem; display:flex; justify-content:space-between; align-items:center">
         <span class="game-code">${g.code}</span>
-        <button onclick="archiveGame('${g.id}',event)" style="font-size:0.72rem;padding:0.25rem 0.65rem;border-radius:6px;border:1px solid var(--border);background:var(--panel2);color:var(--muted);cursor:pointer;font-weight:600">📦 Archive</button>
+        <button class="btn-archive" onclick="archiveGame('${g.id}',event)">📦 Archive</button>
       </div>
     </div>`;
   }).join('');
@@ -934,7 +938,7 @@ async function loadAdminFeedback() {
     ${f.admin_reply ? `<div class="feedback-reply">💬 <strong>Your reply:</strong> ${escapeHtmlLobby(f.admin_reply)}</div>` : ''}
     ${f.user_reply ? `<div class="feedback-reply" style="background:var(--panel);border:1px solid var(--border)">↩️ <strong>Player replied:</strong> ${escapeHtmlLobby(f.user_reply)}</div>` : ''}
     <div style="margin-top:0.6rem; display:flex; gap:0.5rem; flex-wrap:wrap">
-      <input type="text" id="reply-${f.id}" placeholder="Reply to player…" value="${f.admin_reply ? escapeHtmlLobby(f.admin_reply) : ''}" style="flex:1;min-width:120px">
+      <input type="text" id="reply-${f.id}" placeholder="Reply to player…" style="flex:1;min-width:120px">
       <button class="btn-sm" onclick="replyFeedback('${f.id}')">Reply</button>
       ${f.status === 'open' ? `<button class="btn-sm" onclick="resolveFeedback('${f.id}')">Mark Resolved</button>` : ''}
       <button class="btn-sm" style="background:var(--red);color:#fff" onclick="deleteFeedback('${f.id}')">Delete</button>
