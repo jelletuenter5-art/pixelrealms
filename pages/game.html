@@ -1290,6 +1290,7 @@ function spectateCountry(id, fromClick = false) {
       ${statCard('📈 Income/hr', incomePerHr, 'blue')}
       ${statCard('🔧 Upkeep/hr', upkeep, 'muted')}
       ${statCard('🏗️ Buildings', myInfra.length, 'gold')}
+      ${statCard('🎯 Tokens', Math.floor(c.pending_pixels || 0), 'green')}
     </div>
     <div class="section-label">Income Breakdown</div>
     <div style="font-size:0.78rem;color:var(--muted);line-height:1.8">
