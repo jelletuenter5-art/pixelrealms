@@ -1261,7 +1261,9 @@ function spectateCountry(id) {
   const upkeep = (c.army_upkeep_per_pixel * c.pixel_count).toFixed(1);
 
   const body = document.getElementById('rightPanelBody');
-  openRightPanel();
+  // On mobile the right panel is a drawer — open it
+  document.querySelector('.right-panel').classList.add('open');
+  document.getElementById('panelBackdrop').classList.add('show');
   body.innerHTML = `
     <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
       <div style="width:40px;height:40px;background:${c.color};border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.4rem">${c.flag_emoji || ''}</div>
