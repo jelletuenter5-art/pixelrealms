@@ -187,7 +187,7 @@
     <button class="page-tab" onclick="showSection('leaderboard', event)">🏆 Leaderboard</button>
     <button class="page-tab" onclick="showSection('settings', event)">⚙️ Settings</button>
     <button class="page-tab" onclick="showSection('feedback', event)">💬 Feedback<span class="notif-dot-tab" id="feedbackDot"></span></button>
-    <button class="page-tab" onclick="showSection('updates', event)">📋 Updates</button>
+    <button class="page-tab" onclick="showSection('updates', event)">📋 Updates<span class="notif-dot-tab" id="updatesDot"></span></button>
     <button class="page-tab" id="adminTab" onclick="showSection('admin', event)" style="display:none">🛠️ Admin<span class="notif-dot-tab" id="adminDot"></span></button>
   </div>
 
@@ -338,12 +338,19 @@ const ADMIN_AVATAR_EMOJIS = ['🔱','⚡','🌟','🎖️','👁️','🔮','�
     if (newFeedback) document.getElementById('adminDot')?.classList.add('show');
   }
 
-  // Feedback red dot: admin replied since last view
+  // Feedback red dot: any admin reply exists and not yet seen this session
   const lastFeedbackView = parseInt(localStorage.getItem('pr_last_feedback_view') || '0');
-  const { data: unreadReplies } = await sb.from('feedback').select('id')
-    .eq('user_id', currentUser.id).not('admin_reply', 'is', null)
-    .gte('updated_at', new Date(lastFeedbackView).toISOString());
-  if (unreadReplies?.length) document.getElementById('feedbackDot')?.classList.add('show');
+  const { data: anyReplies } = await sb.from('feedback').select('id')
+    .eq('user_id', currentUser.id).not('admin_reply', 'is', null).limit(1);
+  if (anyReplies?.length && Date.now() - lastFeedbackView > 60000) {
+    document.getElementById('feedbackDot')?.classList.add('show');
+  }
+
+  // Updates red dot: new update since last view
+  const lastUpdatesView = parseInt(localStorage.getItem('pr_last_updates_view') || '0');
+  const { data: newUpdates } = await sb.from('game_updates').select('id')
+    .gte('created_at', new Date(lastUpdatesView || 0).toISOString()).limit(1);
+  if (newUpdates?.length) document.getElementById('updatesDot')?.classList.add('show');
 
   initSettings();
   loadMyFeedback();
@@ -384,7 +391,7 @@ function showSection(id, ev) {
   // Clear notif dots
   if (id === 'feedback') { localStorage.setItem('pr_last_feedback_view', Date.now()); document.getElementById('feedbackDot')?.classList.remove('show'); loadMyFeedback(); }
   if (id === 'admin') { localStorage.setItem('pr_last_admin_view', Date.now()); document.getElementById('adminDot')?.classList.remove('show'); loadAdminFeedback(); }
-  if (id === 'updates') loadUpdates();
+  if (id === 'updates') { localStorage.setItem('pr_last_updates_view', Date.now()); document.getElementById('updatesDot')?.classList.remove('show'); loadUpdates(); }
   if (id === 'archived') loadArchivedGames();
 }
 
@@ -746,7 +753,7 @@ async function loadLeaderboard() {
     <div class="lb-name">${p.avatar_emoji || '🙂'} ${p.username}</div>
     <div class="lb-stat highlight" data-label="Wins">${p.total_wins}</div>
     <div class="lb-stat highlight" data-label="Pixels">${p.totalPixels.toLocaleString()}</div>
-    <div class="lb-stat" data-label="Games">${p.games_played || 0}${liveGames[p.id] ? ` <span style="color:var(--green);font-size:0.75rem">(+${liveGames[p.id]} active)</span>` : ''}</div>
+    <div class="lb-stat" data-label="Games">${(p.games_played || 0) + (liveGames[p.id] || 0)}</div>
     <div class="lb-stat" data-label="Joined">${new Date(p.created_at).toLocaleDateString()}</div>
   </div>`).join('');
 }
