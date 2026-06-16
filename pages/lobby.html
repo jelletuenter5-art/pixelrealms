@@ -908,7 +908,7 @@ async function loadUpdates() {
   const list = document.getElementById('updatesList');
   if (error) { list.innerHTML = `<div style="color:var(--red)">Could not load updates: ${escapeHtmlLobby(error.message)}</div>`; return; }
   if (!data?.length) { list.innerHTML = '<div style="color:var(--muted)">No updates posted yet — check back soon!</div>'; return; }
-  const isAdmin = adminIds.includes(currentUser?.id);
+  const isAdmin = currentProfile?.is_admin;
   list.innerHTML = data.map(u => `<div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:0.75rem">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
       <span style="font-family:'Cinzel',serif;font-weight:700;color:var(--green)">${escapeHtmlLobby(u.version)}</span>
