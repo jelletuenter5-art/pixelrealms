@@ -518,13 +518,15 @@ let lastMousePos = null;
   document.getElementById('appLayout').style.display = 'grid';
 
   if (SPECTATE) {
-    // Spectator mode: hide all action controls, show banner
+    // Spectator mode: hide all action controls, show fixed banner above layout
     document.querySelector('.mode-bar').style.display = 'none';
     document.getElementById('spawnBanner').style.display = 'none';
     const specBanner = document.createElement('div');
-    specBanner.style.cssText = 'background:rgba(245,158,11,0.15);border-bottom:1px solid rgba(245,158,11,0.3);padding:0.4rem 1rem;text-align:center;font-size:0.8rem;color:var(--gold);';
+    specBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:rgba(245,158,11,0.15);border-bottom:1px solid rgba(245,158,11,0.3);padding:0.25rem 1rem;text-align:center;font-size:0.75rem;color:var(--gold);pointer-events:none;';
     specBanner.textContent = '👁️ Admin Spectator Mode — view only';
-    document.getElementById('appLayout').prepend(specBanner);
+    document.body.appendChild(specBanner);
+    document.getElementById('appLayout').style.marginTop = '24px';
+    document.getElementById('appLayout').style.height = 'calc(100dvh - 24px)';
   }
 
   initCanvas();
