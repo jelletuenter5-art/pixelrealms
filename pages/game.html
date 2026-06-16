@@ -268,7 +268,7 @@
     <div class="topbar-btns">
       <button class="btn-xs" onclick="openTutorial()">❓ How to Play</button>
       <button class="btn-xs" onclick="window.location.href='lobby.html'">← Lobby</button>
-      <button class="btn-xs panel-toggle" onclick="toggleRightPanel()">📋</button>
+      <button class="btn-xs panel-toggle" onclick="toggleRightPanel()">📋<span class="notif-dot" id="rightToggleNotifDot"></span></button>
     </div>
   </div>
   <div class="panel-backdrop" id="panelBackdrop" onclick="closePanels()"></div>
@@ -332,7 +332,7 @@
 </div>
 
 <!-- Infra build modal -->
-<div id="buildModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:center;justify-content:center">
+<div id="buildModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:310;align-items:center;justify-content:center">
   <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.5rem;max-width:380px;width:90%;max-height:90vh;overflow-y:auto">
     <h3 style="font-family:'Cinzel',serif;margin-bottom:1rem" id="buildModalTitle">Build Structure</h3>
     <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem" id="buildModalDesc"></p>
@@ -944,6 +944,7 @@ function openBuildModal(type) {
   if (!selectedBuildTile) { showToast('First select a tile on the map.', 'error'); return; }
   const cost = CONFIG.INFRA_COSTS[type];
   selectedBuildType = type;
+  closePanels();
   document.getElementById('buildModal').style.display = 'flex';
   document.getElementById('buildModalTitle').textContent = `Build ${type.charAt(0).toUpperCase() + type.slice(1)}`;
   document.getElementById('buildModalDesc').textContent = cost.effect;
@@ -1215,7 +1216,10 @@ function switchRightTab(tab) {
     t.classList.toggle('active', t.dataset.tab === tab);
   });
   document.getElementById('chatFooter').style.display = tab === 'chat' ? 'block' : 'none';
-  if (tab === 'chat') document.getElementById('chatNotifDot')?.classList.remove('show');
+  if (tab === 'chat') {
+    document.getElementById('chatNotifDot')?.classList.remove('show');
+    document.getElementById('rightToggleNotifDot')?.classList.remove('show');
+  }
   renderRightPanel();
 }
 
@@ -1485,7 +1489,7 @@ function setupRealtime() {
       }
     } else {
       document.getElementById('chatNotifDot')?.classList.add('show');
-      document.getElementById('leftToggleNotifDot')?.classList.add('show');
+      document.getElementById('rightToggleNotifDot')?.classList.add('show');
     }
   });
   engine.subscribeTrades(payload => {
