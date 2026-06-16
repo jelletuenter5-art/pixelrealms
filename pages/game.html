@@ -344,6 +344,19 @@
   </div>
 </div>
 
+<!-- Manage building modal -->
+<div id="manageBuildingModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:310;align-items:center;justify-content:center">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.5rem;max-width:380px;width:90%">
+    <h3 style="font-family:'Cinzel',serif;margin-bottom:0.5rem" id="manageBuildingTitle"></h3>
+    <p style="font-size:0.82rem;color:var(--muted);margin-bottom:0.4rem" id="manageBuildingCoords"></p>
+    <p style="font-size:0.82rem;color:var(--muted);margin-bottom:1.25rem" id="manageBuildingEffect"></p>
+    <div style="display:flex;gap:0.5rem">
+      <button class="btn" style="background:#ef444422;border:1px solid #ef4444;color:#ef4444" id="manageBuildingDelete">🗑 Delete permanently</button>
+      <button class="btn-xs" onclick="closeManageBuildingModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Tutorial modal -->
 <div id="tutorialModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;align-items:center;justify-content:center">
   <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.5rem;max-width:520px;width:90%;max-height:85vh;overflow-y:auto">
@@ -949,8 +962,16 @@ async function handleClick(e) {
     if (!pData?.country_id || pData.country_id !== engine.country.id) {
       showToast('Select one of your own tiles to build on.', 'error'); return;
     }
+    const existing = engine.infraData?.[`${tx},${ty}`];
+    if (existing) { openManageBuilding(tx, ty); return; }
     selectedBuildTile = { x: tx, y: ty };
     showBuildMenu();
+  } else {
+    // In any other mode, clicking your own tile with a building opens manage popup
+    const pData = engine.pixelData[`${tx},${ty}`];
+    if (pData?.country_id === engine.country?.id && engine.infraData?.[`${tx},${ty}`]) {
+      openManageBuilding(tx, ty);
+    }
   }
 }
 
@@ -986,6 +1007,21 @@ function openBuildModal(type) {
   };
 }
 function closeBuildModal() { document.getElementById('buildModal').style.display = 'none'; }
+
+function openManageBuilding(x, y) {
+  const infra = engine.infraData?.[`${x},${y}`];
+  if (!infra) return;
+  const cost = CONFIG.INFRA_COSTS[infra.type];
+  document.getElementById('manageBuildingTitle').textContent = `${INFRA_ICONS[infra.type] || '🏗️'} ${infra.type.charAt(0).toUpperCase() + infra.type.slice(1)}`;
+  document.getElementById('manageBuildingCoords').textContent = `Location: (${x}, ${y})`;
+  document.getElementById('manageBuildingEffect').textContent = cost?.effect || '';
+  document.getElementById('manageBuildingDelete').onclick = async () => {
+    closeManageBuildingModal();
+    await deleteBuilding(infra.id, infra.type, x, y);
+  };
+  document.getElementById('manageBuildingModal').style.display = 'flex';
+}
+function closeManageBuildingModal() { document.getElementById('manageBuildingModal').style.display = 'none'; }
 
 // ── TUTORIAL ──────────────────────────────────────────
 function openTutorial() { document.getElementById('tutorialModal').style.display = 'flex'; }
@@ -1390,11 +1426,15 @@ function renderMyCountry(body) {
     <div class="section-label">📈 Income</div>
     <div style="font-size:0.8rem;line-height:2;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">🗺️ ${c.income_per_pixel}/px × ${c.pixel_count} px${farms > 0 ? ` (${farms} 🌾)` : ''}</span>
-        <span style="color:var(--gold)">+${pixelIncome.toFixed(1)} g/hr</span>
+        <span style="color:var(--muted)">🗺️ Base 1.0/px × ${c.pixel_count} px</span>
+        <span style="color:var(--gold)">+${(1.0 * c.pixel_count).toFixed(1)} g/hr</span>
       </div>
+      ${farms > 0 ? `<div style="display:flex;justify-content:space-between">
+        <span style="color:var(--muted)">🌾 ${farms} farm${farms>1?'s':''} +${(farms * CONFIG.INFRA_COSTS.farm.incomeBonus).toFixed(2)}/px × ${c.pixel_count} px</span>
+        <span style="color:var(--gold)">+${(farms * CONFIG.INFRA_COSTS.farm.incomeBonus * c.pixel_count).toFixed(1)} g/hr</span>
+      </div>` : ''}
       ${mines > 0 ? `<div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">⛏️ ${mines} mine${mines>1?'s':''} (${CONFIG.INFRA_COSTS.mine.flatIncome}flat + ${CONFIG.INFRA_COSTS.mine.pixelBonus}×${c.pixel_count}px)</span>
+        <span style="color:var(--muted)">⛏️ ${mines} mine${mines>1?'s':''} (${mines * CONFIG.INFRA_COSTS.mine.flatIncome}flat + ${CONFIG.INFRA_COSTS.mine.pixelBonus}×${c.pixel_count}px)</span>
         <span style="color:var(--gold)">+${mineIncome.toFixed(1)} g/hr</span>
       </div>` : ''}
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
@@ -1540,21 +1580,17 @@ function renderInfra(body) {
   const counts = {};
   myInfra.forEach(i => { counts[i.type] = (counts[i.type] || 0) + 1; });
 
-  const myInfraSorted = [...myInfra].sort((a,b) => a.type.localeCompare(b.type));
-
   body.innerHTML = `
     <div class="section-label">Your Buildings (${myInfra.length})</div>
-    ${myInfraSorted.length === 0
-      ? `<div style="color:var(--muted);font-size:0.85rem;margin-bottom:1rem">No buildings yet.</div>`
-      : `<div style="display:flex;flex-direction:column;gap:0.35rem;margin-bottom:1rem">
-          ${myInfraSorted.map(b => `
-            <div style="display:flex;align-items:center;justify-content:space-between;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:0.35rem 0.6rem">
-              <span style="font-size:0.9rem">${INFRA_ICONS[b.type] || '🏗️'} ${b.type.charAt(0).toUpperCase()+b.type.slice(1)} <span style="color:var(--muted);font-size:0.78rem">(${b.x},${b.y})</span></span>
-              <button onclick="deleteBuilding('${b.id}','${b.type}',${b.x},${b.y})" style="background:#ef444422;border:1px solid #ef4444;color:#ef4444;border-radius:6px;padding:0.15rem 0.5rem;font-size:0.78rem;cursor:pointer">🗑 Delete</button>
-            </div>
-          `).join('')}
-        </div>`
-    }
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0.4rem;margin-bottom:0.5rem">
+      ${Object.keys(CONFIG.INFRA_COSTS).map(type => `
+        <div style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:0.4rem;text-align:center">
+          <div style="font-size:1.1rem">${INFRA_ICONS[type] || '🏗️'}</div>
+          <div style="font-size:0.85rem;font-weight:700">${counts[type] || 0}</div>
+        </div>
+      `).join('')}
+    </div>
+    <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.75rem">💡 Click any of your tiles on the map in Build mode to manage or delete a building.</div>
     <div class="section-label">Build New</div>
     <div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.75rem">${statusHtml}</div>
     ${Object.entries(CONFIG.INFRA_COSTS).map(([type, info]) => {
