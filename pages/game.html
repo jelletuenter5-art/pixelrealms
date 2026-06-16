@@ -1098,7 +1098,7 @@ async function renderNations(body) {
   // Cache all countries for spectate mode lookup
   allCountries.forEach(c => { allCountriesCache[c.id] = c; });
 
-  const alive = allCountries.filter(c => c.is_alive).sort((a,b) => b.pixel_count - a.pixel_count);
+  const alive = allCountries.filter(c => c.is_alive).sort((a,b) => b.pixel_count - a.pixel_count || a.id.localeCompare(b.id));
   const dead = allCountries.filter(c => !c.is_alive).sort((a,b) => a.name.localeCompare(b.name));
   const myId = engine.country?.id;
   let rank = 0;
@@ -1256,11 +1256,13 @@ function focusCountry(id) {
   if (SPECTATE) spectateCountry(id, true);
 }
 
-function spectateCountry(id, fromClick = false) {
-  // Pull freshest data: realtime updates go into engine.countries for alive nations
-  const c = engine.countries[id] || allCountriesCache[id];
-  if (!c) return;
+async function spectateCountry(id, fromClick = false) {
   spectateTargetId = id;
+  // Always fetch fresh data from DB to avoid stale cache issues
+  const { data: fresh } = await sb.from('countries').select('*, profiles(username)').eq('id', id).single();
+  const c = fresh || engine.countries[id] || allCountriesCache[id];
+  if (!c) return;
+  if (fresh) allCountriesCache[id] = fresh;
   if (fromClick) {
     switchRightTab('spectate');
     document.querySelector('.right-panel').classList.add('open');
