@@ -1030,7 +1030,7 @@ function setMode(mode) {
   currentMode = mode;
   document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(`mode${mode.charAt(0).toUpperCase() + mode.slice(1)}`).classList.add('active');
-  canvas.style.cursor = mode === 'attack' ? 'url("data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'32\' height=\'32\' viewBox=\'0 0 32 32\'><text y=\'28\' font-size=\'28\'>⚔️</text></svg>") 16 16, crosshair' : mode === 'build' ? 'cell' : 'crosshair';
+  canvas.style.cursor = mode === 'attack' ? 'url("data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 32 32\'><text y=\'28\' font-size=\'28\'>⚔️</text></svg>") 8 8, crosshair' : mode === 'build' ? 'cell' : 'crosshair';
 }
 
 // ── ZOOM ──────────────────────────────────────────────
@@ -1670,7 +1670,7 @@ function chatMsgHtml(m) {
   const c = engine.countries[m.country_id] || {};
   const nation = c.name ? `${c.flag_emoji || ''}${c.name}` : (m.player_name || 'Unknown');
   const userLabel = m.player_name ? ` <span style="color:var(--muted);font-weight:400;font-size:0.85em">(${escapeHtml(m.player_name)})</span>` : '';
-  const time = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+  const time = m.created_at ? (() => { const d = new Date(m.created_at); const day = d.getDate(); const mon = d.toLocaleString([], { month: 'short' }); return `${day}${mon} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`; })() : '';
   return `<div class="chat-msg">
     <div class="sender" style="color:${c.color || 'var(--green)'}">
       ${nation}${userLabel}<span style="color:var(--muted);font-weight:400;font-size:0.75em;margin-left:0.4em">${time}</span>
