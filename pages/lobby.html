@@ -638,6 +638,10 @@ async function submitJoin(gameId) {
 
   if (!name) { document.getElementById('joinError').textContent = 'Enter a country name.'; return; }
 
+  // Check for duplicate name in this game
+  const { data: existing } = await sb.from('countries').select('id').eq('game_id', gameId).ilike('name', name).limit(1);
+  if (existing?.length) { document.getElementById('joinError').textContent = 'That nation name is already taken in this game.'; return; }
+
   // Insert country
   const { data: country, error } = await sb.from('countries').insert({
     game_id: gameId,
@@ -900,16 +904,28 @@ async function resolveFeedback(id) {
 
 // ── UPDATES ───────────────────────────────────────────
 async function loadUpdates() {
-  const { data } = await sb.from('game_updates').select('*').order('created_at', { ascending: false });
+  const { data, error } = await sb.from('game_updates').select('*').order('created_at', { ascending: false });
   const list = document.getElementById('updatesList');
+  if (error) { list.innerHTML = `<div style="color:var(--red)">Could not load updates: ${escapeHtmlLobby(error.message)}</div>`; return; }
   if (!data?.length) { list.innerHTML = '<div style="color:var(--muted)">No updates posted yet — check back soon!</div>'; return; }
+  const isAdmin = adminIds.includes(currentUser?.id);
   list.innerHTML = data.map(u => `<div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:0.75rem">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
       <span style="font-family:'Cinzel',serif;font-weight:700;color:var(--green)">${escapeHtmlLobby(u.version)}</span>
-      <span style="font-size:0.75rem;color:var(--muted)">${new Date(u.created_at).toLocaleDateString()}</span>
+      <div style="display:flex;align-items:center;gap:0.5rem">
+        <span style="font-size:0.75rem;color:var(--muted)">${new Date(u.created_at).toLocaleDateString()}</span>
+        ${isAdmin ? `<button class="btn-sm" style="padding:2px 8px;font-size:0.75rem;background:var(--red);color:#fff;border:none;border-radius:5px;cursor:pointer" onclick="deleteUpdate('${u.id}')">Delete</button>` : ''}
+      </div>
     </div>
     <div style="font-size:0.9rem;line-height:1.6;white-space:pre-wrap;color:var(--text)">${escapeHtmlLobby(u.content)}</div>
   </div>`).join('');
+}
+
+async function deleteUpdate(id) {
+  if (!confirm('Delete this update?')) return;
+  const { error } = await sb.from('game_updates').delete().eq('id', id);
+  if (error) { alert('Delete failed: ' + error.message); return; }
+  loadUpdates();
 }
 
 async function postUpdate() {

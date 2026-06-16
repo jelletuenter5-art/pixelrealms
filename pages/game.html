@@ -1066,18 +1066,31 @@ function renderLeftPanel() {
 }
 
 async function renderNations(body) {
-  const countries = Object.values(engine.countries).sort((a,b) => b.pixel_count - a.pixel_count);
-  if (!countries.length) { body.innerHTML = '<div style="color:var(--muted)">No nations yet</div>'; return; }
+  const { data: allCountries } = await sb.from('countries').select('*').eq('game_id', GAME_ID);
+  if (!allCountries?.length) { body.innerHTML = '<div style="color:var(--muted)">No nations yet</div>'; return; }
 
+  const alive = allCountries.filter(c => c.is_alive).sort((a,b) => b.pixel_count - a.pixel_count);
+  const dead = allCountries.filter(c => !c.is_alive).sort((a,b) => a.name.localeCompare(b.name));
   const myId = engine.country?.id;
-  body.innerHTML = `<div class="section-label">Nations (${countries.length})</div>` +
-    countries.map((c, i) => `<div class="country-item ${c.id === myId ? 'me' : ''}" onclick="focusCountry('${c.id}')">
+  let rank = 0;
+  const aliveHtml = alive.map(c => {
+    rank++;
+    return `<div class="country-item ${c.id === myId ? 'me' : ''}" onclick="focusCountry('${c.id}')">
       <div class="country-flag" style="background:${c.color}"></div>
       <div class="country-info">
-        <div class="country-name">#${i + 1} ${c.flag_emoji || ''} ${c.name} ${c.id === myId ? '(You)' : ''}</div>
+        <div class="country-name">#${rank} ${c.flag_emoji || ''} ${c.name} ${c.id === myId ? '(You)' : ''}</div>
         <div class="country-stats">🗺️ ${c.pixel_count}px · ⚔️ ${c.army_size} · 💰 ${Math.floor(c.gold)}</div>
       </div>
+    </div>`;
+  }).join('');
+  const deadHtml = dead.map(c => `<div class="country-item" style="opacity:0.45" onclick="focusCountry('${c.id}')">
+      <div class="country-flag" style="background:${c.color}"></div>
+      <div class="country-info">
+        <div class="country-name">${c.flag_emoji || ''} ${c.name} ${c.id === myId ? '(You)' : ''} <span style="color:var(--red);font-size:0.75rem">ELIMINATED</span></div>
+        <div class="country-stats" style="color:var(--muted)">Conquered</div>
+      </div>
     </div>`).join('');
+  body.innerHTML = `<div class="section-label">Nations (${alive.length} alive · ${dead.length} eliminated)</div>` + aliveHtml + deadHtml;
 }
 
 async function renderEvents(body) {
