@@ -1670,12 +1670,24 @@ function chatMsgHtml(m) {
   const c = engine.countries[m.country_id] || {};
   const nation = c.name ? `${c.flag_emoji || ''}${c.name}` : (m.player_name || 'Unknown');
   const userLabel = m.player_name ? ` <span style="color:var(--muted);font-weight:400;font-size:0.85em">(${escapeHtml(m.player_name)})</span>` : '';
-  const time = m.created_at ? (() => { const d = new Date(m.created_at); const day = d.getDate(); const mon = d.toLocaleString([], { month: 'short' }); return `${day}${mon} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`; })() : '';
+  const timestamp = m.created_at ? (() => {
+    const d = new Date(m.created_at);
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const hm = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (isToday) return hm;
+    const day = d.getDate();
+    const mon = d.toLocaleString([], { month: 'short' });
+    return `${day} ${mon} · ${hm}`;
+  })() : '';
   return `<div class="chat-msg">
     <div class="sender" style="color:${c.color || 'var(--green)'}">
-      ${nation}${userLabel}<span style="color:var(--muted);font-weight:400;font-size:0.75em;margin-left:0.4em">${time}</span>
+      ${nation}${userLabel}
     </div>
-    <div class="body">${escapeHtml(m.content)}</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem">
+      <div class="body" style="flex:1">${escapeHtml(m.content)}</div>
+      ${timestamp ? `<span style="color:var(--muted);font-size:0.7rem;white-space:nowrap;margin-top:0.1rem;flex-shrink:0">${timestamp}</span>` : ''}
+    </div>
   </div>`;
 }
 
