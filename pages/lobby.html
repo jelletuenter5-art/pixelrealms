@@ -917,13 +917,13 @@ async function loadUpdates() {
   if (error) { list.innerHTML = `<div style="color:var(--red)">Could not load updates: ${escapeHtmlLobby(error.message)}</div>`; return; }
   if (!data?.length) { list.innerHTML = '<div style="color:var(--muted)">No updates posted yet — check back soon!</div>'; return; }
   const isAdmin = currentProfile?.is_admin;
-  list.innerHTML = data.map(u => `<div id="update-card-${u.id}" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:0.75rem">
+  list.innerHTML = data.map(u => `<div id="update-card-${u.id}" data-version="${escapeHtmlLobby(u.version)}" data-content="${escapeHtmlLobby(u.content)}" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:0.75rem">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
       <span style="font-family:'Cinzel',serif;font-weight:700;color:var(--green)">${escapeHtmlLobby(u.version)}</span>
       <div style="display:flex;align-items:center;gap:0.5rem">
         <span style="font-size:0.75rem;color:var(--muted)">${new Date(u.created_at).toLocaleDateString()}</span>
         ${isAdmin ? `
-          <button class="btn-sm" style="padding:2px 8px;font-size:0.75rem" onclick="editUpdate('${u.id}', ${JSON.stringify(u.version).replace(/'/g,"&#39;")}, ${JSON.stringify(u.content).replace(/'/g,"&#39;")})">Edit</button>
+          <button class="btn-sm" style="padding:2px 8px;font-size:0.75rem" data-edit-id="${u.id}" onclick="editUpdate(this)">Edit</button>
           <button class="btn-sm" style="padding:2px 8px;font-size:0.75rem;background:var(--red);color:#fff;border:none;border-radius:5px;cursor:pointer" onclick="deleteUpdate('${u.id}')">Delete</button>
         ` : ''}
       </div>
@@ -939,8 +939,11 @@ async function deleteUpdate(id) {
   loadUpdates();
 }
 
-function editUpdate(id, version, content) {
+function editUpdate(btn) {
+  const id = btn.dataset.editId;
   const card = document.getElementById(`update-card-${id}`);
+  const version = card.dataset.version;
+  const content = card.dataset.content;
   card.innerHTML = `
     <div class="form-group" style="margin-bottom:0.5rem">
       <input type="text" id="edit-version-${id}" value="${escapeHtmlLobby(version)}" maxlength="20" style="width:100%">
