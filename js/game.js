@@ -197,11 +197,6 @@ class GameEngine {
   async attack(x, y) {
     if (!this.country) return { ok: false, msg: 'No country.' };
 
-    const goldCost = CONFIG.ATTACK_GOLD_COST;
-    if (this.country.gold < goldCost) {
-      return { ok: false, msg: `Not enough gold. Need ${goldCost}.` };
-    }
-
     const key = `${x},${y}`;
     const pixel = this.pixelData[key];
     if (!pixel || !pixel.country_id) return { ok: false, msg: 'No enemy here.' };
@@ -229,9 +224,8 @@ class GameEngine {
     // Apply losses
     const newAttackerArmy = Math.max(1, this.country.army_size - attackerLoss);
     const newDefenderArmy = Math.max(1, defender.army_size - defenderLoss);
-    const newGold = this.country.gold - goldCost;
 
-    await sb.from('countries').update({ army_size: newAttackerArmy, gold: newGold })
+    await sb.from('countries').update({ army_size: newAttackerArmy })
       .eq('id', this.country.id);
     await sb.from('countries').update({ army_size: newDefenderArmy })
       .eq('id', defender.id);
@@ -249,7 +243,6 @@ class GameEngine {
     }
 
     this.country.army_size = newAttackerArmy;
-    this.country.gold = newGold;
 
     // Log attack
     await sb.from('attacks').insert({
@@ -389,6 +382,27 @@ class GameEngine {
     await sb.channel(`gameover:${this.gameId}`).send({
       type: 'broadcast', event: 'gameover', payload: { winnerName: winner.name, winnerId: winner.player_id }
     });
+
+    // Open a fresh world for this category so the lobby doesn't go empty
+    const cat = this.game?.category;
+    if (cat) {
+      const catCfg = {
+        small:  { maxPlayers: 20, mapWidth: 60,  mapHeight: 50,  label: 'Small Realm' },
+        medium: { maxPlayers: 35, mapWidth: 100, mapHeight: 80,  label: 'Medium Realm' },
+        big:    { maxPlayers: 50, mapWidth: 150, mapHeight: 120, label: 'Grand Realm' },
+      };
+      const cfg = catCfg[cat];
+      if (cfg) {
+        const { data: existing } = await sb.from('games').select('id').eq('category', cat).eq('is_open', true).neq('id', this.gameId).limit(1);
+        if (!existing?.length) {
+          const { count } = await sb.from('games').select('id', { count: 'exact', head: true }).eq('category', cat);
+          const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+          let code = 'PR-';
+          for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+          await sb.from('games').insert({ name: `${cfg.label} #${(count || 0) + 1}`, code, category: cat, is_open: true, max_players: cfg.maxPlayers, map_width: cfg.mapWidth, map_height: cfg.mapHeight, map_seed: Math.floor(Math.random() * 9999999), status: 'waiting' });
+        }
+      }
+    }
 
     setTimeout(async () => {
       await sb.from('games').delete().eq('id', this.gameId);

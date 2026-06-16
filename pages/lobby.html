@@ -134,14 +134,18 @@
     border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  .notif-dot-tab { display:none; width:7px; height:7px; border-radius:50%; background:var(--red); margin-left:4px; vertical-align:middle; }
+  .notif-dot-tab.show { display:inline-block; }
+
   /* MOBILE RESPONSIVE */
   @media (max-width: 700px) {
     .main { padding: 1rem 0.75rem; }
     .topbar { padding: 0.75rem 1rem; }
     .topbar-logo { font-size: 1.05rem; }
     .username-badge { display: none; }
-    .page-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; padding-bottom: 0.5rem; }
-    .page-tab { padding: 0.6rem 0.9rem; font-size: 0.8rem; white-space: nowrap; flex: 0 0 auto; }
+    .page-tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; overflow-x: visible; gap: 0.3rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+    .page-tab { padding: 0.55rem 0.4rem; font-size: 0.7rem; white-space: nowrap; text-align: center; border: 1px solid var(--border); border-radius: 6px; border-bottom: 2px solid transparent; margin-bottom: 0; }
+    .page-tab.active { border-color: var(--green); border-bottom-color: var(--green); }
     .game-grid { grid-template-columns: 1fr; }
     .lb-header { display: none; }
     .lb-row {
@@ -177,18 +181,29 @@
 
 <div class="main">
   <div class="page-tabs">
-    <button class="page-tab active" onclick="showSection('myGames')">⚔️ My Realms</button>
-    <button class="page-tab" onclick="showSection('browse')">🌍 Worlds</button>
-    <button class="page-tab" onclick="showSection('leaderboard')">🏆 Leaderboard</button>
-    <button class="page-tab" onclick="showSection('settings')">⚙️ Settings</button>
-    <button class="page-tab" onclick="showSection('feedback')">💬 Feedback</button>
-    <button class="page-tab" id="adminTab" onclick="showSection('admin')" style="display:none">🛠️ Admin</button>
+    <button class="page-tab active" onclick="showSection('myGames', event)">⚔️ My Realms</button>
+    <button class="page-tab" onclick="showSection('archived', event)">📦 Archived</button>
+    <button class="page-tab" onclick="showSection('browse', event)">🌍 Worlds</button>
+    <button class="page-tab" onclick="showSection('leaderboard', event)">🏆 Leaderboard</button>
+    <button class="page-tab" onclick="showSection('settings', event)">⚙️ Settings</button>
+    <button class="page-tab" onclick="showSection('feedback', event)">💬 Feedback<span class="notif-dot-tab" id="feedbackDot"></span></button>
+    <button class="page-tab" onclick="showSection('updates', event)">📋 Updates</button>
+    <button class="page-tab" id="adminTab" onclick="showSection('admin', event)" style="display:none">🛠️ Admin<span class="notif-dot-tab" id="adminDot"></span></button>
   </div>
 
   <!-- MY GAMES -->
   <div id="myGames" class="section active">
     <div id="myGamesGrid" class="game-grid">
       <div style="color:var(--muted); padding:2rem">Loading your realms…</div>
+    </div>
+  </div>
+
+  <!-- ARCHIVED GAMES -->
+  <div id="archived" class="section">
+    <h2 style="font-family:'Cinzel',serif; margin-bottom:1.5rem">📦 Archived Realms</h2>
+    <p style="color:var(--muted); font-size:0.9rem; margin-bottom:1.5rem">Games you've left or that were inactive. Unarchive to bring them back to My Realms.</p>
+    <div id="archivedGamesGrid" class="game-grid">
+      <div style="color:var(--muted); padding:2rem">Loading…</div>
     </div>
   </div>
 
@@ -253,9 +268,30 @@
     <div id="myFeedbackList"><div style="color:var(--muted)">Loading…</div></div>
   </div>
 
+  <!-- UPDATES -->
+  <div id="updates" class="section">
+    <h2 style="font-family:'Cinzel',serif; margin-bottom:1.5rem">📋 Game Updates</h2>
+    <div id="updatesList"><div style="color:var(--muted)">Loading…</div></div>
+  </div>
+
   <!-- ADMIN -->
   <div id="admin" class="section">
-    <h2 style="font-family:'Cinzel',serif; margin-bottom:1.5rem">Admin — Player Feedback</h2>
+    <h2 style="font-family:'Cinzel',serif; margin-bottom:1.5rem">🛠️ Admin Panel</h2>
+    <div style="max-width:520px; margin-bottom:2rem; background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:1.25rem">
+      <h3 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:1rem">📋 Post Game Update</h3>
+      <div class="form-group">
+        <label>Version Code (e.g. v1.2, Patch-3)</label>
+        <input type="text" id="updateVersion" placeholder="v1.0" maxlength="20">
+      </div>
+      <div class="form-group">
+        <label>Update Content</label>
+        <textarea id="updateContent" rows="4" maxlength="2000" placeholder="What changed in this update…"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="postUpdate()">Post Update</button>
+      <div id="updateMsg" style="margin-top:0.5rem; font-size:0.85rem"></div>
+    </div>
+    <hr style="border-color:var(--border); margin-bottom:1.5rem">
+    <h3 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:1rem; color:var(--muted)">Player Feedback</h3>
     <div id="adminFeedbackList"><div style="color:var(--muted)">Loading…</div></div>
   </div>
 </div>
@@ -295,8 +331,19 @@ const ADMIN_AVATAR_EMOJIS = ['🔱','⚡','🌟','🎖️','👁️','🔮','�
 
   if (profile?.is_admin) {
     document.getElementById('adminTab').style.display = '';
-    loadAdminFeedback();
+    // Admin red dot: new open feedback since last view
+    const lastAdminView = parseInt(localStorage.getItem('pr_last_admin_view') || '0');
+    const { count: newFeedback } = await sb.from('feedback').select('id', { count: 'exact', head: true })
+      .eq('status', 'open').gte('created_at', new Date(lastAdminView).toISOString());
+    if (newFeedback) document.getElementById('adminDot')?.classList.add('show');
   }
+
+  // Feedback red dot: admin replied since last view
+  const lastFeedbackView = parseInt(localStorage.getItem('pr_last_feedback_view') || '0');
+  const { data: unreadReplies } = await sb.from('feedback').select('id')
+    .eq('user_id', currentUser.id).not('admin_reply', 'is', null)
+    .gte('updated_at', new Date(lastFeedbackView).toISOString());
+  if (unreadReplies?.length) document.getElementById('feedbackDot')?.classList.add('show');
 
   initSettings();
   loadMyFeedback();
@@ -304,6 +351,8 @@ const ADMIN_AVATAR_EMOJIS = ['🔱','⚡','🌟','🎖️','👁️','🔮','�
   await loadMyGames();
   await loadOpenGames();
   await loadLeaderboard();
+  loadArchivedGames();
+  loadUpdates();
 })();
 
 async function logout() {
@@ -326,11 +375,17 @@ async function inviteFriends() {
   }
 }
 
-function showSection(id) {
+function showSection(id, ev) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  event.target.classList.add('active');
+  if (ev?.currentTarget) ev.currentTarget.classList.add('active');
+  else if (ev?.target) ev.target.closest('.page-tab')?.classList.add('active');
+  // Clear notif dots
+  if (id === 'feedback') { localStorage.setItem('pr_last_feedback_view', Date.now()); document.getElementById('feedbackDot')?.classList.remove('show'); loadMyFeedback(); }
+  if (id === 'admin') { localStorage.setItem('pr_last_admin_view', Date.now()); document.getElementById('adminDot')?.classList.remove('show'); loadAdminFeedback(); }
+  if (id === 'updates') loadUpdates();
+  if (id === 'archived') loadArchivedGames();
 }
 
 // ── MY GAMES ──────────────────────────────────────
@@ -345,31 +400,97 @@ async function loadMyGames() {
     grid.innerHTML = `<div class="empty-state">
       <div class="icon">🏴</div>
       <p>You haven't joined any games yet.</p>
-      <button class="btn btn-primary" onclick="showSection('browse')">Find a Game</button>
+      <button class="btn btn-primary" onclick="showSection('browse', {target:{closest:()=>null}})">Find a Game</button>
     </div>`;
     return;
   }
 
-  grid.innerHTML = countries.map(c => {
+  const archivedGames = new Set(JSON.parse(localStorage.getItem('pr_archived_games') || '[]'));
+  const THREE_DAYS = 3 * 24 * 3600 * 1000;
+  const now = Date.now();
+
+  // Auto-archive eliminated countries inactive for 3+ days
+  countries.forEach(c => {
+    if (!c.is_alive && now - new Date(c.last_active).getTime() > THREE_DAYS) {
+      archivedGames.add(c.game_id);
+    }
+  });
+  localStorage.setItem('pr_archived_games', JSON.stringify([...archivedGames]));
+
+  const active = countries.filter(c => c.games && !archivedGames.has(c.game_id));
+  if (!active.length) {
+    grid.innerHTML = `<div class="empty-state"><div class="icon">🏴</div><p>No active realms. Check Archived tab or find a new world.</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = active.map(c => {
     const g = c.games;
     const statusClass = `badge-${g.status}`;
     const statusLabel = g.status.charAt(0).toUpperCase() + g.status.slice(1);
+    const elim = !c.is_alive ? `<span class="badge badge-finished" style="margin-left:0.25rem">Eliminated</span>` : '';
     return `<div class="game-card" onclick="enterGame('${g.id}')">
       <div class="game-card-header">
         <span class="game-name">${g.name}</span>
-        <span class="badge ${statusClass}">${statusLabel}</span>
+        <div style="display:flex;gap:0.4rem;align-items:center"><span class="badge ${statusClass}">${statusLabel}</span>${elim}</div>
       </div>
       <div class="game-meta">
         <span><span class="country-dot" style="background:${c.color}"></span> ${c.name}</span>
         <span>🗺️ ${c.pixel_count} pixels</span>
-        <span>💰 ${c.gold} gold</span>
+        <span>💰 ${Math.floor(c.gold)} gold</span>
       </div>
       <div style="margin-top:0.75rem; display:flex; justify-content:space-between; align-items:center">
         <span class="game-code">${g.code}</span>
-        <span style="font-size:0.75rem; color:var(--muted)">${g.current_players}/${g.max_players} players</span>
+        <button onclick="archiveGame('${g.id}',event)" style="font-size:0.72rem;padding:0.2rem 0.5rem;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer">Archive</button>
       </div>
     </div>`;
   }).join('');
+}
+
+function archiveGame(gameId, ev) {
+  ev.stopPropagation();
+  const arr = JSON.parse(localStorage.getItem('pr_archived_games') || '[]');
+  if (!arr.includes(gameId)) arr.push(gameId);
+  localStorage.setItem('pr_archived_games', JSON.stringify(arr));
+  loadMyGames();
+  loadArchivedGames();
+}
+
+async function loadArchivedGames() {
+  const archivedIds = JSON.parse(localStorage.getItem('pr_archived_games') || '[]');
+  const grid = document.getElementById('archivedGamesGrid');
+  if (!archivedIds.length) { grid.innerHTML = '<div style="color:var(--muted)">No archived realms.</div>'; return; }
+
+  const { data: countries } = await sb.from('countries')
+    .select('*, games(*)')
+    .eq('player_id', currentUser.id)
+    .in('game_id', archivedIds);
+
+  if (!countries?.length) { grid.innerHTML = '<div style="color:var(--muted)">No archived realms found.</div>'; return; }
+
+  grid.innerHTML = countries.filter(c => c.games).map(c => {
+    const g = c.games;
+    return `<div class="game-card">
+      <div class="game-card-header">
+        <span class="game-name">${g.name}</span>
+        <span class="badge badge-finished">Archived</span>
+      </div>
+      <div class="game-meta">
+        <span><span class="country-dot" style="background:${c.color}"></span> ${c.name}</span>
+        <span>🗺️ ${c.pixel_count} pixels</span>
+      </div>
+      <div style="margin-top:0.75rem; display:flex; gap:0.5rem">
+        <button class="btn btn-primary" style="flex:1;font-size:0.8rem;padding:0.5rem" onclick="unarchiveGame('${g.id}')">Unarchive</button>
+        <button class="btn-sm" onclick="enterGame('${g.id}')">View</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function unarchiveGame(gameId) {
+  const arr = JSON.parse(localStorage.getItem('pr_archived_games') || '[]');
+  localStorage.setItem('pr_archived_games', JSON.stringify(arr.filter(id => id !== gameId)));
+  loadArchivedGames();
+  loadMyGames();
 }
 
 // ── OPEN WORLDS ───────────────────────────────────
@@ -473,7 +594,11 @@ function showCreateCountryModal(gameId, gameName) {
     </div>
     <div class="form-group">
       <label>Flag Emoji</label>
-      <input type="text" id="flagEmoji" placeholder="🏴" maxlength="4" style="width:100px">
+      <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem" id="flagEmojiPicker">
+        ${['🏴','⚔️','🦁','🐉','🌟','🔥','💀','👑','🛡️','🦅','⚡','🌊','🌙','☀️','🗡️','🏰','🌿','❄️','🌋','💎','🔱','🐻','🦊','🐺','⚓','🎯','🏹','🔮','🌺','🐦'].map((e, idx) =>
+          `<div onclick="selectFlagEmoji(this,'${e}')" style="width:34px;height:34px;border-radius:6px;background:var(--panel2);border:2px solid ${idx===0?'var(--green)':'transparent'};display:flex;align-items:center;justify-content:center;font-size:1.1rem;cursor:pointer;transition:all 0.15s">${e}</div>`
+        ).join('')}
+      </div>
     </div>
     <div style="display:flex;gap:0.75rem;margin-top:1rem">
       <button class="btn btn-primary" style="flex:1" onclick="submitJoin('${gameId}')">Found My Country</button>
@@ -483,7 +608,14 @@ function showCreateCountryModal(gameId, gameName) {
   </div>`;
   document.body.appendChild(modal);
   window._selectedColor = CONFIG.COUNTRY_COLORS[0];
+  window._selectedFlag = '🏴';
   document.querySelector('.color-swatch').style.borderColor = '#fff';
+}
+
+function selectFlagEmoji(el, emoji) {
+  document.querySelectorAll('#flagEmojiPicker div').forEach(d => d.style.borderColor = 'transparent');
+  el.style.borderColor = 'var(--green)';
+  window._selectedFlag = emoji;
 }
 
 function selectColor(el, color) {
@@ -495,7 +627,7 @@ function selectColor(el, color) {
 async function submitJoin(gameId) {
   const name = document.getElementById('countryName').value.trim();
   const color = window._selectedColor || CONFIG.COUNTRY_COLORS[0];
-  const flag = document.getElementById('flagEmoji').value.trim() || '🏳️';
+  const flag = window._selectedFlag || '🏴';
 
   if (!name) { document.getElementById('joinError').textContent = 'Enter a country name.'; return; }
 
@@ -584,7 +716,7 @@ async function createWorld(category) {
 async function loadLeaderboard() {
   const [{ data: profiles }, { data: countries }] = await Promise.all([
     sb.from('profiles').select('*'),
-    sb.from('countries').select('player_id, pixel_count'),
+    sb.from('countries').select('player_id, pixel_count, is_alive'),
   ]);
 
   if (!profiles || profiles.length === 0) {
@@ -594,8 +726,10 @@ async function loadLeaderboard() {
 
   // Sum live pixel counts per player across all their active countries
   const livePixels = {};
+  const liveGames = {};
   (countries || []).forEach(c => {
     livePixels[c.player_id] = (livePixels[c.player_id] || 0) + (c.pixel_count || 0);
+    if (c.is_alive) liveGames[c.player_id] = (liveGames[c.player_id] || 0) + 1;
   });
 
   const ranked = profiles.map(p => ({
@@ -612,7 +746,7 @@ async function loadLeaderboard() {
     <div class="lb-name">${p.avatar_emoji || '🙂'} ${p.username}</div>
     <div class="lb-stat highlight" data-label="Wins">${p.total_wins}</div>
     <div class="lb-stat highlight" data-label="Pixels">${p.totalPixels.toLocaleString()}</div>
-    <div class="lb-stat" data-label="Games">${p.games_played}</div>
+    <div class="lb-stat" data-label="Games">${p.games_played || 0}${liveGames[p.id] ? ` <span style="color:var(--green);font-size:0.75rem">(+${liveGames[p.id]} active)</span>` : ''}</div>
     <div class="lb-stat" data-label="Joined">${new Date(p.created_at).toLocaleDateString()}</div>
   </div>`).join('');
 }
@@ -755,6 +889,32 @@ async function replyFeedback(id) {
 async function resolveFeedback(id) {
   await sb.from('feedback').update({ status: 'resolved', resolved_at: new Date().toISOString() }).eq('id', id);
   loadAdminFeedback();
+}
+
+// ── UPDATES ───────────────────────────────────────────
+async function loadUpdates() {
+  const { data } = await sb.from('game_updates').select('*').order('created_at', { ascending: false });
+  const list = document.getElementById('updatesList');
+  if (!data?.length) { list.innerHTML = '<div style="color:var(--muted)">No updates posted yet — check back soon!</div>'; return; }
+  list.innerHTML = data.map(u => `<div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:0.75rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+      <span style="font-family:'Cinzel',serif;font-weight:700;color:var(--green)">${escapeHtmlLobby(u.version)}</span>
+      <span style="font-size:0.75rem;color:var(--muted)">${new Date(u.created_at).toLocaleDateString()}</span>
+    </div>
+    <div style="font-size:0.9rem;line-height:1.6;white-space:pre-wrap;color:var(--text)">${escapeHtmlLobby(u.content)}</div>
+  </div>`).join('');
+}
+
+async function postUpdate() {
+  const version = document.getElementById('updateVersion').value.trim();
+  const content = document.getElementById('updateContent').value.trim();
+  const msg = document.getElementById('updateMsg');
+  if (!version || !content) { msg.style.color = 'var(--red)'; msg.textContent = 'Fill both fields.'; return; }
+  const { error } = await sb.from('game_updates').insert({ version, content, posted_by: currentUser.id });
+  if (error) { msg.style.color = 'var(--red)'; msg.textContent = error.message; return; }
+  msg.style.color = 'var(--green)'; msg.textContent = '✅ Posted!';
+  document.getElementById('updateVersion').value = '';
+  document.getElementById('updateContent').value = '';
 }
 
 function escapeHtmlLobby(s) {
