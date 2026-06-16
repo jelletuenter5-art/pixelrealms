@@ -1522,8 +1522,8 @@ function setupRealtime() {
   engine.subscribeToGameOver(({ winnerName, winnerId }) => {
     const youWon = winnerId === currentUser.id;
     document.getElementById('gameOverText').textContent = youWon
-      ? `Victory! Your nation has conquered the entire realm. This world is now closing.`
-      : `${winnerName} has conquered the realm. This world is now closing.`;
+      ? `Victory! Your nation has conquered the entire realm. You have 48 hours before this world is deleted — it will remain in your Realms tab until then.`
+      : `${winnerName} has conquered the realm. This world will be deleted in 48 hours.`;
     document.getElementById('gameOverModal').style.display = 'flex';
   });
 }

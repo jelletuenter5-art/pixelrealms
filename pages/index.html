@@ -274,7 +274,7 @@
 
   <div class="stats-strip">
     <span>Players Online: <strong id="onlineCount">—</strong></span>
-    <span>Active Games: <strong id="activeGames">—</strong></span>
+    <span>Nations Fallen: <strong id="nationsFallen">—</strong></span>
     <span>Pixels Claimed: <strong id="totalPixels">—</strong></span>
   </div>
 </div>
@@ -288,18 +288,21 @@
 
 // Fetch live stats
 async function loadStats() {
-  const [gamesRes, pixelsRes, profilesRes] = await Promise.all([
-    sb.from('games').select('id', { count: 'exact' }).eq('status', 'active'),
+  const [profilesRes, pixelsRes, deadRes] = await Promise.all([
+    sb.from('profiles').select('id, total_pixels_ever', { count: 'exact' }),
     sb.from('countries').select('pixel_count'),
-    sb.from('profiles').select('id', { count: 'exact' }),
+    sb.from('countries').select('id', { count: 'exact' }).eq('is_alive', false),
   ]);
-  document.getElementById('activeGames').textContent = gamesRes.count || 0;
-  const total = (pixelsRes.data || []).reduce((s, c) => s + c.pixel_count, 0);
-  document.getElementById('totalPixels').textContent = total.toLocaleString();
+  // Total pixels = historical (from finished games) + current live pixels
+  const historical = (profilesRes.data || []).reduce((s, p) => s + (p.total_pixels_ever || 0), 0);
+  const live = (pixelsRes.data || []).reduce((s, c) => s + (c.pixel_count || 0), 0);
+  document.getElementById('totalPixels').textContent = (historical + live).toLocaleString();
+  document.getElementById('nationsFallen').textContent = (deadRes.count || 0).toLocaleString();
+  // Random between 0.2–0.3x accounts, rounded to nearest 5
   const totalPlayers = profilesRes.count || 0;
-  // Show ~20% of total accounts as "active" (approximation)
-  const active = Math.max(1, Math.round(totalPlayers * 0.2));
-  document.getElementById('onlineCount').textContent = totalPlayers > 0 ? `~${active}` : '—';
+  const factor = 0.2 + Math.random() * 0.1;
+  const online = Math.max(1, Math.round((totalPlayers * factor) / 5) * 5);
+  document.getElementById('onlineCount').textContent = totalPlayers > 0 ? `~${online}` : '—';
 }
 loadStats();
 

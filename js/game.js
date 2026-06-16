@@ -370,14 +370,17 @@ class GameEngine {
       }).eq('id', c.player_id);
     }
 
+    const finishedAt = new Date();
+    const deleteAt = new Date(finishedAt.getTime() + 48 * 60 * 60 * 1000);
     await sb.from('games').update({
       status: 'finished',
       is_open: false,
       winner_id: winner.player_id,
-      finished_at: new Date().toISOString(),
+      finished_at: finishedAt.toISOString(),
+      delete_at: deleteAt.toISOString(),
     }).eq('id', this.gameId);
 
-    await this._logEvent('eliminated', `🏆 ${winner.name} has conquered the realm! This world will close shortly.`);
+    await this._logEvent('eliminated', `🏆 ${winner.name} has conquered the realm! The world will be deleted in 48 hours.`);
 
     // Let connected clients show a victory screen before the data is wiped
     await sb.channel(`gameover:${this.gameId}`).send({
@@ -405,9 +408,6 @@ class GameEngine {
       }
     }
 
-    setTimeout(async () => {
-      await sb.from('games').delete().eq('id', this.gameId);
-    }, 8000);
   }
 
   // ── Helpers ──────────────────────────────────────────────

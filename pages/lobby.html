@@ -417,11 +417,16 @@ async function loadMyGames() {
   const now = Date.now();
 
   // Auto-archive eliminated countries inactive for 3+ days
-  countries.forEach(c => {
+  // Also delete finished games past their delete_at time
+  for (const c of countries) {
     if (!c.is_alive && now - new Date(c.last_active).getTime() > THREE_DAYS) {
       archivedGames.add(c.game_id);
     }
-  });
+    if (c.games?.delete_at && now > new Date(c.games.delete_at).getTime()) {
+      await sb.from('games').delete().eq('id', c.game_id);
+      archivedGames.add(c.game_id);
+    }
+  }
   localStorage.setItem('pr_archived_games', JSON.stringify([...archivedGames]));
 
   const active = countries.filter(c => c.games && !archivedGames.has(c.game_id));
@@ -435,6 +440,11 @@ async function loadMyGames() {
     const statusClass = `badge-${g.status}`;
     const statusLabel = g.status.charAt(0).toUpperCase() + g.status.slice(1);
     const elim = !c.is_alive ? `<span class="badge badge-finished" style="margin-left:0.25rem">Eliminated</span>` : '';
+    let deleteWarning = '';
+    if (g.delete_at) {
+      const hoursLeft = Math.max(0, Math.ceil((new Date(g.delete_at).getTime() - now) / 3600000));
+      deleteWarning = `<div style="margin-top:0.4rem;font-size:0.78rem;color:var(--gold)">⏳ World deletes in ${hoursLeft}h</div>`;
+    }
     return `<div class="game-card" onclick="enterGame('${g.id}')">
       <div class="game-card-header">
         <span class="game-name">${g.name}</span>
@@ -445,6 +455,7 @@ async function loadMyGames() {
         <span>🗺️ ${c.pixel_count} pixels</span>
         <span>💰 ${Math.floor(c.gold)} gold</span>
       </div>
+      ${deleteWarning}
       <div style="margin-top:0.75rem; display:flex; justify-content:space-between; align-items:center">
         <span class="game-code">${g.code}</span>
         <button onclick="archiveGame('${g.id}',event)" style="font-size:0.72rem;padding:0.2rem 0.5rem;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer">Archive</button>
