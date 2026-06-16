@@ -315,7 +315,7 @@
     <div class="panel-tabs">
       <button class="panel-tab active" data-tab="country" onclick="switchRightTab('country')">My Realm</button>
       <button class="panel-tab" data-tab="infra" onclick="switchRightTab('infra')">Build</button>
-      <button class="panel-tab" data-tab="chat" onclick="switchRightTab('chat')">Chat</button>
+      <button class="panel-tab" data-tab="chat" onclick="switchRightTab('chat')">Chat<span class="notif-dot" id="chatNotifDot"></span></button>
       <button class="panel-tab" data-tab="admin" id="adminTabBtn" style="display:none" onclick="switchRightTab('admin')">🛠️ Admin</button>
     </div>
     <div id="rightPanelBody" style="flex:1;overflow-y:auto;padding:0.75rem;display:flex;flex-direction:column">
@@ -333,7 +333,7 @@
 
 <!-- Infra build modal -->
 <div id="buildModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:center;justify-content:center">
-  <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.5rem;max-width:380px;width:90%">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.5rem;max-width:380px;width:90%;max-height:90vh;overflow-y:auto">
     <h3 style="font-family:'Cinzel',serif;margin-bottom:1rem" id="buildModalTitle">Build Structure</h3>
     <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem" id="buildModalDesc"></p>
     <p style="font-size:0.8rem;color:var(--gold);margin-bottom:1rem" id="buildModalCost"></p>
@@ -359,7 +359,7 @@
     <div class="section-label">⚔️ Attack</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
       Switch to <strong>Attack</strong> mode and click an enemy tile next to your territory.
-      Each attack costs gold. Your army size vs. their army size (modified by terrain defense —
+      Your army size vs. their army size (modified by terrain defense —
       hills and mountains defend better) decides the outcome. Winning captures the tile and
       damages both armies; losing still costs you troops. Eliminate a nation by taking all
       their pixels and reducing their army to 1.
@@ -372,7 +372,7 @@
     </p>
     <ul style="font-size:0.82rem;color:var(--muted);line-height:1.8;margin-left:1.2rem">
       <li>🌾 <strong>Farm</strong> (50g) — +0.3 gold/pixel/hr, applies to your <em>whole nation</em>. Best once you have lots of pixels.</li>
-      <li>⛏️ <strong>Mine</strong> (70g) — +5 gold/hr flat income, regardless of nation size. Great early game or for small nations.</li>
+      <li>⛏️ <strong>Mine</strong> (50g) — +15 gold/hr flat income, regardless of nation size. Strong at any stage of the game.</li>
       <li>🏪 <strong>Market</strong> (60g) — reduces your army's upkeep cost by 0.02 gold/pixel/hr nation-wide. Helps sustain a big army.</li>
       <li>⚔️ <strong>Barracks</strong> (80g) — instantly adds 20 army strength.</li>
       <li>🧱 <strong>Wall</strong> (40g) — +50% defense, but only for attacks on <em>that specific tile</em>. Build on your frontline.</li>
@@ -407,6 +407,31 @@
   </div>
 </div>
 
+<!-- Attack preview modal -->
+<div id="attackPreviewModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;align-items:center;justify-content:center">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.5rem;max-width:360px;width:90%;max-height:90vh;overflow-y:auto">
+    <h3 style="font-family:'Cinzel',serif;margin-bottom:1rem">⚔️ Attack Preview</h3>
+    <div id="attackPreviewBody" style="font-size:0.85rem;line-height:1.9;color:var(--text)"></div>
+    <div style="display:flex;gap:0.5rem;margin-top:1rem">
+      <button class="btn btn-danger" id="confirmAttackBtn">⚔️ Attack!</button>
+      <button class="btn-xs" onclick="document.getElementById('attackPreviewModal').style.display='none'">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Eliminated modal -->
+<div id="eliminatedModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:400;align-items:center;justify-content:center">
+  <div style="background:var(--panel);border:1px solid var(--red);border-radius:12px;padding:2rem;max-width:380px;width:90%;text-align:center">
+    <div style="font-size:2.5rem;margin-bottom:0.5rem">💀</div>
+    <h3 style="font-family:'Cinzel',serif;margin-bottom:0.75rem;color:var(--red)">You Were Eliminated</h3>
+    <p style="font-size:0.9rem;color:var(--text);margin-bottom:1.5rem">Your nation has fallen. But the war isn't over — you can rise again.</p>
+    <div style="display:flex;flex-direction:column;gap:0.75rem">
+      <button class="btn btn-primary btn-full" onclick="rejoinGame()">🔄 Start Fresh in this World</button>
+      <button class="btn btn-danger btn-full" onclick="window.location.href='lobby.html'">← Return to Lobby</button>
+    </div>
+  </div>
+</div>
+
 <!-- Game over modal -->
 <div id="gameOverModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:400;align-items:center;justify-content:center">
   <div style="background:var(--panel);border:1px solid var(--gold);border-radius:12px;padding:2rem;max-width:380px;width:90%;text-align:center">
@@ -436,6 +461,7 @@ let selectedBuildType = null;
 let leftTab = 'nations';
 let rightTab = 'country';
 let spawnSelectionMode = false;
+let _spawning = false;
 
 const INFRA_ICONS = { farm: '🌾', barracks: '⚔️', market: '🏪', wall: '🧱', mine: '⛏️' };
 
@@ -479,8 +505,12 @@ let lastMousePos = null;
 
   // First-time players choose their own starting location
   if (engine.country) {
-    const myOwned = Object.values(engine.pixelData).filter(p => p.country_id === engine.country.id);
-    if (myOwned.length === 0) spawnSelectionMode = true;
+    if (!engine.country.is_alive) {
+      // Player was eliminated — show modal after layout loads
+    } else {
+      const myOwned = Object.values(engine.pixelData).filter(p => p.country_id === engine.country.id);
+      if (myOwned.length === 0) spawnSelectionMode = true;
+    }
   }
 
   document.getElementById('loadingScreen').style.display = 'none';
@@ -493,6 +523,11 @@ let lastMousePos = null;
   renderRightPanel();
   setupRealtime();
   checkPendingTrades();
+  checkInactiveCountries();
+
+  if (engine.country && !engine.country.is_alive) {
+    document.getElementById('eliminatedModal').style.display = 'flex';
+  }
 
   if (spawnSelectionMode) {
     document.getElementById('spawnBanner').style.display = 'flex';
@@ -541,10 +576,13 @@ async function ensurePixelsExist() {
 
 // ── SPAWN SELECTION ───────────────────────────────────
 async function chooseSpawn(tx, ty) {
+  if (_spawning) return;
+  _spawning = true;
+  try {
   const tile = mapData[ty]?.[tx];
-  if (!tile) return;
-  if (tile.terrain === 'water') { showToast("Can't found your nation on water.", 'error'); return; }
-  if (engine.pixelData[`${tx},${ty}`]?.country_id) { showToast('That tile is already claimed.', 'error'); return; }
+  if (!tile) { _spawning = false; return; }
+  if (tile.terrain === 'water') { showToast("Can't found your nation on water.", 'error'); _spawning = false; return; }
+  if (engine.pixelData[`${tx},${ty}`]?.country_id) { showToast('That tile is already claimed.', 'error'); _spawning = false; return; }
 
   const startTiles = [
     { x: tx, y: ty }, { x: tx+1, y: ty }, { x: tx-1, y: ty }, { x: tx, y: ty+1 }, { x: tx, y: ty-1 },
@@ -554,7 +592,7 @@ async function chooseSpawn(tx, ty) {
     return t2 && t2.terrain !== 'water' && !pd?.country_id;
   });
 
-  if (startTiles.length < 3) { showToast('Pick a spot with more open land around it.', 'error'); return; }
+  if (startTiles.length < 3) { showToast('Pick a spot with more open land around it.', 'error'); _spawning = false; return; }
 
   // Only claim tiles still unowned in the database — guards against a race
   // where another player claimed one of these tiles since the page loaded.
@@ -572,7 +610,7 @@ async function chooseSpawn(tx, ty) {
 
   if (claimed.length < 3) {
     showToast('That spot just got claimed by someone else — try another.', 'error');
-    return;
+    _spawning = false; return;
   }
 
   if (claimed.length !== engine.country.pixel_count) {
@@ -587,6 +625,7 @@ async function chooseSpawn(tx, ty) {
   renderMap();
   updateTopBar();
   showToast('Nation founded! Good luck, ruler.', 'ok');
+  } finally { _spawning = false; }
 }
 
 // ── CANVAS ─────────────────────────────────────────────
@@ -863,6 +902,10 @@ async function handleClick(e) {
   if (spawnSelectionMode) { chooseSpawn(tx, ty); return; }
 
   if (currentMode === 'expand') {
+    const ownCheck = engine.pixelData[`${tx},${ty}`];
+    if (ownCheck?.country_id === engine.country?.id) {
+      showToast('That tile is already yours.'); return;
+    }
     const res = await engine.expandTo(tx, ty);
     if (res.needsAttack) {
       setMode('attack');
@@ -876,9 +919,7 @@ async function handleClick(e) {
     if (!pData?.country_id || pData.country_id === engine.country.id) {
       showToast('Select an enemy tile to attack.', 'error'); return;
     }
-    const res = await engine.attack(tx, ty);
-    showToast(res.msg, res.ok && res.success ? 'ok' : 'error');
-    if (res.ok) { renderMap(); updateTopBar(); }
+    showAttackPreview(tx, ty);
   } else if (currentMode === 'build') {
     const pData = engine.pixelData[`${tx},${ty}`];
     if (!pData?.country_id || pData.country_id !== engine.country.id) {
@@ -1041,7 +1082,7 @@ async function renderNations(body) {
 async function renderEvents(body) {
   const { data } = await sb.from('game_events')
     .select('*').eq('game_id', GAME_ID)
-    .in('type', ['attack', 'eliminated', 'join', 'trade'])
+    .in('type', ['attack', 'eliminated', 'join', 'trade', 'inactive'])
     .order('created_at', { ascending: false }).limit(50);
 
   if (!data?.length) { body.innerHTML = '<div style="color:var(--muted)">No events yet</div>'; return; }
@@ -1174,6 +1215,7 @@ function switchRightTab(tab) {
     t.classList.toggle('active', t.dataset.tab === tab);
   });
   document.getElementById('chatFooter').style.display = tab === 'chat' ? 'block' : 'none';
+  if (tab === 'chat') document.getElementById('chatNotifDot')?.classList.remove('show');
   renderRightPanel();
 }
 
@@ -1386,9 +1428,10 @@ async function renderChat(body) {
 
 function chatMsgHtml(m) {
   const c = engine.countries[m.country_id] || {};
+  const countryLabel = c.name ? ` <span style="color:var(--muted);font-weight:400">(${c.name})</span>` : '';
   return `<div class="chat-msg">
     <div class="sender" style="color:${c.color || 'var(--green)'}">
-      ${c.flag_emoji || ''}${m.player_name}
+      ${c.flag_emoji || ''}${m.player_name}${countryLabel}
     </div>
     <div class="body">${escapeHtml(m.content)}</div>
   </div>`;
@@ -1424,6 +1467,9 @@ function setupRealtime() {
   });
   engine.subscribeToCountries(c => {
     if (c.player_id === currentUser.id) {
+      if (!c.is_alive && engine.country?.is_alive) {
+        document.getElementById('eliminatedModal').style.display = 'flex';
+      }
       updateTopBar();
       if (rightTab === 'country') renderRightPanel();
     }
@@ -1437,6 +1483,9 @@ function setupRealtime() {
         chatDiv.insertAdjacentHTML('beforeend', chatMsgHtml(m));
         chatDiv.scrollTop = chatDiv.scrollHeight;
       }
+    } else {
+      document.getElementById('chatNotifDot')?.classList.add('show');
+      document.getElementById('leftToggleNotifDot')?.classList.add('show');
     }
   });
   engine.subscribeTrades(payload => {
@@ -1454,6 +1503,85 @@ function setupRealtime() {
       : `${winnerName} has conquered the realm. This world is now closing.`;
     document.getElementById('gameOverModal').style.display = 'flex';
   });
+}
+
+// ── ATTACK PREVIEW ────────────────────────────────────
+function showAttackPreview(tx, ty) {
+  const pData = engine.pixelData[`${tx},${ty}`];
+  const defender = engine.countries[pData?.country_id];
+  const tile = mapData[ty]?.[tx];
+  if (!defender || !tile) return;
+
+  const wall = engine.infraData?.[`${tx},${ty}`];
+  const wallBonus = wall?.type === 'wall' ? CONFIG.INFRA_COSTS.wall.defenseBonus : 0;
+  const terrainDef = (CONFIG.TERRAIN_DEFENSE[tile.terrain] || 1) * (1 + wallBonus);
+  const myArmy = engine.country.army_size;
+  const theirArmy = defender.army_size;
+  const effectiveDef = theirArmy * terrainDef;
+  const ratio = myArmy / effectiveDef;
+  const outcome = ratio > 1.5 ? '<span style="color:var(--green)">✅ Likely Victory</span>'
+    : ratio > 0.8 ? '<span style="color:var(--gold)">⚠️ Risky Battle</span>'
+    : '<span style="color:var(--red)">❌ Likely Defeat</span>';
+
+  document.getElementById('attackPreviewBody').innerHTML = `
+    <div>Target: <strong style="color:${defender.color}">${defender.flag_emoji || ''} ${defender.name}</strong></div>
+    <div>Tile: <strong>${tile.terrain}</strong> · 🛡️ Defense ×${terrainDef.toFixed(2)}</div>
+    ${wall?.type === 'wall' ? `<div>🧱 Wall bonus: +${(wallBonus * 100).toFixed(0)}% defense</div>` : ''}
+    <div style="margin-top:0.5rem">Your army: <strong style="color:var(--red)">${myArmy}</strong></div>
+    <div>Their army: <strong>${theirArmy}</strong> (effective: ${effectiveDef.toFixed(0)})</div>
+    <div style="margin-top:0.75rem;font-size:0.95rem">${outcome}</div>
+    <div style="font-size:0.75rem;color:var(--muted);margin-top:0.25rem">Both sides lose troops regardless of outcome.</div>
+  `;
+
+  const modal = document.getElementById('attackPreviewModal');
+  modal.style.display = 'flex';
+  document.getElementById('confirmAttackBtn').onclick = async () => {
+    modal.style.display = 'none';
+    const res = await engine.attack(tx, ty);
+    showToast(res.msg, res.ok && res.success ? 'ok' : 'error');
+    if (res.ok) { renderMap(); updateTopBar(); }
+  };
+}
+
+// ── ELIMINATED / REJOIN ───────────────────────────────
+async function rejoinGame() {
+  const { data } = await sb.from('countries').update({
+    is_alive: true, pixel_count: 0,
+    gold: CONFIG.STARTING_GOLD,
+    pending_pixels: CONFIG.STARTING_EXPANSION_TOKENS,
+    army_size: CONFIG.STARTING_PIXELS * CONFIG.ARMY_PER_PIXEL,
+    surrendered_at: null,
+    last_active: new Date().toISOString(),
+  }).eq('id', engine.country.id).select().single();
+  if (data) {
+    engine.country = data;
+    engine.countries[data.id] = data;
+    spawnSelectionMode = true;
+    document.getElementById('eliminatedModal').style.display = 'none';
+    document.getElementById('spawnBanner').style.display = 'flex';
+    document.querySelector('.mode-bar').style.display = 'none';
+    renderMap(); updateTopBar(); renderLeftPanel(); renderRightPanel();
+    showToast('Ready to reclaim your glory! Choose a spawn point.');
+  }
+}
+
+// ── INACTIVE COUNTRY CHECK ────────────────────────────
+async function checkInactiveCountries() {
+  const THREE_DAYS = 3 * 24 * 3600 * 1000;
+  const now = Date.now();
+  for (const c of Object.values(engine.countries)) {
+    if (!c.is_alive || c.id === engine.country?.id) continue;
+    if (now - new Date(c.last_active).getTime() < THREE_DAYS) continue;
+    const { count } = await sb.from('game_events').select('id', { count: 'exact', head: true })
+      .eq('game_id', GAME_ID).eq('country_id', c.id).eq('type', 'inactive')
+      .gte('created_at', new Date(now - 86400000).toISOString());
+    if (!count) {
+      await sb.from('game_events').insert({
+        game_id: GAME_ID, type: 'inactive', country_id: c.id,
+        message: `⚠️ ${c.flag_emoji || ''} ${c.name} has been inactive for 3+ days.`
+      });
+    }
+  }
 }
 
 // ── TOAST ─────────────────────────────────────────────
