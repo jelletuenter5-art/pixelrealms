@@ -1025,6 +1025,7 @@ function resetView() {
 function updateTopBar() {
   const c = engine.country;
   document.getElementById('gameTitle').textContent = engine.game?.name || '';
+  if (SPECTATE) { document.querySelector('.topbar-stats').style.display = 'none'; return; }
   if (!c) return;
   document.getElementById('myCountryFlag').textContent = c.flag_emoji || '🏳️';
   document.getElementById('myCountryName').textContent = c.name;
@@ -1290,7 +1291,7 @@ function spectateCountry(id, fromClick = false) {
       ${statCard('📈 Income/hr', incomePerHr, 'blue')}
       ${statCard('🔧 Upkeep/hr', upkeep, 'muted')}
       ${statCard('🏗️ Buildings', myInfra.length, 'gold')}
-      ${statCard('🎯 Tokens', Math.floor(c.pending_pixels || 0), 'green')}
+      ${statCard('🎯 Tokens', Math.floor(Math.min((c.pending_pixels || 0) + Math.max(0, (Date.now() - new Date(c.last_active)) / 3600000) * CONFIG.PIXELS_PER_HOUR, CONFIG.MAX_STACK)), 'green')}
     </div>
     <div class="section-label">Income Breakdown</div>
     <div style="font-size:0.78rem;color:var(--muted);line-height:1.8">
