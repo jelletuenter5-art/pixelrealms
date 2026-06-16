@@ -1345,11 +1345,13 @@ function renderMyCountry(body) {
   const mines = myInfra.filter(i => i.type === 'mine').length;
   const farms = myInfra.filter(i => i.type === 'farm').length;
   const markets = myInfra.filter(i => i.type === 'market').length;
-  const flatIncome = mines * CONFIG.INFRA_COSTS.mine.flatIncome;
+  const mineFlat = mines * CONFIG.INFRA_COSTS.mine.flatIncome;
+  const minePixel = mines * CONFIG.INFRA_COSTS.mine.pixelBonus * c.pixel_count;
+  const mineIncome = mineFlat + minePixel;
 
-  const pixelIncome = (c.income_per_pixel * c.pixel_count);
-  const incomePerHr = (pixelIncome + flatIncome).toFixed(1);
-  const pixelUpkeep = c.army_upkeep_per_pixel * c.pixel_count;
+  const pixelIncome = c.income_per_pixel * c.pixel_count;
+  const incomePerHr = (pixelIncome + mineIncome).toFixed(1);
+  const pixelUpkeep = Math.max(0, c.army_upkeep_per_pixel * c.pixel_count);
   const armyUnitUpkeep = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
   const upkeep = (pixelUpkeep + armyUnitUpkeep).toFixed(1);
 
@@ -1386,12 +1388,12 @@ function renderMyCountry(body) {
     <div class="section-label">📈 Income</div>
     <div style="font-size:0.8rem;line-height:2;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">🗺️ Pixels × farms${farms > 0 ? ` (${farms} 🌾)` : ''}</span>
+        <span style="color:var(--muted)">🗺️ ${c.income_per_pixel}/px × ${c.pixel_count} px${farms > 0 ? ` (${farms} 🌾)` : ''}</span>
         <span style="color:var(--gold)">+${pixelIncome.toFixed(1)} g/hr</span>
       </div>
       ${mines > 0 ? `<div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">⛏️ Mines (${mines})</span>
-        <span style="color:var(--gold)">+${flatIncome} g/hr</span>
+        <span style="color:var(--muted)">⛏️ ${mines} mine${mines>1?'s':''} (${CONFIG.INFRA_COSTS.mine.flatIncome}flat + ${CONFIG.INFRA_COSTS.mine.pixelBonus}×${c.pixel_count}px)</span>
+        <span style="color:var(--gold)">+${mineIncome.toFixed(1)} g/hr</span>
       </div>` : ''}
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
         <span style="color:var(--text);font-weight:600">Total income</span>
@@ -1405,16 +1407,16 @@ function renderMyCountry(body) {
         <span style="color:var(--muted)">🗺️ Territory (0.3 × ${c.pixel_count} px)</span>
         <span style="color:var(--red)">−${(0.3 * c.pixel_count).toFixed(1)} g/hr</span>
       </div>
+      ${markets > 0 ? `<div style="display:flex;justify-content:space-between">
+        <span style="color:var(--muted)">🏪 Markets −${(Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, 0.3) * c.pixel_count).toFixed(1)} (${markets} × ${CONFIG.INFRA_COSTS.market.upkeepReduction}/px)</span>
+        <span style="color:var(--green)">+${(Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, 0.3) * c.pixel_count).toFixed(1)} g/hr</span>
+      </div>` : ''}
       <div style="display:flex;justify-content:space-between">
         <span style="color:var(--muted)">⚔️ Army (${CONFIG.ARMY_UPKEEP_PER_UNIT} × ${c.army_size} units)</span>
         <span style="color:var(--red)">−${armyUnitUpkeep.toFixed(1)} g/hr</span>
       </div>
-      ${markets > 0 ? `<div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">🏪 Market savings (${markets} × ${CONFIG.INFRA_COSTS.market.upkeepReduction} × ${c.pixel_count} px)</span>
-        <span style="color:var(--green)">+${(markets * CONFIG.INFRA_COSTS.market.upkeepReduction * c.pixel_count).toFixed(1)} g/hr</span>
-      </div>` : ''}
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
-        <span style="color:var(--text);font-weight:600">Net upkeep</span>
+        <span style="color:var(--text);font-weight:600">Total upkeep</span>
         <span style="color:var(--red);font-weight:700">−${upkeep} g/hr</span>
       </div>
     </div>
@@ -1536,16 +1538,21 @@ function renderInfra(body) {
   const counts = {};
   myInfra.forEach(i => { counts[i.type] = (counts[i.type] || 0) + 1; });
 
+  const myInfraSorted = [...myInfra].sort((a,b) => a.type.localeCompare(b.type));
+
   body.innerHTML = `
     <div class="section-label">Your Buildings (${myInfra.length})</div>
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0.4rem;margin-bottom:1rem">
-      ${Object.keys(CONFIG.INFRA_COSTS).map(type => `
-        <div style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:0.4rem;text-align:center">
-          <div style="font-size:1.1rem">${INFRA_ICONS[type] || '🏗️'}</div>
-          <div style="font-size:0.85rem;font-weight:700">${counts[type] || 0}</div>
-        </div>
-      `).join('')}
-    </div>
+    ${myInfraSorted.length === 0
+      ? `<div style="color:var(--muted);font-size:0.85rem;margin-bottom:1rem">No buildings yet.</div>`
+      : `<div style="display:flex;flex-direction:column;gap:0.35rem;margin-bottom:1rem">
+          ${myInfraSorted.map(b => `
+            <div style="display:flex;align-items:center;justify-content:space-between;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:0.35rem 0.6rem">
+              <span style="font-size:0.9rem">${INFRA_ICONS[b.type] || '🏗️'} ${b.type.charAt(0).toUpperCase()+b.type.slice(1)} <span style="color:var(--muted);font-size:0.78rem">(${b.x},${b.y})</span></span>
+              <button onclick="deleteBuilding('${b.id}','${b.type}',${b.x},${b.y})" style="background:#ef444422;border:1px solid #ef4444;color:#ef4444;border-radius:6px;padding:0.15rem 0.5rem;font-size:0.78rem;cursor:pointer">🗑 Delete</button>
+            </div>
+          `).join('')}
+        </div>`
+    }
     <div class="section-label">Build New</div>
     <div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.75rem">${statusHtml}</div>
     ${Object.entries(CONFIG.INFRA_COSTS).map(([type, info]) => {
@@ -1565,6 +1572,32 @@ function renderInfra(body) {
       </div>`;
     }).join('')}
   `;
+}
+
+async function deleteBuilding(infraId, type, x, y) {
+  if (!confirm(`Permanently delete ${type} at (${x},${y})? This cannot be undone.`)) return;
+  const { error } = await sb.from('infrastructure').delete().eq('id', infraId);
+  if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
+
+  delete engine.infraData[`${x},${y}`];
+
+  const c = engine.country;
+  const updates = {};
+  if (type === 'farm') {
+    updates.income_per_pixel = Math.max(0, Math.round((c.income_per_pixel - CONFIG.INFRA_COSTS.farm.incomeBonus) * 10000) / 10000);
+  } else if (type === 'market') {
+    updates.army_upkeep_per_pixel = Math.min(0.3, Math.round((c.army_upkeep_per_pixel + CONFIG.INFRA_COSTS.market.upkeepReduction) * 10000) / 10000);
+  } else if (type === 'barracks') {
+    updates.army_size = Math.max(0, c.army_size - CONFIG.INFRA_COSTS.barracks.armyBonus);
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await sb.from('countries').update(updates).eq('id', c.id);
+    Object.assign(engine.country, updates);
+  }
+
+  showToast(`${type.charAt(0).toUpperCase()+type.slice(1)} deleted.`, 'success');
+  renderRightPanel();
 }
 
 let chatMessages = [];
