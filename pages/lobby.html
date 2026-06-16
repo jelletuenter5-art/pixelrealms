@@ -883,10 +883,11 @@ async function loadAdminFeedback() {
     </div>
     <div class="feedback-msg">${escapeHtmlLobby(f.message)}</div>
     ${f.admin_reply ? `<div class="feedback-reply">💬 <strong>Your reply:</strong> ${escapeHtmlLobby(f.admin_reply)}</div>` : ''}
-    <div style="margin-top:0.6rem; display:flex; gap:0.5rem">
-      <input type="text" id="reply-${f.id}" placeholder="Reply to player…" value="${f.admin_reply ? escapeHtmlLobby(f.admin_reply) : ''}" style="flex:1">
+    <div style="margin-top:0.6rem; display:flex; gap:0.5rem; flex-wrap:wrap">
+      <input type="text" id="reply-${f.id}" placeholder="Reply to player…" value="${f.admin_reply ? escapeHtmlLobby(f.admin_reply) : ''}" style="flex:1;min-width:120px">
       <button class="btn-sm" onclick="replyFeedback('${f.id}')">Reply</button>
       ${f.status === 'open' ? `<button class="btn-sm" onclick="resolveFeedback('${f.id}')">Mark Resolved</button>` : ''}
+      <button class="btn-sm" style="background:var(--red);color:#fff" onclick="deleteFeedback('${f.id}')">Delete</button>
     </div>
   </div>`).join('');
 }
@@ -902,6 +903,13 @@ async function resolveFeedback(id) {
   loadAdminFeedback();
 }
 
+async function deleteFeedback(id) {
+  if (!confirm('Permanently delete this feedback?')) return;
+  const { error } = await sb.from('feedback').delete().eq('id', id);
+  if (error) { alert('Delete failed: ' + error.message); return; }
+  loadAdminFeedback();
+}
+
 // ── UPDATES ───────────────────────────────────────────
 async function loadUpdates() {
   const { data, error } = await sb.from('game_updates').select('*').order('created_at', { ascending: false });
@@ -909,12 +917,15 @@ async function loadUpdates() {
   if (error) { list.innerHTML = `<div style="color:var(--red)">Could not load updates: ${escapeHtmlLobby(error.message)}</div>`; return; }
   if (!data?.length) { list.innerHTML = '<div style="color:var(--muted)">No updates posted yet — check back soon!</div>'; return; }
   const isAdmin = currentProfile?.is_admin;
-  list.innerHTML = data.map(u => `<div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:0.75rem">
+  list.innerHTML = data.map(u => `<div id="update-card-${u.id}" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:0.75rem">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
       <span style="font-family:'Cinzel',serif;font-weight:700;color:var(--green)">${escapeHtmlLobby(u.version)}</span>
       <div style="display:flex;align-items:center;gap:0.5rem">
         <span style="font-size:0.75rem;color:var(--muted)">${new Date(u.created_at).toLocaleDateString()}</span>
-        ${isAdmin ? `<button class="btn-sm" style="padding:2px 8px;font-size:0.75rem;background:var(--red);color:#fff;border:none;border-radius:5px;cursor:pointer" onclick="deleteUpdate('${u.id}')">Delete</button>` : ''}
+        ${isAdmin ? `
+          <button class="btn-sm" style="padding:2px 8px;font-size:0.75rem" onclick="editUpdate('${u.id}', ${JSON.stringify(u.version).replace(/'/g,"&#39;")}, ${JSON.stringify(u.content).replace(/'/g,"&#39;")})">Edit</button>
+          <button class="btn-sm" style="padding:2px 8px;font-size:0.75rem;background:var(--red);color:#fff;border:none;border-radius:5px;cursor:pointer" onclick="deleteUpdate('${u.id}')">Delete</button>
+        ` : ''}
       </div>
     </div>
     <div style="font-size:0.9rem;line-height:1.6;white-space:pre-wrap;color:var(--text)">${escapeHtmlLobby(u.content)}</div>
@@ -925,6 +936,33 @@ async function deleteUpdate(id) {
   if (!confirm('Delete this update?')) return;
   const { error } = await sb.from('game_updates').delete().eq('id', id);
   if (error) { alert('Delete failed: ' + error.message); return; }
+  loadUpdates();
+}
+
+function editUpdate(id, version, content) {
+  const card = document.getElementById(`update-card-${id}`);
+  card.innerHTML = `
+    <div class="form-group" style="margin-bottom:0.5rem">
+      <input type="text" id="edit-version-${id}" value="${escapeHtmlLobby(version)}" maxlength="20" style="width:100%">
+    </div>
+    <div class="form-group" style="margin-bottom:0.5rem">
+      <textarea id="edit-content-${id}" rows="6" maxlength="2000" style="width:100%;resize:vertical">${escapeHtmlLobby(content)}</textarea>
+    </div>
+    <div style="display:flex;gap:0.5rem">
+      <button class="btn btn-primary" style="flex:1" onclick="saveUpdate('${id}')">Save</button>
+      <button class="btn-sm" onclick="loadUpdates()">Cancel</button>
+    </div>
+    <div id="edit-msg-${id}" style="font-size:0.85rem;margin-top:0.5rem"></div>
+  `;
+}
+
+async function saveUpdate(id) {
+  const version = document.getElementById(`edit-version-${id}`).value.trim();
+  const content = document.getElementById(`edit-content-${id}`).value.trim();
+  const msg = document.getElementById(`edit-msg-${id}`);
+  if (!version || !content) { msg.style.color = 'var(--red)'; msg.textContent = 'Fill both fields.'; return; }
+  const { error } = await sb.from('game_updates').update({ version, content }).eq('id', id);
+  if (error) { msg.style.color = 'var(--red)'; msg.textContent = error.message; return; }
   loadUpdates();
 }
 
