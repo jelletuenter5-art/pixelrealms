@@ -21,12 +21,13 @@ const CONFIG = {
   ARMY_PER_PIXEL: 2,              // army units per pixel at start
   ATTACK_GOLD_COST: 0,
   INFRA_COSTS: {
-    farm:     { gold: 50,  effect: '+0.3 gold/pixel/hr income, nation-wide',       incomeBonus: 0.3 },
-    mine:     { gold: 50,  effect: '+15 gold/hr flat income regardless of nation size', flatIncome: 15 },
-    market:   { gold: 60,  effect: '-0.02 army upkeep per pixel, nation-wide',     upkeepReduction: 0.02 },
-    barracks: { gold: 80,  effect: '+20 army strength',                            armyBonus: 20 },
-    wall:     { gold: 40,  effect: '+50% defense when this tile is attacked',      defenseBonus: 0.5 },
+    farm:     { gold: 80,  effect: '+0.3 gold/pixel/hr income, nation-wide',       incomeBonus: 0.3 },
+    mine:     { gold: 80,  effect: '+15 gold/hr flat income regardless of nation size', flatIncome: 15 },
+    market:   { gold: 100, effect: '-0.03 army upkeep per pixel, nation-wide',     upkeepReduction: 0.03 },
+    barracks: { gold: 120, effect: '+20 army strength',                            armyBonus: 20 },
+    wall:     { gold: 60,  effect: '+50% defense when this tile is attacked',      defenseBonus: 0.5 },
   },
+  TOKEN_BUY_COST: 1000,            // gold cost to buy 1 expansion token
   TERRAIN_DEFENSE: {
     grass: 1.0, hill: 1.3, mountain: 1.6, desert: 0.8, water: 0
   },

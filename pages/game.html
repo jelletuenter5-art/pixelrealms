@@ -1366,7 +1366,10 @@ function renderMyCountry(body) {
         <span style="color:var(--green);font-weight:700">${liveTokens} ready</span>
       </div>
       <div class="token-progress"><div class="token-fill" style="width:${pct}%"></div></div>
-      <div style="font-size:0.7rem;color:var(--muted);margin-top:0.3rem">+1 per hour · Max ${CONFIG.MAX_STACK}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.4rem">
+        <span style="font-size:0.7rem;color:var(--muted)">+1 per hour · Max ${CONFIG.MAX_STACK}</span>
+        <button onclick="buyExpansionToken()" style="font-size:0.7rem;padding:0.2rem 0.6rem;border-radius:5px;border:1px solid var(--gold);background:transparent;color:var(--gold);cursor:pointer" title="Buy 1 token for ${CONFIG.TOKEN_BUY_COST} gold">💰 Buy for ${CONFIG.TOKEN_BUY_COST}g</button>
+      </div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem">
@@ -1380,10 +1383,11 @@ function renderMyCountry(body) {
 
     <div class="section-label">Income Breakdown</div>
     <div style="font-size:0.78rem;color:var(--muted);line-height:1.8">
-      Per-pixel: ${c.income_per_pixel}/pixel × ${c.pixel_count} pixels = <span style="color:var(--gold)">${pixelIncome.toFixed(1)} gold/hr</span>${farms > 0 ? ` <span style="color:var(--muted)">(${farms} 🌾 farm${farms>1?'s':''})</span>` : ''}<br>
-      ${mines > 0 ? `Mines: +${flatIncome} gold/hr <span style="color:var(--muted)">(${mines} ⛏️ mine${mines>1?'s':''})</span><br>` : ''}
-      Army upkeep: −${upkeep} gold/hr${markets > 0 ? ` <span style="color:var(--muted)">(reduced by ${markets} 🏪 market${markets>1?'s':''})</span>` : ''}<br>
-      Net: <span style="color:var(--green)">${(parseFloat(incomePerHr) - parseFloat(upkeep)).toFixed(1)} gold/hr</span>
+      Per-pixel: ${c.income_per_pixel}/pixel × ${c.pixel_count} pixels = <span style="color:var(--gold)">${pixelIncome.toFixed(1)} gold/hr</span>${farms > 0 ? ` (${farms} 🌾)` : ''}<br>
+      ${mines > 0 ? `Mines: +${flatIncome} gold/hr (${mines} ⛏️)<br>` : ''}
+      Army upkeep: −${upkeep} gold/hr${markets > 0 ? ` (reduced by ${markets} 🏪)` : ''}<br>
+      <span style="font-size:0.72rem;color:var(--muted)">Base: 0.2g/pixel/hr — Markets reduce by ${CONFIG.INFRA_COSTS.market.upkeepReduction}/pixel each (min 0.02)</span><br>
+      Net: <span style="color:var(--green);font-weight:600">${(parseFloat(incomePerHr) - parseFloat(upkeep)).toFixed(1)} gold/hr</span>
     </div>
 
     <div class="section-label" style="margin-top:1rem">Danger Zones</div>
@@ -1393,6 +1397,23 @@ function renderMyCountry(body) {
       ${c.gold < 20 ? '⚠️ Low gold — build mines!' : '✅ Treasury healthy'}
     </div>
   `;
+}
+
+async function buyExpansionToken() {
+  const c = engine.country;
+  if (!c) return;
+  const cost = CONFIG.TOKEN_BUY_COST;
+  if (c.gold < cost) { showToast(`Need ${cost} gold to buy a token.`, 'error'); return; }
+  const currentTokens = engine.getLivePending();
+  if (currentTokens >= CONFIG.MAX_STACK) { showToast('Already at max tokens!', 'error'); return; }
+  const { data, error } = await sb.from('countries')
+    .update({ gold: c.gold - cost, pending_pixels: Math.min(CONFIG.MAX_STACK, currentTokens + 1) })
+    .eq('id', c.id).select().single();
+  if (error) { showToast('Purchase failed.', 'error'); return; }
+  engine.country = data;
+  showToast('🎯 Bought 1 expansion token!', 'success');
+  updateTopBar();
+  if (rightTab === 'country') renderRightPanel();
 }
 
 function renderAdmin(body) {

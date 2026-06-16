@@ -79,7 +79,7 @@ class GameEngine {
 
     const correctPixelCount = myPixels.length;
     const correctIncome = 0.5 + farms * CONFIG.INFRA_COSTS.farm.incomeBonus;
-    const correctUpkeep = Math.max(0.02, 0.1 - markets * CONFIG.INFRA_COSTS.market.upkeepReduction);
+    const correctUpkeep = Math.max(0.02, 0.2 - markets * CONFIG.INFRA_COSTS.market.upkeepReduction);
 
     const updates = {};
     if (correctPixelCount !== this.country.pixel_count) updates.pixel_count = correctPixelCount;
