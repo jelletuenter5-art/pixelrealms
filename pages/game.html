@@ -1349,7 +1349,9 @@ function renderMyCountry(body) {
 
   const pixelIncome = (c.income_per_pixel * c.pixel_count);
   const incomePerHr = (pixelIncome + flatIncome).toFixed(1);
-  const upkeep = (c.army_upkeep_per_pixel * c.pixel_count).toFixed(1);
+  const pixelUpkeep = c.army_upkeep_per_pixel * c.pixel_count;
+  const armyUnitUpkeep = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
+  const upkeep = (pixelUpkeep + armyUnitUpkeep).toFixed(1);
 
   body.innerHTML = `
     <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
@@ -1400,8 +1402,12 @@ function renderMyCountry(body) {
     <div class="section-label">📉 Upkeep</div>
     <div style="font-size:0.8rem;line-height:2;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">⚔️ Army base (0.2 × ${c.pixel_count} px)</span>
-        <span style="color:var(--red)">−${(0.2 * c.pixel_count).toFixed(1)} g/hr</span>
+        <span style="color:var(--muted)">🗺️ Territory (0.3 × ${c.pixel_count} px)</span>
+        <span style="color:var(--red)">−${(0.3 * c.pixel_count).toFixed(1)} g/hr</span>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="color:var(--muted)">⚔️ Army (${CONFIG.ARMY_UPKEEP_PER_UNIT} × ${c.army_size} units)</span>
+        <span style="color:var(--red)">−${armyUnitUpkeep.toFixed(1)} g/hr</span>
       </div>
       ${markets > 0 ? `<div style="display:flex;justify-content:space-between">
         <span style="color:var(--muted)">🏪 Market savings (${markets} × ${CONFIG.INFRA_COSTS.market.upkeepReduction} × ${c.pixel_count} px)</span>

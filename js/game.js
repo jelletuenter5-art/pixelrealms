@@ -79,7 +79,7 @@ class GameEngine {
 
     const correctPixelCount = myPixels.length;
     const correctIncome = 0.5 + farms * CONFIG.INFRA_COSTS.farm.incomeBonus;
-    const correctUpkeep = Math.max(0.02, 0.2 - markets * CONFIG.INFRA_COSTS.market.upkeepReduction);
+    const correctUpkeep = Math.max(0.02, 0.3 - markets * CONFIG.INFRA_COSTS.market.upkeepReduction);
 
     const updates = {};
     if (correctPixelCount !== this.country.pixel_count) updates.pixel_count = correctPixelCount;
@@ -109,7 +109,8 @@ class GameEngine {
     const mines = Object.values(this.infraData || {}).filter(i => i.country_id === this.country.id && i.type === 'mine').length;
     const flatIncomePerHour = mines * CONFIG.INFRA_COSTS.mine.flatIncome;
     const hourlyIncome = this.country.income_per_pixel * this.country.pixel_count + flatIncomePerHour;
-    const newGold = Math.round((this.country.gold + hourlyIncome * hoursOffline) * 10000) / 10000;
+    const armyUpkeep = this.country.army_upkeep_per_pixel * this.country.pixel_count + this.country.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
+    const newGold = Math.max(0, Math.round((this.country.gold + (hourlyIncome - armyUpkeep) * hoursOffline) * 10000) / 10000);
 
     const { data } = await sb.from('countries')
       .update({ pending_pixels: newTokens, gold: newGold, last_active: now.toISOString() })
@@ -521,8 +522,10 @@ async function tickIncome(engine) {
   const mines = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id && i.type === 'mine').length;
   const flatIncomePerHour = mines * CONFIG.INFRA_COSTS.mine.flatIncome;
   const hourlyIncome = c.income_per_pixel * c.pixel_count + flatIncomePerHour;
-  const tickIncome = hourlyIncome * (CONFIG.INCOME_TICK_SECONDS / 3600);
-  const newGold = Math.round((c.gold + tickIncome) * 10000) / 10000;
+  const armyUpkeep = c.army_upkeep_per_pixel * c.pixel_count + c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
+  const netHourly = hourlyIncome - armyUpkeep;
+  const tick = netHourly * (CONFIG.INCOME_TICK_SECONDS / 3600);
+  const newGold = Math.max(0, Math.round((c.gold + tick) * 10000) / 10000);
   if (newGold === c.gold) return;
 
   await sb.from('countries').update({ gold: newGold }).eq('id', c.id);
