@@ -448,6 +448,7 @@
 // ── GLOBALS ──────────────────────────────────────────
 const params = new URLSearchParams(location.search);
 const GAME_ID = params.get('game');
+const SPECTATE = params.get('spectate') === '1';
 if (!GAME_ID) window.location.href = 'lobby.html';
 
 let engine = null;
@@ -504,7 +505,7 @@ let lastMousePos = null;
   }
 
   // First-time players choose their own starting location
-  if (engine.country) {
+  if (engine.country && !SPECTATE) {
     if (!engine.country.is_alive) {
       // Player was eliminated — show modal after layout loads
     } else {
@@ -516,20 +517,32 @@ let lastMousePos = null;
   document.getElementById('loadingScreen').style.display = 'none';
   document.getElementById('appLayout').style.display = 'grid';
 
+  if (SPECTATE) {
+    // Spectator mode: hide all action controls, show banner
+    document.querySelector('.mode-bar').style.display = 'none';
+    document.getElementById('spawnBanner').style.display = 'none';
+    const specBanner = document.createElement('div');
+    specBanner.style.cssText = 'background:rgba(245,158,11,0.15);border-bottom:1px solid rgba(245,158,11,0.3);padding:0.4rem 1rem;text-align:center;font-size:0.8rem;color:var(--gold);';
+    specBanner.textContent = '👁️ Admin Spectator Mode — view only';
+    document.getElementById('appLayout').prepend(specBanner);
+  }
+
   initCanvas();
   renderMap();
   updateTopBar();
   renderLeftPanel();
   renderRightPanel();
   setupRealtime();
-  checkPendingTrades();
-  checkInactiveCountries();
+  if (!SPECTATE) {
+    checkPendingTrades();
+    checkInactiveCountries();
+  }
 
-  if (engine.country && !engine.country.is_alive) {
+  if (!SPECTATE && engine.country && !engine.country.is_alive) {
     document.getElementById('eliminatedModal').style.display = 'flex';
   }
 
-  if (spawnSelectionMode) {
+  if (!SPECTATE && spawnSelectionMode) {
     document.getElementById('spawnBanner').style.display = 'flex';
     document.querySelector('.mode-bar').style.display = 'none';
   }
@@ -891,6 +904,7 @@ function showTooltip(e) {
 
 // ── CLICK HANDLER ─────────────────────────────────────
 async function handleClick(e) {
+  if (SPECTATE) return;
   const rect = canvas.getBoundingClientRect();
   const mx = e.clientX - rect.left, my = e.clientY - rect.top;
   const ps = CONFIG.PIXEL_SIZE * scale;

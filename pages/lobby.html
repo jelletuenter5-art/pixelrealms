@@ -291,6 +291,9 @@
       <div id="updateMsg" style="margin-top:0.5rem; font-size:0.85rem"></div>
     </div>
     <hr style="border-color:var(--border); margin-bottom:1.5rem">
+    <h3 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:1rem">🌍 All Games</h3>
+    <div id="adminGamesList"><div style="color:var(--muted)">Loading…</div></div>
+    <hr style="border-color:var(--border); margin:1.5rem 0">
     <h3 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:1rem; color:var(--muted)">Player Feedback</h3>
     <div id="adminFeedbackList"><div style="color:var(--muted)">Loading…</div></div>
   </div>
@@ -390,7 +393,7 @@ function showSection(id, ev) {
   else if (ev?.target) ev.target.closest('.page-tab')?.classList.add('active');
   // Clear notif dots
   if (id === 'feedback') { localStorage.setItem('pr_last_feedback_view', Date.now()); document.getElementById('feedbackDot')?.classList.remove('show'); loadMyFeedback(); }
-  if (id === 'admin') { localStorage.setItem('pr_last_admin_view', Date.now()); document.getElementById('adminDot')?.classList.remove('show'); loadAdminFeedback(); }
+  if (id === 'admin') { localStorage.setItem('pr_last_admin_view', Date.now()); document.getElementById('adminDot')?.classList.remove('show'); loadAdminFeedback(); loadAdminGames(); }
   if (id === 'updates') { localStorage.setItem('pr_last_updates_view', Date.now()); document.getElementById('updatesDot')?.classList.remove('show'); loadUpdates(); }
   if (id === 'archived') loadArchivedGames();
 }
@@ -878,6 +881,26 @@ async function loadMyFeedback() {
 }
 
 // ── ADMIN ─────────────────────────────────────────
+async function loadAdminGames() {
+  const { data: games } = await sb.from('games').select('*').order('created_at', { ascending: false });
+  const list = document.getElementById('adminGamesList');
+  if (!games?.length) { list.innerHTML = '<div style="color:var(--muted)">No games found.</div>'; return; }
+  const statusColor = { waiting: 'var(--muted)', active: 'var(--green)', finished: 'var(--gold)' };
+  list.innerHTML = games.map(g => {
+    const color = statusColor[g.status] || 'var(--muted)';
+    const age = g.finished_at ? ` · finished ${new Date(g.finished_at).toLocaleDateString()}` : ` · created ${new Date(g.created_at).toLocaleDateString()}`;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem 0.75rem;background:var(--panel);border:1px solid var(--border);border-radius:8px;margin-bottom:0.5rem">
+      <div>
+        <span style="font-weight:600">${escapeHtmlLobby(g.name)}</span>
+        <span style="font-size:0.78rem;color:${color};margin-left:0.5rem">${g.status}</span>
+        <span style="font-size:0.75rem;color:var(--muted)">${age}</span>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:0.2rem">${g.current_players || 0}/${g.max_players} players · ${g.map_width}×${g.map_height}</div>
+      </div>
+      <button class="btn-sm" onclick="window.location.href='game.html?game=${g.id}&spectate=1'">View</button>
+    </div>`;
+  }).join('');
+}
+
 async function loadAdminFeedback() {
   const { data } = await sb.from('feedback')
     .select('*')
