@@ -877,7 +877,22 @@ async function loadMyFeedback() {
     </div>
     <div class="feedback-msg">${escapeHtmlLobby(f.message)}</div>
     ${f.admin_reply ? `<div class="feedback-reply">💬 <strong>Admin:</strong> ${escapeHtmlLobby(f.admin_reply)}</div>` : ''}
+    ${f.user_reply ? `<div class="feedback-reply" style="background:var(--panel);border:1px solid var(--border)">↩️ <strong>You:</strong> ${escapeHtmlLobby(f.user_reply)}</div>` : ''}
+    ${f.admin_reply && !f.user_reply ? `
+    <div style="margin-top:0.5rem;display:flex;gap:0.5rem">
+      <input type="text" id="ureply-${f.id}" placeholder="Reply to admin…" style="flex:1;min-width:0">
+      <button class="btn-sm" onclick="submitUserReply('${f.id}')">Send</button>
+    </div>` : ''}
   </div>`).join('');
+}
+
+async function submitUserReply(id) {
+  const input = document.getElementById(`ureply-${id}`);
+  const reply = input?.value.trim();
+  if (!reply) return;
+  const { error } = await sb.from('feedback').update({ user_reply: reply }).eq('id', id);
+  if (error) { alert('Failed: ' + error.message); return; }
+  loadMyFeedback();
 }
 
 // ── ADMIN ─────────────────────────────────────────
@@ -917,6 +932,7 @@ async function loadAdminFeedback() {
     </div>
     <div class="feedback-msg">${escapeHtmlLobby(f.message)}</div>
     ${f.admin_reply ? `<div class="feedback-reply">💬 <strong>Your reply:</strong> ${escapeHtmlLobby(f.admin_reply)}</div>` : ''}
+    ${f.user_reply ? `<div class="feedback-reply" style="background:var(--panel);border:1px solid var(--border)">↩️ <strong>Player replied:</strong> ${escapeHtmlLobby(f.user_reply)}</div>` : ''}
     <div style="margin-top:0.6rem; display:flex; gap:0.5rem; flex-wrap:wrap">
       <input type="text" id="reply-${f.id}" placeholder="Reply to player…" value="${f.admin_reply ? escapeHtmlLobby(f.admin_reply) : ''}" style="flex:1;min-width:120px">
       <button class="btn-sm" onclick="replyFeedback('${f.id}')">Reply</button>

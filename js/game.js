@@ -107,7 +107,7 @@ class GameEngine {
 
     // Gold also accrues while offline, based on the same elapsed time
     const mines = Object.values(this.infraData || {}).filter(i => i.country_id === this.country.id && i.type === 'mine').length;
-    const mineIncome = mines * (CONFIG.INFRA_COSTS.mine.flatIncome + CONFIG.INFRA_COSTS.mine.pixelBonus * this.country.pixel_count);
+    const mineIncome = mines * CONFIG.INFRA_COSTS.mine.flatIncome + (mines > 0 ? CONFIG.INFRA_COSTS.mine.pixelBonus * this.country.pixel_count : 0);
     const hourlyIncome = this.country.income_per_pixel * this.country.pixel_count + mineIncome;
     const pixelUpkeep = Math.max(0, this.country.army_upkeep_per_pixel * this.country.pixel_count);
     const armyUpkeep = this.country.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
@@ -521,7 +521,7 @@ async function tickIncome(engine) {
   if (!engine.country) return;
   const c = engine.country;
   const mines = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id && i.type === 'mine').length;
-  const mineIncome = mines * (CONFIG.INFRA_COSTS.mine.flatIncome + CONFIG.INFRA_COSTS.mine.pixelBonus * c.pixel_count);
+  const mineIncome = mines * CONFIG.INFRA_COSTS.mine.flatIncome + (mines > 0 ? CONFIG.INFRA_COSTS.mine.pixelBonus * c.pixel_count : 0);
   const hourlyIncome = c.income_per_pixel * c.pixel_count + mineIncome;
   const pixelUpkeep = Math.max(0, c.army_upkeep_per_pixel * c.pixel_count);
   const armyUpkeep = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;

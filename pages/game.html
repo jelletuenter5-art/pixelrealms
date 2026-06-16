@@ -366,7 +366,7 @@
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
       You earn <strong>1 expansion token per hour</strong> (max 24 stacked) — shown as 🎯 in the top bar.
       Switch to <strong>Expand</strong> mode and click an unclaimed tile next to your territory to
-      claim it for 1 token. Water tiles can't be claimed.
+      claim it for 1 token. Water tiles can't be claimed. You can also <strong>buy tokens</strong> for 1000 gold each.
     </p>
 
     <div class="section-label">⚔️ Attack</div>
@@ -374,33 +374,28 @@
       Switch to <strong>Attack</strong> mode and click an enemy tile next to your territory.
       Your army size vs. their army size (modified by terrain defense —
       hills and mountains defend better) decides the outcome. Winning captures the tile and
-      damages both armies; losing still costs you troops. Eliminate a nation by taking all
-      their pixels and reducing their army to 1.
+      damages both armies; losing still costs you troops. Eliminate a nation by taking all their pixels.
     </p>
 
     <div class="section-label">🏗️ Build</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Switch to <strong>Build</strong> mode and click one of <strong>your own tiles</strong>,
-      then open the <strong>Build</strong> tab on the right and choose a structure:
+      Switch to <strong>Build</strong> mode and click one of <strong>your own tiles</strong> to build or manage a building there.
+      Clicking a tile with an existing building shows a popup where you can <strong>delete it permanently</strong>.
     </p>
     <ul style="font-size:0.82rem;color:var(--muted);line-height:1.8;margin-left:1.2rem">
-      <li>🌾 <strong>Farm</strong> (50g) — +0.3 gold/pixel/hr, applies to your <em>whole nation</em>. Best once you have lots of pixels.</li>
-      <li>⛏️ <strong>Mine</strong> (50g) — +15 gold/hr flat income, regardless of nation size. Strong at any stage of the game.</li>
-      <li>🏪 <strong>Market</strong> (60g) — reduces your army's upkeep cost by 0.02 gold/pixel/hr nation-wide. Helps sustain a big army.</li>
-      <li>⚔️ <strong>Barracks</strong> (80g) — instantly adds 20 army strength.</li>
-      <li>🧱 <strong>Wall</strong> (40g) — +50% defense, but only for attacks on <em>that specific tile</em>. Build on your frontline.</li>
+      <li>🌾 <strong>Farm</strong> (80g) — +0.2 gold/pixel/hr nation-wide. Best once you have many pixels.</li>
+      <li>⛏️ <strong>Mine</strong> (80g) — +8 gold/hr flat <em>plus</em> a one-time +0.1 gold/pixel/hr bonus (regardless of how many mines you own). Build one early for the pixel bonus, then more for flat income.</li>
+      <li>🏪 <strong>Market</strong> (100g) — reduces territory upkeep by 0.03/pixel/hr nation-wide. Stack them to lower costs, but upkeep can't go below 0.</li>
+      <li>⚔️ <strong>Barracks</strong> (120g) — instantly adds 20 army strength.</li>
+      <li>🧱 <strong>Wall</strong> (60g) — +50% defense on <em>that specific tile</em> only. Place on key frontline tiles.</li>
     </ul>
-    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Only one building per tile. Buildings appear on the map for every player to see, and
-      your building counts are listed at the top of the <strong>Build</strong> tab.
-    </p>
 
     <div class="section-label">💰 Economy</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Every pixel generates gold per hour based on your income rate. Your army costs gold upkeep per
-      pixel every hour. Watch the <strong>Net income</strong> in <strong>My Realm</strong> —
-      if it's negative, your gold will slowly drain. Build mines for a quick flat boost, farms
-      once you're large, or markets to cut upkeep if your army is expensive.
+      Each pixel earns 1 gold/hr base. Farms raise this for your whole nation. Your army costs
+      0.25 gold/hr per unit, and territory costs 0.3 gold/pixel/hr (markets reduce this). Watch
+      <strong>Net gold/hr</strong> in <strong>My Realm</strong> — if it's negative your gold drains.
+      Build mines early, farms when large, markets to offset a big army.
     </p>
 
     <div class="section-label">🤝 Trade</div>
@@ -1295,32 +1290,45 @@ function focusCountry(id) {
 
 async function spectateCountry(id, fromClick = false) {
   spectateTargetId = id;
-  // Always fetch fresh data from DB to avoid stale cache issues
-  const { data: fresh } = await sb.from('countries').select('*, profiles(username)').eq('id', id).single();
-  const c = fresh || engine.countries[id] || allCountriesCache[id];
-  if (!c) return;
-  if (fresh) allCountriesCache[id] = fresh;
+  const body = document.getElementById('rightPanelBody');
+
   if (fromClick) {
-    switchRightTab('spectate');
+    rightTab = 'spectate';
+    document.querySelectorAll('.right-panel .panel-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === 'spectate'));
+    document.getElementById('chatFooter').style.display = 'none';
     document.querySelector('.right-panel').classList.add('open');
     document.getElementById('panelBackdrop').classList.add('show');
+    body.innerHTML = '<div style="color:var(--muted);padding:1rem;text-align:center">Loading…</div>';
   }
+
+  const { data: fresh } = await sb.from('countries').select('*, profiles(username)').eq('id', id).single();
+  if (spectateTargetId !== id) return;
+
+  const c = fresh || engine.countries[id] || allCountriesCache[id];
+  if (!c) {
+    body.innerHTML = '<div style="color:var(--red);padding:1rem">Could not load nation data.</div>';
+    return;
+  }
+  if (fresh) allCountriesCache[id] = fresh;
+
   const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id);
   const mines = myInfra.filter(i => i.type === 'mine').length;
   const farms = myInfra.filter(i => i.type === 'farm').length;
   const markets = myInfra.filter(i => i.type === 'market').length;
-  const flatIncome = mines * CONFIG.INFRA_COSTS.mine.flatIncome;
-  const pixelIncome = (c.income_per_pixel * c.pixel_count);
-  const incomePerHr = (pixelIncome + flatIncome).toFixed(1);
-  const upkeep = (c.army_upkeep_per_pixel * c.pixel_count).toFixed(1);
+  const mineFlat = mines * CONFIG.INFRA_COSTS.mine.flatIncome;
+  const minePixel = mines > 0 ? CONFIG.INFRA_COSTS.mine.pixelBonus * c.pixel_count : 0;
+  const pixelIncome = c.income_per_pixel * c.pixel_count;
+  const incomePerHr = (pixelIncome + mineFlat + minePixel).toFixed(1);
+  const pixelUpkeep = Math.max(0, c.army_upkeep_per_pixel * c.pixel_count);
+  const armyUpkeep = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
+  const upkeep = (pixelUpkeep + armyUpkeep).toFixed(1);
 
-  const body = document.getElementById('rightPanelBody');
   body.innerHTML = `
     <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
       <div style="width:40px;height:40px;background:${c.color};border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.4rem">${c.flag_emoji || ''}</div>
       <div>
         <div style="font-family:'Cinzel',serif;font-weight:700">${escapeHtml(c.name)}</div>
-        <div style="font-size:0.75rem;color:var(--muted)">Founded ${new Date(c.created_at).toLocaleDateString()}</div>
+        <div style="font-size:0.75rem;color:var(--muted)">${c.profiles?.username ? escapeHtml(c.profiles.username) : ''} · Founded ${new Date(c.created_at).toLocaleDateString()}</div>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem">
@@ -1332,18 +1340,19 @@ async function spectateCountry(id, fromClick = false) {
       ${statCard('🏗️ Buildings', myInfra.length, 'gold')}
       ${statCard('🎯 Tokens', Math.floor(Math.min((c.pending_pixels || 0) + Math.max(0, (Date.now() - new Date(c.last_active)) / 3600000) * CONFIG.PIXELS_PER_HOUR, CONFIG.MAX_STACK)), 'green')}
     </div>
-    <div class="section-label">Income Breakdown</div>
-    <div style="font-size:0.78rem;color:var(--muted);line-height:1.8">
-      Per-pixel: ${c.income_per_pixel}/pixel × ${c.pixel_count} pixels = <span style="color:var(--gold)">${pixelIncome.toFixed(1)} gold/hr</span>${farms > 0 ? ` (${farms} 🌾)` : ''}<br>
-      Mine income: <span style="color:var(--gold)">${flatIncome} gold/hr</span> (${mines} ⛏️)<br>
-      Market upkeep reduction: <span style="color:var(--green)">${(markets * CONFIG.INFRA_COSTS.market.upkeepReduction).toFixed(2)}/pixel</span> (${markets} 🏪)
+    <div class="section-label">📈 Income</div>
+    <div style="font-size:0.78rem;line-height:1.9;margin-bottom:0.5rem">
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🗺️ Base 1.0/px × ${c.pixel_count} px</span><span style="color:var(--gold)">+${(1.0 * c.pixel_count).toFixed(1)} g/hr</span></div>
+      ${farms > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🌾 ${farms} farm${farms>1?'s':''} +${(farms * CONFIG.INFRA_COSTS.farm.incomeBonus).toFixed(2)}/px × ${c.pixel_count} px</span><span style="color:var(--gold)">+${(farms * CONFIG.INFRA_COSTS.farm.incomeBonus * c.pixel_count).toFixed(1)} g/hr</span></div>` : ''}
+      ${mines > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⛏️ ${mines} mine${mines>1?'s':''} (${mineFlat}flat + 0.1×${c.pixel_count}px)</span><span style="color:var(--gold)">+${(mineFlat + minePixel).toFixed(1)} g/hr</span></div>` : ''}
     </div>
-    ${myInfra.length ? `
-    <div class="section-label" style="margin-top:0.75rem">Buildings</div>
-    <div style="font-size:0.78rem;color:var(--muted)">
-      ${myInfra.map(i => `${INFRA_ICONS[i.type] || '🏗️'} ${i.type} (${i.pixel_x},${i.pixel_y})`).join('<br>')}
-    </div>` : ''}
-    <div style="margin-top:1rem;font-size:0.75rem;color:var(--muted);text-align:center">👁️ Spectating — read only</div>
+    <div class="section-label">📉 Upkeep</div>
+    <div style="font-size:0.78rem;line-height:1.9;margin-bottom:0.75rem">
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🗺️ Territory (0.3 × ${c.pixel_count} px)</span><span style="color:var(--red)">−${(0.3 * c.pixel_count).toFixed(1)} g/hr</span></div>
+      ${markets > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🏪 ${markets} market${markets>1?'s':''} savings</span><span style="color:var(--green)">+${(Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, 0.3) * c.pixel_count).toFixed(1)} g/hr</span></div>` : ''}
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚔️ Army (${CONFIG.ARMY_UPKEEP_PER_UNIT} × ${c.army_size})</span><span style="color:var(--red)">−${armyUpkeep.toFixed(1)} g/hr</span></div>
+    </div>
+    <div style="margin-top:0.5rem;font-size:0.75rem;color:var(--muted);text-align:center">👁️ Spectating — read only</div>
   `;
 }
 
@@ -1385,7 +1394,7 @@ function renderMyCountry(body) {
   const farms = myInfra.filter(i => i.type === 'farm').length;
   const markets = myInfra.filter(i => i.type === 'market').length;
   const mineFlat = mines * CONFIG.INFRA_COSTS.mine.flatIncome;
-  const minePixel = mines * CONFIG.INFRA_COSTS.mine.pixelBonus * c.pixel_count;
+  const minePixel = mines > 0 ? CONFIG.INFRA_COSTS.mine.pixelBonus * c.pixel_count : 0;
   const mineIncome = mineFlat + minePixel;
 
   const pixelIncome = c.income_per_pixel * c.pixel_count;
