@@ -1239,6 +1239,53 @@ function focusCountry(id) {
   offsetX = canvas.width / 2 - avgX * ps;
   offsetY = canvas.height / 2 - avgY * ps;
   renderMap();
+  if (SPECTATE) spectateCountry(id);
+}
+
+function spectateCountry(id) {
+  // Find country in alive list, or fetch from allCountries cache
+  const c = engine.countries[id];
+  if (!c) return;
+  const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id);
+  const mines = myInfra.filter(i => i.type === 'mine').length;
+  const farms = myInfra.filter(i => i.type === 'farm').length;
+  const markets = myInfra.filter(i => i.type === 'market').length;
+  const flatIncome = mines * CONFIG.INFRA_COSTS.mine.flatIncome;
+  const pixelIncome = (c.income_per_pixel * c.pixel_count);
+  const incomePerHr = (pixelIncome + flatIncome).toFixed(1);
+  const upkeep = (c.army_upkeep_per_pixel * c.pixel_count).toFixed(1);
+
+  const body = document.getElementById('rightPanelBody');
+  openRightPanel();
+  body.innerHTML = `
+    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
+      <div style="width:40px;height:40px;background:${c.color};border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.4rem">${c.flag_emoji || ''}</div>
+      <div>
+        <div style="font-family:'Cinzel',serif;font-weight:700">${escapeHtml(c.name)}</div>
+        <div style="font-size:0.75rem;color:var(--muted)">Founded ${new Date(c.created_at).toLocaleDateString()}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem">
+      ${statCard('💰 Gold', c.gold.toFixed(2), 'gold')}
+      ${statCard('🗺️ Pixels', c.pixel_count, 'green')}
+      ${statCard('⚔️ Army', c.army_size, 'red')}
+      ${statCard('📈 Income/hr', incomePerHr, 'blue')}
+      ${statCard('🔧 Upkeep/hr', upkeep, 'muted')}
+      ${statCard('🏗️ Buildings', myInfra.length, 'gold')}
+    </div>
+    <div class="section-label">Income Breakdown</div>
+    <div style="font-size:0.78rem;color:var(--muted);line-height:1.8">
+      Per-pixel: ${c.income_per_pixel}/pixel × ${c.pixel_count} pixels = <span style="color:var(--gold)">${pixelIncome.toFixed(1)} gold/hr</span>${farms > 0 ? ` (${farms} 🌾)` : ''}<br>
+      Mine income: <span style="color:var(--gold)">${flatIncome} gold/hr</span> (${mines} ⛏️)<br>
+      Market upkeep reduction: <span style="color:var(--green)">${(markets * CONFIG.INFRA_COSTS.market.upkeepReduction).toFixed(2)}/pixel</span> (${markets} 🏪)
+    </div>
+    ${myInfra.length ? `
+    <div class="section-label" style="margin-top:0.75rem">Buildings</div>
+    <div style="font-size:0.78rem;color:var(--muted)">
+      ${myInfra.map(i => `${INFRA_ICONS[i.type] || '🏗️'} ${i.type} (${i.pixel_x},${i.pixel_y})`).join('<br>')}
+    </div>` : ''}
+    <div style="margin-top:1rem;font-size:0.75rem;color:var(--muted);text-align:center">👁️ Spectating — read only</div>
+  `;
 }
 
 // ── RIGHT PANEL ─────────────────────────────────────────
