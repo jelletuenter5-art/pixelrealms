@@ -867,35 +867,56 @@ async function submitFeedback() {
 }
 
 async function loadMyFeedback() {
-  const { data } = await sb.from('feedback')
+  const { data: tickets } = await sb.from('feedback')
     .select('*').eq('user_id', currentUser.id)
     .order('created_at', { ascending: false });
 
   const list = document.getElementById('myFeedbackList');
-  if (!data || data.length === 0) { list.innerHTML = '<div style="color:var(--muted)">No submissions yet.</div>'; return; }
+  if (!tickets?.length) { list.innerHTML = '<div style="color:var(--muted)">No submissions yet.</div>'; return; }
 
-  list.innerHTML = data.map(f => `<div class="feedback-item">
-    <div class="feedback-meta">
-      <span>${new Date(f.created_at).toLocaleString()}</span>
-      <span class="feedback-badge ${f.status}">${f.status}</span>
-    </div>
-    <div class="feedback-msg">${escapeHtmlLobby(f.message)}</div>
-    ${f.admin_reply ? `<div class="feedback-reply">💬 <strong>Admin:</strong> ${escapeHtmlLobby(f.admin_reply)}</div>` : ''}
-    ${f.user_reply ? `<div class="feedback-reply" style="background:var(--panel);border:1px solid var(--border)">↩️ <strong>You:</strong> ${escapeHtmlLobby(f.user_reply)}</div>` : ''}
-    ${f.admin_reply && !f.user_reply ? `
-    <div style="margin-top:0.5rem;display:flex;gap:0.5rem">
-      <input type="text" id="ureply-${f.id}" placeholder="Reply to admin…" style="flex:1;min-width:0">
-      <button class="btn-sm" onclick="submitUserReply('${f.id}')">Send</button>
-    </div>` : ''}
-  </div>`).join('');
+  // Load messages for all tickets
+  const ids = tickets.map(t => t.id);
+  const { data: msgs } = await sb.from('feedback_messages')
+    .select('*').in('feedback_id', ids).order('created_at', { ascending: true });
+  const msgsByTicket = {};
+  (msgs || []).forEach(m => { (msgsByTicket[m.feedback_id] = msgsByTicket[m.feedback_id] || []).push(m); });
+
+  list.innerHTML = tickets.map(f => {
+    const thread = msgsByTicket[f.id] || [];
+    const threadHtml = thread.map(m => {
+      const isAdmin = m.sender === 'admin';
+      const time = new Date(m.created_at).toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+      return `<div style="margin-top:0.4rem;padding:0.4rem 0.6rem;border-radius:6px;background:${isAdmin ? 'var(--panel2)' : 'var(--panel)'};border:1px solid var(--border);font-size:0.82rem">
+        <span style="font-weight:600;color:${isAdmin ? 'var(--gold)' : 'var(--green)'}">${isAdmin ? '💬 Admin' : '↩️ You'}</span>
+        <span style="color:var(--muted);font-size:0.72rem;margin-left:0.4rem">${time}</span>
+        <div style="margin-top:0.2rem">${escapeHtmlLobby(m.message)}</div>
+      </div>`;
+    }).join('');
+    const canReply = f.status === 'open';
+    return `<div class="feedback-item">
+      <div class="feedback-meta">
+        <span>${new Date(f.created_at).toLocaleString()}</span>
+        <span class="feedback-badge ${f.status}">${f.status}</span>
+      </div>
+      <div class="feedback-msg">${escapeHtmlLobby(f.message)}</div>
+      ${threadHtml}
+      ${canReply ? `<div style="margin-top:0.5rem;display:flex;gap:0.5rem">
+        <input type="text" id="ureply-${f.id}" placeholder="Reply…" style="flex:1;min-width:0" onkeydown="if(event.key==='Enter')submitUserReply('${f.id}')">
+        <button class="btn-sm" onclick="submitUserReply('${f.id}')">Send</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 async function submitUserReply(id) {
   const input = document.getElementById(`ureply-${id}`);
   const reply = input?.value.trim();
   if (!reply) return;
-  const { error } = await sb.from('feedback').update({ user_reply: reply }).eq('id', id);
+  const { error } = await sb.from('feedback_messages').insert({
+    feedback_id: id, sender: 'user', user_id: currentUser.id, message: reply
+  });
   if (error) { alert('Failed: ' + error.message); return; }
+  input.value = '';
   loadMyFeedback();
 }
 
@@ -921,34 +942,57 @@ async function loadAdminGames() {
 }
 
 async function loadAdminFeedback() {
-  const { data } = await sb.from('feedback')
+  const { data: tickets } = await sb.from('feedback')
     .select('*')
     .order('status', { ascending: true })
     .order('created_at', { ascending: false });
 
   const list = document.getElementById('adminFeedbackList');
-  if (!data || data.length === 0) { list.innerHTML = '<div style="color:var(--muted)">No feedback yet.</div>'; return; }
+  if (!tickets?.length) { list.innerHTML = '<div style="color:var(--muted)">No feedback yet.</div>'; return; }
 
-  list.innerHTML = data.map(f => `<div class="feedback-item">
-    <div class="feedback-meta">
-      <span><strong>${f.username}</strong> · ${new Date(f.created_at).toLocaleString()}</span>
-      <span class="feedback-badge ${f.status}">${f.status}</span>
-    </div>
-    <div class="feedback-msg">${escapeHtmlLobby(f.message)}</div>
-    ${f.admin_reply ? `<div class="feedback-reply">💬 <strong>Your reply:</strong> ${escapeHtmlLobby(f.admin_reply)}</div>` : ''}
-    ${f.user_reply ? `<div class="feedback-reply" style="background:var(--panel);border:1px solid var(--border)">↩️ <strong>Player replied:</strong> ${escapeHtmlLobby(f.user_reply)}</div>` : ''}
-    <div style="margin-top:0.6rem; display:flex; gap:0.5rem; flex-wrap:wrap">
-      <input type="text" id="reply-${f.id}" placeholder="Reply to player…" style="flex:1;min-width:120px">
-      <button class="btn-sm" onclick="replyFeedback('${f.id}')">Reply</button>
-      ${f.status === 'open' ? `<button class="btn-sm" onclick="resolveFeedback('${f.id}')">Mark Resolved</button>` : ''}
-      <button class="btn-sm" style="background:var(--red);color:#fff" onclick="deleteFeedback('${f.id}')">Delete</button>
-    </div>
-  </div>`).join('');
+  const ids = tickets.map(t => t.id);
+  const { data: msgs } = await sb.from('feedback_messages')
+    .select('*').in('feedback_id', ids).order('created_at', { ascending: true });
+  const msgsByTicket = {};
+  (msgs || []).forEach(m => { (msgsByTicket[m.feedback_id] = msgsByTicket[m.feedback_id] || []).push(m); });
+
+  list.innerHTML = tickets.map(f => {
+    const thread = msgsByTicket[f.id] || [];
+    const threadHtml = thread.map(m => {
+      const isAdmin = m.sender === 'admin';
+      const time = new Date(m.created_at).toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+      return `<div style="margin-top:0.4rem;padding:0.4rem 0.6rem;border-radius:6px;background:${isAdmin ? 'var(--panel2)' : 'var(--panel)'};border:1px solid var(--border);font-size:0.82rem">
+        <span style="font-weight:600;color:${isAdmin ? 'var(--gold)' : 'var(--green)'}">${isAdmin ? '💬 You (admin)' : '↩️ ' + escapeHtmlLobby(f.username)}</span>
+        <span style="color:var(--muted);font-size:0.72rem;margin-left:0.4rem">${time}</span>
+        <div style="margin-top:0.2rem">${escapeHtmlLobby(m.message)}</div>
+      </div>`;
+    }).join('');
+    return `<div class="feedback-item">
+      <div class="feedback-meta">
+        <span><strong>${escapeHtmlLobby(f.username)}</strong> · ${new Date(f.created_at).toLocaleString()}</span>
+        <span class="feedback-badge ${f.status}">${f.status}</span>
+      </div>
+      <div class="feedback-msg">${escapeHtmlLobby(f.message)}</div>
+      ${threadHtml}
+      <div style="margin-top:0.6rem;display:flex;gap:0.5rem;flex-wrap:wrap">
+        <input type="text" id="reply-${f.id}" placeholder="Reply to player…" style="flex:1;min-width:120px" onkeydown="if(event.key==='Enter')replyFeedback('${f.id}')">
+        <button class="btn-sm" onclick="replyFeedback('${f.id}')">Reply</button>
+        ${f.status === 'open' ? `<button class="btn-sm" onclick="resolveFeedback('${f.id}')">Mark Resolved</button>` : ''}
+        <button class="btn-sm" style="background:var(--red);color:#fff" onclick="deleteFeedback('${f.id}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 async function replyFeedback(id) {
-  const reply = document.getElementById(`reply-${id}`).value.trim();
-  await sb.from('feedback').update({ admin_reply: reply }).eq('id', id);
+  const input = document.getElementById(`reply-${id}`);
+  const reply = input?.value.trim();
+  if (!reply) return;
+  const { error } = await sb.from('feedback_messages').insert({
+    feedback_id: id, sender: 'admin', user_id: currentUser.id, message: reply
+  });
+  if (error) { alert('Failed: ' + error.message); return; }
+  input.value = '';
   loadAdminFeedback();
 }
 
