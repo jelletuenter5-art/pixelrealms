@@ -18,7 +18,8 @@ const CONFIG = {
   BARRACKS_POPULATION_COST: 100,     // population required per barracks
   FOOD_PRODUCTION_PER_PIXEL: 0.3,    // base food/hr per pixel (foraging)
   FOOD_PRODUCTION_PER_FARM: 5,       // food/hr per farm building
-  FOOD_CONSUMPTION_PER_PIXEL: 0.5,   // food/hr consumed per pixel of population
+  FOOD_CONSUMPTION_PER_PIXEL: 0.1,   // base food/hr per pixel (low — army drives the rest)
+  FOOD_CONSUMPTION_PER_ARMY: 0.1,    // food/hr per army unit — wars/barracks increase food need
   // Terrain multipliers for mine flat income (pixel bonus unaffected)
   MINE_TERRAIN_MULT: { mountain: 1.8, hill: 1.3, grass: 0.9, desert: 0.5, water: 0 },
   // Terrain multipliers for farm income

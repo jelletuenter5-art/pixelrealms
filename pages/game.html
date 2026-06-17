@@ -513,9 +513,9 @@ function calcBorderUpkeep(pixelData, myCountryId) {
   }
   return { nations: neighborNations.size, cost: neighborNations.size * CONFIG.BORDER_UPKEEP_PER_NATION };
 }
-function calcFoodBalance(farmCount, pixelCount) {
+function calcFoodBalance(farmCount, pixelCount, armySize) {
   const production = pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmCount * CONFIG.FOOD_PRODUCTION_PER_FARM;
-  const consumption = pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL;
+  const consumption = pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + (armySize || 0) * CONFIG.FOOD_CONSUMPTION_PER_ARMY;
   return production - consumption;
 }
 
@@ -1423,10 +1423,8 @@ async function renderTrade(body) {
         <option value="">Choose nation…</option>
         ${countries.map(c => `<option value="${c.id}">${c.flag_emoji || ''} ${c.name}</option>`).join('')}
       </select>
-      <div style="display:flex;gap:0.5rem">
-        <input type="number" id="tradeAmount" placeholder="Amount" min="1" max="${engine.country.gold}" style="flex:1;font-size:0.85rem">
-        <button onclick="sendTrade()" style="padding:0.5rem 1rem;border-radius:7px;border:none;background:linear-gradient(135deg,#92400e,#b45309);color:#fff;font-weight:700;cursor:pointer;font-size:0.82rem;white-space:nowrap">Send Offer</button>
-      </div>
+      <input type="number" id="tradeAmount" placeholder="Amount of gold to send" min="1" max="${engine.country.gold}" style="width:100%;font-size:0.85rem;margin-bottom:0.5rem">
+      <button onclick="sendTrade()" style="width:100%;padding:0.55rem;border-radius:7px;border:none;background:linear-gradient(135deg,#92400e,#b45309);color:#fff;font-weight:700;cursor:pointer;font-size:0.85rem">Send Offer</button>
       <div style="font-size:0.72rem;color:var(--muted);margin-top:0.4rem">You have 💰 ${Math.floor(engine.country.gold)} gold</div>
     </div>
 
@@ -1494,7 +1492,11 @@ async function spectateCountry(id, fromClick = false) {
     body.innerHTML = '<div style="color:var(--muted);padding:1rem;text-align:center">Loading…</div>';
   }
 
-  const { data: fresh } = await sb.from('countries').select('*, profiles(username)').eq('id', id).single();
+  let fresh;
+  try {
+    const res = await sb.from('countries').select('*, profiles(username)').eq('id', id).single();
+    fresh = res.data;
+  } catch(e) {}
   if (spectateTargetId !== id) return;
 
   const c = fresh || engine.countries[id] || allCountriesCache[id];
@@ -1502,6 +1504,7 @@ async function spectateCountry(id, fromClick = false) {
     body.innerHTML = '<div style="color:var(--red);padding:1rem">Could not load nation data.</div>';
     return;
   }
+  try {
   if (fresh) allCountriesCache[id] = fresh;
 
   const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id);
@@ -1510,7 +1513,7 @@ async function spectateCountry(id, fromClick = false) {
   const markets = myInfra.filter(i => i.type === 'market').length;
   const mineIncomeSp = calcMineIncome(mineInfra, c.pixel_count, engine.pixelData);
   const farmIncomeSp = calcFarmIncome(farmInfra, c.pixel_count, engine.pixelData);
-  const foodBalSp = calcFoodBalance(farmInfra.length, c.pixel_count);
+  const foodBalSp = calcFoodBalance(farmInfra.length, c.pixel_count, c.army_size);
   const foodMultSp = foodBalSp < 0 ? Math.max(0.5, 1 + foodBalSp * 0.02) : 1;
   const borderSp = calcBorderUpkeep(engine.pixelData, c.id);
   const baseIncomeSp = CONFIG.BASE_INCOME_PER_PIXEL * c.pixel_count;
@@ -1530,7 +1533,7 @@ async function spectateCountry(id, fromClick = false) {
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem">
-      ${statCard('💰 Gold', c.gold.toFixed(2), 'gold')}
+      ${statCard('💰 Gold', (c.gold ?? 0).toFixed(2), 'gold')}
       ${statCard('🗺️ Pixels', c.pixel_count, 'green')}
       ${statCard('👥 Population', population.toLocaleString(), 'blue')}
       ${statCard('⚔️ Army', c.army_size, 'red')}
@@ -1560,6 +1563,10 @@ async function spectateCountry(id, fromClick = false) {
     </div>
     <div style="margin-top:0.5rem;font-size:0.75rem;color:var(--muted);text-align:center">👁️ Spectating — read only</div>
   `;
+  } catch(e) {
+    body.innerHTML = `<div style="color:var(--red);padding:1rem;font-size:0.8rem">Error loading stats: ${e.message}</div>`;
+    console.error('spectateCountry error:', e);
+  }
 }
 
 // ── RIGHT PANEL ─────────────────────────────────────────
@@ -1617,7 +1624,7 @@ async function renderMyCountry(body) {
   const farms = farmInfraArr.length;
   const mineIncome = calcMineIncome(mineInfraArr, pixelCount, engine.pixelData);
   const farmIncome = calcFarmIncome(farmInfraArr, pixelCount, engine.pixelData);
-  const foodBal = calcFoodBalance(farms, pixelCount);
+  const foodBal = calcFoodBalance(farms, pixelCount, armySize);
   const foodMult = foodBal < 0 ? Math.max(0.5, 1 + foodBal * 0.02) : 1;
   const border = calcBorderUpkeep(engine.pixelData, c.id);
   const population = pixelCount * CONFIG.POPULATION_PER_PIXEL;
@@ -1681,14 +1688,14 @@ async function renderMyCountry(body) {
       <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${CONFIG.FOOD_PRODUCTION_PER_PIXEL} (foraging)${farms > 0 ? ` + ${farms} farm${farms>1?'s':''} × ${CONFIG.FOOD_PRODUCTION_PER_FARM}` : ''}</div>
       <div style="display:flex;justify-content:space-between;margin-top:0.2rem">
         <span style="color:var(--muted)">Consumption</span>
-        <span style="color:var(--red)">−${(pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL).toFixed(1)}/hr</span>
+        <span style="color:var(--red)">−${(pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + armySize * CONFIG.FOOD_CONSUMPTION_PER_ARMY).toFixed(1)}/hr</span>
       </div>
-      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${CONFIG.FOOD_CONSUMPTION_PER_PIXEL}/px (population eats)</div>
+      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${CONFIG.FOOD_CONSUMPTION_PER_PIXEL}${armySize > 0 ? ` + ${armySize} army × ${CONFIG.FOOD_CONSUMPTION_PER_ARMY}` : ''}</div>
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
         <span style="font-weight:600">Balance</span>
         <span style="font-weight:700;color:${foodBal >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBal >= 0 ? '+' : ''}${foodBal.toFixed(1)}/hr ${foodBal >= 0 ? '✓' : '⚠'}</span>
       </div>
-      ${foodBal < 0 ? `<div style="font-size:0.72rem;color:var(--red);margin-top:0.1rem;padding:0.3rem 0.5rem;background:rgba(239,68,68,0.08);border-radius:5px">Food deficit: income reduced by ${((1-foodMult)*100).toFixed(0)}%. Need ${Math.ceil((pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL - pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL) / CONFIG.FOOD_PRODUCTION_PER_FARM)} more farm${Math.ceil((pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL - pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL) / CONFIG.FOOD_PRODUCTION_PER_FARM) !== 1 ? 's' : ''} to break even.</div>` : ''}
+      ${foodBal < 0 ? `<div style="font-size:0.72rem;color:var(--red);margin-top:0.1rem;padding:0.3rem 0.5rem;background:rgba(239,68,68,0.08);border-radius:5px">Deficit: income −${((1-foodMult)*100).toFixed(0)}%. Need ${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM)} more farm${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM) !== 1 ? 's' : ''} to break even. (Army uses ${(armySize * CONFIG.FOOD_CONSUMPTION_PER_ARMY).toFixed(1)} food/hr)</div>` : ''}
     </div>
 
     <div class="section-label">📈 Income</div>

@@ -127,7 +127,7 @@ class GameEngine {
     const baseIncome = this.country.income_per_pixel * this.country.pixel_count;
     const mineIncome = calcMineIncome(mineInfra, this.country.pixel_count, this.pixelData);
     const farmIncome = calcFarmIncome(farmInfra, this.country.pixel_count, this.pixelData);
-    const foodBalance = calcFoodBalance(farmInfra.length, this.country.pixel_count);
+    const foodBalance = calcFoodBalance(farmInfra.length, this.country.pixel_count, this.country.army_size);
     const foodMult = foodBalance < 0 ? Math.max(0.5, 1 + foodBalance * 0.02) : 1;
     const hourlyIncome = (baseIncome + mineIncome + farmIncome) * foodMult;
     const pixelUpkeep = Math.max(0, this.country.army_upkeep_per_pixel * this.country.pixel_count);
@@ -642,9 +642,9 @@ function calcBorderUpkeep(pixelData, myCountryId) {
 }
 
 // Returns food/hr balance (positive = surplus, negative = deficit)
-function calcFoodBalance(farmCount, pixelCount) {
+function calcFoodBalance(farmCount, pixelCount, armySize) {
   const production = pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmCount * CONFIG.FOOD_PRODUCTION_PER_FARM;
-  const consumption = pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL;
+  const consumption = pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + (armySize || 0) * CONFIG.FOOD_CONSUMPTION_PER_ARMY;
   return production - consumption;
 }
 
@@ -660,7 +660,7 @@ async function tickIncome(engine) {
   const mineIncome = calcMineIncome(mineInfra, c.pixel_count, engine.pixelData);
 
   // Food penalty: deficit reduces income (max -50%)
-  const foodBalance = calcFoodBalance(farmInfra.length, c.pixel_count);
+  const foodBalance = calcFoodBalance(farmInfra.length, c.pixel_count, c.army_size);
   const foodMult = foodBalance < 0 ? Math.max(0.5, 1 + foodBalance * 0.02) : 1;
 
   const hourlyIncome = (baseIncome + farmIncome + mineIncome) * foodMult;
