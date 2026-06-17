@@ -413,21 +413,31 @@ class GameEngine {
     }
 
     const finishedAt = new Date();
-    const deleteAt = new Date(finishedAt.getTime() + 48 * 60 * 60 * 1000);
-    await sb.from('games').update({
+    const isAdminCreated = !!this.game?.is_admin_created;
+
+    const gameUpdate = {
       status: 'finished',
       is_open: false,
       winner_id: winner.player_id,
       finished_at: finishedAt.toISOString(),
-      delete_at: deleteAt.toISOString(),
-    }).eq('id', this.gameId);
+    };
+    if (!isAdminCreated) {
+      gameUpdate.delete_at = new Date(finishedAt.getTime() + 48 * 60 * 60 * 1000).toISOString();
+    }
+    await sb.from('games').update(gameUpdate).eq('id', this.gameId);
 
-    await this._logEvent('eliminated', `🏆 ${winner.name} has conquered the realm! The world will be deleted in 48 hours.`);
+    const winMsg = isAdminCreated
+      ? `🏆 ${winner.name} has conquered the realm! This is a permanent event world and will remain available.`
+      : `🏆 ${winner.name} has conquered the realm! The world will be deleted in 48 hours.`;
+    await this._logEvent('eliminated', winMsg);
 
     // Let connected clients show a victory screen before the data is wiped
     await sb.channel(`gameover:${this.gameId}`).send({
-      type: 'broadcast', event: 'gameover', payload: { winnerName: winner.name, winnerId: winner.player_id }
+      type: 'broadcast', event: 'gameover', payload: { winnerName: winner.name, winnerId: winner.player_id, permanent: isAdminCreated }
     });
+
+    // Admin-created event realms stay permanently — no replacement needed
+    if (isAdminCreated) return;
 
     // Open a fresh world for this category so the lobby doesn't go empty
     const cat = this.game?.category;

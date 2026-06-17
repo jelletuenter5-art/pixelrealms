@@ -236,6 +236,11 @@
     <div id="openGamesGrid" class="game-grid">
       <div style="color:var(--muted); padding:2rem">Loading worlds…</div>
     </div>
+    <div id="eventRealmsSection" style="display:none;margin-top:2rem">
+      <h3 style="font-family:'Cinzel',serif;margin-bottom:1rem;font-size:1.1rem">🎪 Event Realms</h3>
+      <p style="color:var(--muted);margin-bottom:1rem;font-size:0.85rem">Admin-hosted custom events. Full realms can be spectated.</p>
+      <div id="eventGamesGrid" class="game-grid"></div>
+    </div>
   </div>
 
   <!-- LEADERBOARD -->
@@ -309,6 +314,30 @@
       </div>
       <button class="btn btn-primary" onclick="postUpdate()">Post Update</button>
       <div id="updateMsg" style="margin-top:0.5rem; font-size:0.85rem"></div>
+    </div>
+    <hr style="border-color:var(--border); margin-bottom:1.5rem">
+    <div style="max-width:520px; margin-bottom:2rem; background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:1.25rem">
+      <h3 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:1rem">🎪 Create Event Realm</h3>
+      <div class="form-group">
+        <label>Realm Name</label>
+        <input type="text" id="createRealmName" placeholder="Summer Tournament" maxlength="60">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem">
+        <div class="form-group" style="margin:0">
+          <label>Map Width</label>
+          <input type="number" id="createRealmWidth" value="100" min="30" max="500">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Map Height</label>
+          <input type="number" id="createRealmHeight" value="80" min="30" max="500">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Max Players</label>
+          <input type="number" id="createRealmPlayers" value="30" min="2" max="200">
+        </div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:1rem" onclick="createEventRealm()">Create Realm</button>
+      <div id="createRealmMsg" style="margin-top:0.5rem; font-size:0.85rem"></div>
     </div>
     <hr style="border-color:var(--border); margin-bottom:1.5rem">
     <h3 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:1rem">🌍 All Games</h3>
@@ -390,6 +419,7 @@ const ADMIN_AVATAR_EMOJIS = ['🔱','⚡','🌟','🎖️','👁️','🔮','�
 
   await loadMyGames();
   await loadOpenGames();
+  loadEventGames();
   await loadLeaderboard();
   loadArchivedGames();
   loadUpdates();
@@ -588,8 +618,12 @@ function renderOpenGames() {
         <span>${g.current_players}/${g.max_players} players</span>
       </div>
       <div style="margin-top:0.75rem"><span class="game-code">${g.code}</span></div>
-      <button class="btn btn-primary" style="margin-top:1rem; width:100%" ${full ? 'disabled' : ''}
-        onclick="joinCategory('${cat}')">${full ? 'Full — refreshing…' : '⚔️ Join ' + cfg.label}</button>
+      ${full
+        ? `<div style="display:flex;gap:0.5rem;margin-top:1rem">
+            <button class="btn btn-primary" style="flex:1;background:rgba(56,189,248,0.12);border:1px solid var(--blue);color:var(--blue)" onclick="window.location.href='game.html?game=${g.id}&spectate=1'">👁️ Spectate</button>
+          </div>`
+        : `<button class="btn btn-primary" style="margin-top:1rem; width:100%" onclick="joinCategory('${cat}')">⚔️ Join ${cfg.label}</button>`
+      }
     </div>`;
   }).join('');
 }
@@ -946,6 +980,79 @@ async function submitUserReply(id) {
   loadMyFeedback();
 }
 
+// ── EVENT REALMS ──────────────────────────────────
+async function loadEventGames() {
+  const { data } = await sb.from('games').select('*').eq('is_admin_created', true).order('created_at', { ascending: false });
+  const section = document.getElementById('eventRealmsSection');
+  const grid = document.getElementById('eventGamesGrid');
+  if (!data?.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  grid.innerHTML = data.map(g => {
+    const full = g.current_players >= g.max_players;
+    const finished = g.status === 'finished';
+    const badge = finished ? `<span class="badge badge-finished">Finished</span>`
+      : full ? `<span class="badge badge-finished">FULL</span>`
+      : `<span class="badge badge-waiting">Open</span>`;
+    const action = finished || full
+      ? `<button class="btn btn-primary" style="width:100%;margin-top:1rem;background:rgba(56,189,248,0.15);border:1px solid var(--blue);color:var(--blue)" onclick="spectateEventRealm('${g.id}')">👁️ Spectate</button>`
+      : `<button class="btn btn-primary" style="width:100%;margin-top:1rem" onclick="joinEventRealm('${g.id}', '${escapeHtmlLobby(g.name)}')">⚔️ Join</button>`;
+    return `<div class="game-card">
+      <div class="game-card-header"><span class="game-name">${escapeHtmlLobby(g.name)}</span>${badge}</div>
+      <div class="game-meta">
+        <span>🗺️ ${g.map_width}×${g.map_height}</span>
+        <span>${g.current_players || 0}/${g.max_players} players</span>
+      </div>
+      ${action}
+    </div>`;
+  }).join('');
+}
+
+async function createEventRealm() {
+  const name = document.getElementById('createRealmName').value.trim();
+  const width = parseInt(document.getElementById('createRealmWidth').value);
+  const height = parseInt(document.getElementById('createRealmHeight').value);
+  const maxPlayers = parseInt(document.getElementById('createRealmPlayers').value);
+  const msg = document.getElementById('createRealmMsg');
+  if (!name) { msg.style.color = 'var(--red)'; msg.textContent = 'Realm name is required.'; return; }
+  if (width < 30 || height < 30 || maxPlayers < 2) { msg.style.color = 'var(--red)'; msg.textContent = 'Invalid dimensions or player count.'; return; }
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'EV-';
+  for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  const { data, error } = await sb.from('games').insert({
+    name, code, is_admin_created: true, is_open: true,
+    max_players: maxPlayers, map_width: width, map_height: height,
+    map_seed: Math.floor(Math.random() * 9999999),
+    status: 'waiting', current_players: 0,
+  }).select().single();
+  if (error) { msg.style.color = 'var(--red)'; msg.textContent = error.message; return; }
+  msg.style.color = 'var(--green)';
+  msg.textContent = `✅ "${name}" created! Code: ${code}`;
+  document.getElementById('createRealmName').value = '';
+  loadAdminGames();
+  loadEventGames();
+}
+
+async function joinEventRealm(gameId, gameName) {
+  const { data: existing } = await sb.from('countries').select('id').eq('game_id', gameId).eq('player_id', currentUser.id).single();
+  if (existing) { enterGame(gameId); return; }
+  const { data: fresh } = await sb.from('games').select('*').eq('id', gameId).single();
+  if (!fresh || !fresh.is_open || fresh.current_players >= fresh.max_players) {
+    showToast('This realm is no longer open for joining.', 'error'); loadEventGames(); return;
+  }
+  showCreateCountryModal(gameId, gameName);
+}
+
+function spectateEventRealm(gameId) {
+  window.location.href = `game.html?game=${gameId}&spectate=1`;
+}
+
+async function deleteEventRealm(gameId) {
+  if (!confirm('Permanently delete this event realm and all its data?')) return;
+  await sb.from('games').delete().eq('id', gameId);
+  loadAdminGames();
+  loadEventGames();
+}
+
 // ── ADMIN ─────────────────────────────────────────
 async function loadAdminGames() {
   const { data: games } = await sb.from('games').select('*').order('created_at', { ascending: false });
@@ -962,7 +1069,10 @@ async function loadAdminGames() {
         <span style="font-size:0.75rem;color:var(--muted)">${age}</span>
         <div style="font-size:0.75rem;color:var(--muted);margin-top:0.2rem">${g.current_players || 0}/${g.max_players} players · ${g.map_width}×${g.map_height}</div>
       </div>
-      <button class="btn-sm" onclick="window.location.href='game.html?game=${g.id}&spectate=1'">View</button>
+      <div style="display:flex;gap:0.4rem;align-items:center">
+        <button class="btn-sm" onclick="window.location.href='game.html?game=${g.id}&spectate=1'">View</button>
+        ${g.is_admin_created ? `<button class="btn-sm" style="background:#ef444422;border-color:#ef4444;color:#ef4444" onclick="deleteEventRealm('${g.id}')">Delete</button>` : ''}
+      </div>
     </div>`;
   }).join('');
 }

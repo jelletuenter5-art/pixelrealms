@@ -558,16 +558,25 @@ let lastMousePos = null;
     // Spectator mode: hide all action controls, show fixed banner above layout
     document.querySelector('.mode-bar').style.display = 'none';
     document.getElementById('spawnBanner').style.display = 'none';
+    const isAdminSpectate = !!currentProfile?.is_admin;
     const specBanner = document.createElement('div');
-    specBanner.style.cssText = 'position:relative;z-index:50;background:rgba(245,158,11,0.15);border-bottom:1px solid rgba(245,158,11,0.3);padding:0.25rem 1rem;text-align:center;font-size:0.75rem;color:var(--gold);pointer-events:none;';
-    specBanner.textContent = '👁️ Admin Spectator Mode — view only';
+    specBanner.style.cssText = 'position:relative;z-index:50;border-bottom:1px solid rgba(245,158,11,0.3);padding:0.25rem 1rem;text-align:center;font-size:0.75rem;pointer-events:none;';
+    if (isAdminSpectate) {
+      specBanner.style.background = 'rgba(245,158,11,0.15)';
+      specBanner.style.color = 'var(--gold)';
+      specBanner.textContent = '👁️ Admin Spectator Mode — full tools available';
+    } else {
+      specBanner.style.background = 'rgba(56,189,248,0.1)';
+      specBanner.style.color = 'var(--blue)';
+      specBanner.textContent = '👁️ Spectating — view only, no interaction';
+    }
     const layout = document.getElementById('appLayout');
     layout.parentNode.insertBefore(specBanner, layout);
     layout.style.height = 'calc(100dvh - 24px)';
-    // Replace right panel tabs with spectate-only tabs
+    // Replace right panel tabs — only show Admin tab for admins
     document.querySelector('.right-panel .panel-tabs').innerHTML = `
       <button class="panel-tab active" data-tab="spectate" onclick="switchRightTab('spectate')">👁️ Stats</button>
-      <button class="panel-tab" data-tab="admin" id="adminTabBtn" onclick="switchRightTab('admin')">🛠️ Admin</button>
+      ${isAdminSpectate ? `<button class="panel-tab" data-tab="admin" id="adminTabBtn" onclick="switchRightTab('admin')">🛠️ Admin</button>` : ''}
       <button onclick="closePanels()" style="margin-left:auto;background:transparent;border:none;color:var(--muted);font-size:1rem;cursor:pointer;padding:0 0.75rem;line-height:1" title="Close panel">✕</button>
     `;
     rightTab = 'spectate';
@@ -1841,11 +1850,15 @@ function setupRealtime() {
     renderMap();
     if (rightTab === 'infra') renderRightPanel();
   });
-  engine.subscribeToGameOver(({ winnerName, winnerId }) => {
+  engine.subscribeToGameOver(({ winnerName, winnerId, permanent }) => {
     const youWon = winnerId === currentUser.id;
     document.getElementById('gameOverText').textContent = youWon
-      ? `Victory! Your nation has conquered the entire realm. You have 48 hours before this world is deleted — it will remain in your Realms tab until then.`
-      : `${winnerName} has conquered the realm. This world will be deleted in 48 hours.`;
+      ? permanent
+        ? `Victory! Your nation has conquered the realm. This is a permanent event world — it stays open for spectating.`
+        : `Victory! Your nation has conquered the entire realm. You have 48 hours before this world is deleted — it will remain in your Realms tab until then.`
+      : permanent
+        ? `${winnerName} has conquered the realm. This is a permanent event world — it stays open for spectating.`
+        : `${winnerName} has conquered the realm. This world will be deleted in 48 hours.`;
     document.getElementById('gameOverModal').style.display = 'flex';
   });
 }
