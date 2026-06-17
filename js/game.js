@@ -538,7 +538,13 @@ class GameEngine {
         filter: `game_id=eq.${this.gameId}`
       }, payload => {
         this.countries[payload.new.id] = payload.new;
-        if (payload.new.player_id === this.playerId) this.country = payload.new;
+        if (payload.new.player_id === this.playerId) {
+          // Merge realtime update but preserve in-memory gold if DB returns null/NaN
+          // (Postgres stores NaN as null in JSON; tickIncome already updated the local value)
+          const safeGold = (payload.new.gold == null || isNaN(payload.new.gold))
+            ? (this.country?.gold ?? 0) : payload.new.gold;
+          this.country = { ...payload.new, gold: safeGold };
+        }
         onUpdate(payload.new);
       }).subscribe();
     this.realtimeSubs.push(sub);

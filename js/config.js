@@ -13,7 +13,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const CONFIG = {
   BASE_INCOME_PER_PIXEL: 2,          // base gold per pixel per hour
   STARTING_ARMY: 5,                  // army units at nation creation
-  BORDER_UPKEEP_PER_NATION: 5,       // extra gold/hr upkeep per unique bordering nation
+  BORDER_UPKEEP_PER_NATION: 2,       // extra gold/hr upkeep per unique bordering nation
   POPULATION_PER_PIXEL: 20,          // people per pixel owned
   BARRACKS_POPULATION_COST: 100,     // population required per barracks
   FOOD_PRODUCTION_PER_PIXEL: 0.3,    // base food/hr per pixel (foraging)
