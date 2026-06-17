@@ -11,7 +11,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // GAME CONSTANTS
 // ============================================================
 const CONFIG = {
-  BASE_INCOME_PER_PIXEL: 1,          // base gold per pixel per hour
+  BASE_INCOME_PER_PIXEL: 2,          // base gold per pixel per hour
   STARTING_ARMY: 5,                  // army units at nation creation
   PIXEL_SIZE: 8,                  // px per map tile
   INCOME_TICK_SECONDS: 10,        // how often gold income is applied
