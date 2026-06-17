@@ -87,6 +87,8 @@ class GameEngine {
     if (myPixels.length > 0 && correctPixelCount !== this.country.pixel_count) updates.pixel_count = correctPixelCount;
     if (Math.abs(correctIncome - this.country.income_per_pixel) > 1e-6) updates.income_per_pixel = correctIncome;
     if (Math.abs(correctUpkeep - this.country.army_upkeep_per_pixel) > 1e-6) updates.army_upkeep_per_pixel = correctUpkeep;
+    // Repair corrupted gold (null or NaN written by old bug)
+    if (this.country.gold == null || isNaN(this.country.gold)) updates.gold = CONFIG.STARTING_GOLD;
 
     if (Object.keys(updates).length > 0) {
       const { data } = await sb.from('countries').update(updates).eq('id', this.country.id).select().single();

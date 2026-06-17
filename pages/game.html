@@ -1058,39 +1058,67 @@ function maybeCloseQuickBuildModal(e) {
 function showBuildMenu() {
   const c = engine.country;
   const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id);
-  const buildingCap = Math.floor(c.pixel_count / 2);
+  const pixelCount = c.pixel_count ?? 0;
+  const gold = c.gold ?? 0;
+  const buildingCap = Math.floor(pixelCount / 2);
   const atCap = myInfra.length >= buildingCap;
   const modal = document.getElementById('quickBuildModal');
+
+  // Get terrain of the selected tile
+  const tile = selectedBuildTile ? mapData?.[selectedBuildTile.y]?.[selectedBuildTile.x] : null;
+  const terrain = tile?.terrain || 'grass';
+  const TERRAIN_LABELS = { grass: '🟩 Grass', hill: '⛰️ Hill', mountain: '🗻 Mountain', desert: '🏜️ Desert', water: '🌊 Water' };
+  const terrainLabel = TERRAIN_LABELS[terrain] || terrain;
+
+  document.getElementById('quickBuildCoords').textContent = atCap
+    ? `🚧 Building cap reached (${myInfra.length}/${buildingCap}) — expand first`
+    : `📍 ${terrainLabel} · ${myInfra.length}/${buildingCap} buildings used`;
+
   if (atCap) {
-    document.getElementById('quickBuildCoords').textContent = `🚧 Building cap reached (${myInfra.length}/${buildingCap}) — expand your territory first`;
-    document.getElementById('quickBuildGrid').innerHTML = `<div style="grid-column:1/-1;color:var(--muted);font-size:0.85rem;text-align:center;padding:1rem">You need at least ${(myInfra.length + 1) * 2} pixels to build another building.<br>Current cap: 1 building per 2 pixels.</div>`;
+    document.getElementById('quickBuildGrid').innerHTML = `<div style="grid-column:1/-1;color:var(--muted);font-size:0.85rem;text-align:center;padding:1rem">Need at least ${(myInfra.length + 1) * 2} pixels to build more. Cap: 1 building per 2 pixels.</div>`;
     modal.style.display = 'flex';
     return;
   }
-  // Render building cards
+
   const existingBarracks = myInfra.filter(i => i.type === 'barracks').length;
-  const population = c.pixel_count * CONFIG.POPULATION_PER_PIXEL;
+  const existingMines = myInfra.filter(i => i.type === 'mine').length;
+  const population = pixelCount * CONFIG.POPULATION_PER_PIXEL;
+
   document.getElementById('quickBuildGrid').innerHTML = Object.entries(CONFIG.INFRA_COSTS).map(([type, info]) => {
-    const canAfford = (c.gold || 0) >= info.gold;
-    let popOk = true, popNote = '';
+    const canAfford = gold >= info.gold;
+    let popOk = true, extraNote = '';
+
     if (type === 'barracks') {
       const reqPop = (existingBarracks + 1) * CONFIG.BARRACKS_POPULATION_COST;
       popOk = population >= reqPop;
-      popNote = `👥 Needs ${reqPop} pop (you have ${population})`;
+      const pixelsNeeded = Math.ceil(reqPop / CONFIG.POPULATION_PER_PIXEL);
+      extraNote = popOk
+        ? `👥 Pop OK (${population}/${reqPop})`
+        : `👥 Need ${reqPop} pop = ${pixelsNeeded} pixels (you have ${population})`;
+    } else if (type === 'mine') {
+      const terrMult = CONFIG.MINE_TERRAIN_MULT[terrain] ?? 1.0;
+      const flatIncome = Math.max(0, info.flatIncome - existingMines * 0.1) * terrMult;
+      const pixBonus = Math.max(0, info.pixelBonus - existingMines * 0.002) * pixelCount;
+      extraNote = `On ${terrainLabel}: ~${(flatIncome + pixBonus).toFixed(1)}g/hr (${terrMult}× terrain)`;
+    } else if (type === 'farm') {
+      const terrMult = CONFIG.FARM_TERRAIN_MULT[terrain] ?? 1.0;
+      const farmIncome = info.incomeBonus * terrMult * pixelCount;
+      extraNote = `On ${terrainLabel}: +${farmIncome.toFixed(1)}g/hr (${terrMult}× terrain)`;
     }
+
     const canBuild = canAfford && popOk;
     let clickFn;
     if (!canAfford) clickFn = `showToast('Need ${info.gold} gold','error')`;
-    else if (!popOk) clickFn = `showToast('${popNote}','error')`;
+    else if (!popOk) clickFn = `showToast('Need more population — expand to more pixels first','error')`;
     else clickFn = `quickBuild('${type}')`;
     return `<div onclick="${clickFn}"
       style="background:var(--panel2);border:1px solid ${canBuild ? 'var(--border)' : '#374151'};border-radius:10px;padding:0.75rem;cursor:${canBuild ? 'pointer' : 'not-allowed'};opacity:${canBuild ? '1' : '0.5'};transition:border-color 0.15s"
       onmouseover="if(${canBuild})this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='${canBuild ? 'var(--border)' : '#374151'}'">
       <div style="font-size:1.5rem;text-align:center;margin-bottom:0.35rem">${INFRA_ICONS[type] || '🏗️'}</div>
       <div style="font-weight:700;font-size:0.82rem;text-align:center;margin-bottom:0.2rem">${type.charAt(0).toUpperCase()+type.slice(1)}</div>
-      <div style="font-size:0.72rem;color:var(--muted);text-align:center;margin-bottom:0.35rem">${info.effect}</div>
+      <div style="font-size:0.7rem;color:var(--muted);text-align:center;margin-bottom:0.3rem">${info.effect}</div>
+      ${extraNote ? `<div style="text-align:center;font-size:0.68rem;color:${(type==='barracks'&&!popOk)?'var(--red)':'var(--green)'};margin-bottom:0.25rem;line-height:1.3">${extraNote}</div>` : ''}
       <div style="text-align:center;font-size:0.78rem;color:${canAfford ? 'var(--gold)' : 'var(--red)'};font-weight:600">💰 ${info.gold}g</div>
-      ${type === 'barracks' ? `<div style="text-align:center;font-size:0.68rem;color:${popOk ? 'var(--muted)' : 'var(--red)'};margin-top:0.15rem">${popNote}</div>` : ''}
     </div>`;
   }).join('');
   modal.style.display = 'flex';
