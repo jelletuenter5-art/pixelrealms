@@ -106,12 +106,19 @@ class GameEngine {
     );
 
     // Gold also accrues while offline, based on the same elapsed time
-    const mines = Object.values(this.infraData || {}).filter(i => i.country_id === this.country.id && i.type === 'mine').length;
-    const mineIncome = calcMineIncome(mines, this.country.pixel_count);
-    const hourlyIncome = this.country.income_per_pixel * this.country.pixel_count + mineIncome;
+    const myInfra = Object.values(this.infraData || {}).filter(i => i.country_id === this.country.id);
+    const mineInfra = myInfra.filter(i => i.type === 'mine');
+    const farmInfra = myInfra.filter(i => i.type === 'farm');
+    const baseIncome = this.country.income_per_pixel * this.country.pixel_count;
+    const mineIncome = calcMineIncome(mineInfra, this.country.pixel_count, this.pixelData);
+    const farmIncome = calcFarmIncome(farmInfra, this.country.pixel_count, this.pixelData);
+    const foodBalance = calcFoodBalance(farmInfra.length, this.country.pixel_count);
+    const foodMult = foodBalance < 0 ? Math.max(0.5, 1 + foodBalance * 0.02) : 1;
+    const hourlyIncome = (baseIncome + mineIncome + farmIncome) * foodMult;
     const pixelUpkeep = Math.max(0, this.country.army_upkeep_per_pixel * this.country.pixel_count);
     const armyUpkeep = this.country.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
-    const newGold = Math.max(0, Math.round((this.country.gold + (hourlyIncome - pixelUpkeep - armyUpkeep) * hoursOffline) * 10000) / 10000);
+    const borderUpkeep = calcBorderUpkeep(this.pixelData, this.country.id);
+    const newGold = Math.max(0, Math.round((this.country.gold + (hourlyIncome - pixelUpkeep - armyUpkeep - borderUpkeep) * hoursOffline) * 10000) / 10000);
 
     const { data } = await sb.from('countries')
       .update({ pending_pixels: newTokens, gold: newGold, last_active: now.toISOString() })
