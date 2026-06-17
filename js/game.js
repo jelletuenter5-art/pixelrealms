@@ -82,7 +82,9 @@ class GameEngine {
     const correctUpkeep = Math.max(0.02, 0.3 - markets * CONFIG.INFRA_COSTS.market.upkeepReduction);
 
     const updates = {};
-    if (correctPixelCount !== this.country.pixel_count) updates.pixel_count = correctPixelCount;
+    // Only correct pixel_count if the player actually has pixels — skip for brand-new players
+    // who haven't chosen their spawn yet (their pixels live in DB but may not be seeded).
+    if (myPixels.length > 0 && correctPixelCount !== this.country.pixel_count) updates.pixel_count = correctPixelCount;
     if (Math.abs(correctIncome - this.country.income_per_pixel) > 1e-6) updates.income_per_pixel = correctIncome;
     if (Math.abs(correctUpkeep - this.country.army_upkeep_per_pixel) > 1e-6) updates.army_upkeep_per_pixel = correctUpkeep;
 
