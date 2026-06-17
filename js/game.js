@@ -102,16 +102,18 @@ class GameEngine {
 
   // ── Pixel Accrual (offline expansion tokens) ─────────────
   async accruePendingPixels() {
-    const last = new Date(this.country.last_active);
     const now = new Date();
-    const hoursOffline = (now - last) / 3600000;
 
-    // Repair null/NaN gold before any early return
-    if (this.country.gold == null || isNaN(this.country.gold)) {
-      const { data } = await sb.from('countries')
-        .update({ gold: CONFIG.STARTING_GOLD }).eq('id', this.country.id).select().single();
-      if (data) this.country = data;
+    // Guard null last_active (country just created, never been active)
+    if (!this.country.last_active) {
+      await sb.from('countries').update({ last_active: now.toISOString() }).eq('id', this.country.id);
+      this.country.last_active = now.toISOString();
+      return;
     }
+
+    const last = new Date(this.country.last_active);
+    // Cap at 48h so invalid timestamps don't give massive gold windfalls
+    const hoursOffline = Math.min((now - last) / 3600000, 48);
 
     if (hoursOffline < 0.05) return; // < 3 min, skip
 
@@ -134,7 +136,7 @@ class GameEngine {
     const hourlyIncome = (baseIncome + mineIncome + farmIncome) * foodMult;
     const pixelUpkeep = Math.max(0, upkeepPerPx * this.country.pixel_count);
     const armyUpkeep = this.country.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
-    const borderUpkeep = calcBorderUpkeep(this.pixelData, this.country.id);
+    const borderUpkeep = calcBorderUpkeep(this.pixelData, this.country.id).cost;
     const currentGold = Number.isFinite(this.country.gold) ? this.country.gold : 0;
     const newGold = Math.max(0, Math.round((currentGold + (hourlyIncome - pixelUpkeep - armyUpkeep - borderUpkeep) * hoursOffline) * 10000) / 10000);
 
@@ -261,7 +263,7 @@ class GameEngine {
       await sb.from('pixels').update({ country_id: this.country.id, captured_at: new Date().toISOString() })
         .eq('game_id', this.gameId).eq('x', x).eq('y', y);
       // Aggression increases food consumption — decays 0.01/hr naturally
-      const newAggression = Math.round(((Number.isFinite(this.country.food_aggression) ? this.country.food_aggression : 0) + 0.05) * 1000) / 1000;
+      const newAggression = Math.round(((Number.isFinite(this.country.food_aggression) ? this.country.food_aggression : 0) + CONFIG.FOOD_AGGRESSION_PER_CAPTURE) * 1000) / 1000;
       await sb.from('countries').update({ pixel_count: this.country.pixel_count + 1, food_aggression: newAggression })
         .eq('id', this.country.id);
       this.country.food_aggression = newAggression;
@@ -634,16 +636,18 @@ function calcFarmIncome(farmInfra, pixelCount, pixelData) {
 
 // Returns number of unique neighboring nations (each costs BORDER_UPKEEP_PER_NATION g/hr)
 function calcBorderUpkeep(pixelData, myCountryId) {
-  const neighborNations = new Set();
+  let borderPixels = 0;
   for (const [key, p] of Object.entries(pixelData)) {
     if (p.country_id !== myCountryId) continue;
     const [x, y] = key.split(',').map(Number);
-    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+    const hasForeignNeighbor = [[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy]) => {
       const n = pixelData[`${x+dx},${y+dy}`];
-      if (n?.country_id && n.country_id !== myCountryId) neighborNations.add(n.country_id);
-    }
+      return n?.country_id && n.country_id !== myCountryId;
+    });
+    if (hasForeignNeighbor) borderPixels++;
   }
-  return neighborNations.size * CONFIG.BORDER_UPKEEP_PER_NATION;
+  const cost = borderPixels * CONFIG.BORDER_UPKEEP_PER_NATION;
+  return { borderPixels, cost };
 }
 
 // Returns food/hr balance (positive = surplus, negative = deficit)
@@ -673,7 +677,7 @@ async function tickIncome(engine) {
   const hourlyIncome = (baseIncome + farmIncome + mineIncome) * foodMult;
   const pixelUpkeep = Math.max(0, upkeepPerPx * c.pixel_count);
   const armyUpkeep = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
-  const borderUpkeep = calcBorderUpkeep(engine.pixelData, c.id);
+  const borderUpkeep = calcBorderUpkeep(engine.pixelData, c.id).cost;
   const netHourly = hourlyIncome - pixelUpkeep - armyUpkeep - borderUpkeep;
 
   const tickHours = CONFIG.INCOME_TICK_SECONDS / 3600;
@@ -691,7 +695,7 @@ async function tickIncome(engine) {
   const safeFood = Number.isFinite(c.food) ? c.food : 0;
   const newFood = Math.max(0, Math.round((safeFood + foodBalance * tickHours) * 100) / 100);
   // Aggression decays at 0.01/hr
-  const newAggression = Math.max(0, Math.round((aggression - 0.01 * tickHours) * 10000) / 10000);
+  const newAggression = Math.max(0, Math.round((aggression - CONFIG.FOOD_AGGRESSION_DECAY * tickHours) * 10000) / 10000);
 
   if (newFood !== safeFood || newAggression !== aggression) {
     const { error } = await sb.from('countries').update({ food: newFood, food_aggression: newAggression }).eq('id', c.id);

@@ -502,16 +502,17 @@ function calcFarmIncome(farmInfra, pixelCount, pixelData) {
   }, 0);
 }
 function calcBorderUpkeep(pixelData, myCountryId) {
-  const neighborNations = new Set();
+  let borderPixels = 0;
   for (const [key, p] of Object.entries(pixelData)) {
     if (p.country_id !== myCountryId) continue;
     const [x, y] = key.split(',').map(Number);
-    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+    const hasForeignNeighbor = [[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy]) => {
       const n = pixelData[`${x+dx},${y+dy}`];
-      if (n?.country_id && n.country_id !== myCountryId) neighborNations.add(n.country_id);
-    }
+      return n?.country_id && n.country_id !== myCountryId;
+    });
+    if (hasForeignNeighbor) borderPixels++;
   }
-  return { nations: neighborNations.size, cost: neighborNations.size * CONFIG.BORDER_UPKEEP_PER_NATION };
+  return { borderPixels, cost: borderPixels * CONFIG.BORDER_UPKEEP_PER_NATION };
 }
 function calcFoodBalance(farmCount, pixelCount, armySize, aggression = 0) {
   const production = pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmCount * CONFIG.FOOD_PRODUCTION_PER_FARM;
@@ -1740,7 +1741,7 @@ async function renderMyCountry(body) {
         <span style="color:var(--red)">−${armyUnitUpkeep.toFixed(1)} g/hr</span>
       </div>
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">🚧 Borders (${border.nations} nation${border.nations!==1?'s':''} × ${CONFIG.BORDER_UPKEEP_PER_NATION}g/hr)</span>
+        <span style="color:var(--muted)">🚧 Border pixels (${border.borderPixels} × ${CONFIG.BORDER_UPKEEP_PER_NATION}g/hr each)</span>
         <span style="${border.cost > 0 ? 'color:var(--red)' : 'color:var(--muted)'}">−${border.cost.toFixed(1)} g/hr</span>
       </div>
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
@@ -2068,6 +2069,15 @@ function showAttackPreview(tx, ty) {
     : ratio > 0.8 ? '<span style="color:var(--gold)">⚠️ Risky Battle</span>'
     : '<span style="color:var(--red)">❌ Likely Defeat</span>';
 
+  const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === engine.country?.id);
+  const myFarms = myInfra.filter(i => i.type === 'farm').length;
+  const myPixels = engine.country?.pixel_count || 0;
+  const myArmySize = engine.country?.army_size || 0;
+  const curAggression = Number.isFinite(engine.country?.food_aggression) ? engine.country.food_aggression : 0;
+  const curFoodBal = calcFoodBalance(myFarms, myPixels, myArmySize, curAggression);
+  const newFoodBal = calcFoodBalance(myFarms, myPixels, myArmySize, curAggression + CONFIG.FOOD_AGGRESSION_PER_CAPTURE);
+  const foodDelta = newFoodBal - curFoodBal;
+
   document.getElementById('attackPreviewBody').innerHTML = `
     <div>Target: <strong style="color:${defender.color}">${defender.flag_emoji || ''} ${defender.name}</strong></div>
     <div>Tile: <strong>${tile.terrain}</strong> · 🛡️ Defense ×${terrainDef.toFixed(2)}</div>
@@ -2076,6 +2086,11 @@ function showAttackPreview(tx, ty) {
     <div>Their army: <strong>${theirArmy}</strong> (effective: ${effectiveDef.toFixed(0)})</div>
     <div style="margin-top:0.75rem;font-size:0.95rem">${outcome}</div>
     <div style="font-size:0.75rem;color:var(--muted);margin-top:0.25rem">Both sides lose troops regardless of outcome.</div>
+    <div style="margin-top:0.6rem;padding:0.4rem 0.6rem;background:rgba(239,68,68,0.08);border-radius:6px;border:1px solid rgba(239,68,68,0.2);font-size:0.75rem">
+      <span style="color:var(--muted)">🍞 Food if victorious:</span>
+      <span style="color:var(--red)"> ${foodDelta.toFixed(1)}/hr (war aggression +${CONFIG.FOOD_AGGRESSION_PER_CAPTURE}, decays ${CONFIG.FOOD_AGGRESSION_DECAY}/hr)</span>
+      <br><span style="color:var(--muted)">New balance: </span><span style="color:${newFoodBal >= 0 ? 'var(--green)' : 'var(--red)'}">${newFoodBal >= 0 ? '+' : ''}${newFoodBal.toFixed(1)}/hr</span>
+    </div>
   `;
 
   const modal = document.getElementById('attackPreviewModal');
