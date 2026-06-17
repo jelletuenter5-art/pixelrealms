@@ -1067,12 +1067,11 @@ function showBuildMenu() {
   // Get terrain of the selected tile
   const tile = selectedBuildTile ? mapData?.[selectedBuildTile.y]?.[selectedBuildTile.x] : null;
   const terrain = tile?.terrain || 'grass';
-  const TERRAIN_LABELS = { grass: '🟩 Grass', hill: '⛰️ Hill', mountain: '🗻 Mountain', desert: '🏜️ Desert', water: '🌊 Water' };
-  const terrainLabel = TERRAIN_LABELS[terrain] || terrain;
+  const terrainLabel = terrain.charAt(0).toUpperCase() + terrain.slice(1);
 
   document.getElementById('quickBuildCoords').textContent = atCap
-    ? `🚧 Building cap reached (${myInfra.length}/${buildingCap}) — expand first`
-    : `📍 ${terrainLabel} · ${myInfra.length}/${buildingCap} buildings used`;
+    ? `Building cap reached (${myInfra.length}/${buildingCap}) — expand first`
+    : `Building on ${terrainLabel} · ${myInfra.length}/${buildingCap} slots used`;
 
   if (atCap) {
     document.getElementById('quickBuildGrid').innerHTML = `<div style="grid-column:1/-1;color:var(--muted);font-size:0.85rem;text-align:center;padding:1rem">Need at least ${(myInfra.length + 1) * 2} pixels to build more. Cap: 1 building per 2 pixels.</div>`;
@@ -1093,17 +1092,18 @@ function showBuildMenu() {
       popOk = population >= reqPop;
       const pixelsNeeded = Math.ceil(reqPop / CONFIG.POPULATION_PER_PIXEL);
       extraNote = popOk
-        ? `👥 Pop OK (${population}/${reqPop})`
-        : `👥 Need ${reqPop} pop = ${pixelsNeeded} pixels (you have ${population})`;
+        ? `Population OK: ${population} / ${reqPop} required`
+        : `Need ${reqPop} pop (= ${pixelsNeeded} pixels). You have ${population}`;
     } else if (type === 'mine') {
       const terrMult = CONFIG.MINE_TERRAIN_MULT[terrain] ?? 1.0;
       const flatIncome = Math.max(0, info.flatIncome - existingMines * 0.1) * terrMult;
       const pixBonus = Math.max(0, info.pixelBonus - existingMines * 0.002) * pixelCount;
-      extraNote = `On ${terrainLabel}: ~${(flatIncome + pixBonus).toFixed(1)}g/hr (${terrMult}× terrain)`;
+      extraNote = `${terrainLabel}: ~${(flatIncome + pixBonus).toFixed(1)}g/hr (${terrMult}x terrain mult)`;
     } else if (type === 'farm') {
       const terrMult = CONFIG.FARM_TERRAIN_MULT[terrain] ?? 1.0;
-      const farmIncome = info.incomeBonus * terrMult * pixelCount;
-      extraNote = `On ${terrainLabel}: +${farmIncome.toFixed(1)}g/hr (${terrMult}× terrain)`;
+      const thisFarmIncome = info.incomeBonus * terrMult * pixelCount;
+      const foodProd = CONFIG.FOOD_PRODUCTION_PER_FARM;
+      extraNote = `${terrainLabel}: +${thisFarmIncome.toFixed(1)}g/hr (${terrMult}x terrain) · +${foodProd} food/hr`;
     }
 
     const canBuild = canAfford && popOk;
@@ -1643,11 +1643,33 @@ async function renderMyCountry(body) {
     </div>
     ${buildingsAtCap ? `<div style="font-size:0.75rem;color:var(--red);margin-bottom:0.5rem;padding:0.4rem 0.6rem;background:rgba(239,68,68,0.08);border-radius:6px;border:1px solid rgba(239,68,68,0.2)">🚧 Building cap reached — expand your territory to build more (1 building per 2 pixels)</div>` : `<div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem">🏗️ ${myInfra.length}/${buildingCap} buildings used · ${buildingCap - myInfra.length} slot${buildingCap - myInfra.length !== 1 ? 's' : ''} remaining</div>`}
 
-    <div class="section-label">👥 Population & 🍞 Food</div>
+    <div class="section-label">👥 Population</div>
     <div style="font-size:0.8rem;line-height:1.9;margin-bottom:0.75rem">
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">👥 Population</span><span>${population.toLocaleString()} people</span></div>
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🍞 Food balance</span><span style="color:${foodBal >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBal >= 0 ? '+' : ''}${foodBal.toFixed(1)}/hr ${foodBal >= 0 ? '✓' : '⚠ deficit!'}</span></div>
-      ${foodBal < 0 ? `<div style="font-size:0.72rem;color:var(--red);margin-top:0.1rem">⚠ Food deficit reduces income by ${((1-foodMult)*100).toFixed(0)}%. Build farms to feed your people!</div>` : ''}
+      <div style="display:flex;justify-content:space-between">
+        <span style="color:var(--muted)">People</span>
+        <span style="font-weight:600">${population.toLocaleString()}</span>
+      </div>
+      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} pixels × ${CONFIG.POPULATION_PER_PIXEL} people/pixel = ${population.toLocaleString()} people</div>
+      ${farms > 0 ? '' : `<div style="font-size:0.7rem;color:var(--red);margin-top:0.1rem">Build barracks requires 100 population per barracks (= 5 pixels each)</div>`}
+    </div>
+
+    <div class="section-label">🍞 Food</div>
+    <div style="font-size:0.8rem;line-height:1.9;margin-bottom:0.75rem">
+      <div style="display:flex;justify-content:space-between">
+        <span style="color:var(--muted)">Production</span>
+        <span style="color:var(--green)">+${(pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farms * CONFIG.FOOD_PRODUCTION_PER_FARM).toFixed(1)}/hr</span>
+      </div>
+      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${CONFIG.FOOD_PRODUCTION_PER_PIXEL} (foraging)${farms > 0 ? ` + ${farms} farm${farms>1?'s':''} × ${CONFIG.FOOD_PRODUCTION_PER_FARM}` : ''}</div>
+      <div style="display:flex;justify-content:space-between;margin-top:0.2rem">
+        <span style="color:var(--muted)">Consumption</span>
+        <span style="color:var(--red)">−${(pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL).toFixed(1)}/hr</span>
+      </div>
+      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${CONFIG.FOOD_CONSUMPTION_PER_PIXEL}/px (population eats)</div>
+      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
+        <span style="font-weight:600">Balance</span>
+        <span style="font-weight:700;color:${foodBal >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBal >= 0 ? '+' : ''}${foodBal.toFixed(1)}/hr ${foodBal >= 0 ? '✓' : '⚠'}</span>
+      </div>
+      ${foodBal < 0 ? `<div style="font-size:0.72rem;color:var(--red);margin-top:0.1rem;padding:0.3rem 0.5rem;background:rgba(239,68,68,0.08);border-radius:5px">Food deficit: income reduced by ${((1-foodMult)*100).toFixed(0)}%. Need ${Math.ceil((pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL - pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL) / CONFIG.FOOD_PRODUCTION_PER_FARM)} more farm${Math.ceil((pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL - pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL) / CONFIG.FOOD_PRODUCTION_PER_FARM) !== 1 ? 's' : ''} to break even.</div>` : ''}
     </div>
 
     <div class="section-label">📈 Income</div>
