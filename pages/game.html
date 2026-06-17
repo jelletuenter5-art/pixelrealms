@@ -1059,7 +1059,7 @@ function showBuildMenu() {
   const c = engine.country;
   const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id);
   const pixelCount = c.pixel_count ?? 0;
-  const gold = c.gold ?? 0;
+  const gold = Number.isFinite(c.gold) ? c.gold : 0;
   const buildingCap = Math.floor(pixelCount / 2);
   const atCap = myInfra.length >= buildingCap;
   const modal = document.getElementById('quickBuildModal');
@@ -1234,7 +1234,7 @@ function updateTopBar() {
   if (!c) return;
   document.getElementById('myCountryFlag').textContent = c.flag_emoji || '🏳️';
   document.getElementById('myCountryName').textContent = c.name;
-  document.getElementById('myGold').textContent = (c.gold ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  document.getElementById('myGold').textContent = (Number.isFinite(c.gold) ? c.gold : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   document.getElementById('myPixels').textContent = c.pixel_count ?? 0;
   document.getElementById('myArmy').textContent = c.army_size ?? 0;
   document.getElementById('myTokens').textContent = engine.getLiveTokens();
@@ -1533,10 +1533,11 @@ async function spectateCountry(id, fromClick = false) {
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem">
-      ${statCard('💰 Gold', (c.gold ?? 0).toFixed(2), 'gold')}
+      ${statCard('💰 Gold', (Number.isFinite(c.gold) ? c.gold : 0).toFixed(2), 'gold')}
       ${statCard('🗺️ Pixels', c.pixel_count, 'green')}
       ${statCard('👥 Population', population.toLocaleString(), 'blue')}
       ${statCard('⚔️ Army', c.army_size, 'red')}
+      ${statCard('🍞 Food', (Number.isFinite(c.food) ? c.food : 0).toFixed(1), 'green')}
       ${statCard('📈 Income/hr', incomePerHr, 'blue')}
       ${statCard('🔧 Upkeep/hr', upkeep, 'muted')}
       ${statCard('🏗️ Buildings', myInfra.length, 'gold')}
@@ -1610,7 +1611,7 @@ async function renderMyCountry(body) {
   const pct = (fraction / nextToken * 100).toFixed(0);
 
   // Null-safe country fields
-  const gold = c.gold ?? 0;
+  const gold = Number.isFinite(c.gold) ? c.gold : 0;
   const pixelCount = c.pixel_count ?? 0;
   const armySize = c.army_size ?? 0;
   const armyUpkeepPerPixel = c.army_upkeep_per_pixel ?? 0.3;
@@ -1663,6 +1664,7 @@ async function renderMyCountry(body) {
       ${statCard('💰 Gold', gold.toFixed(2), 'gold')}
       ${statCard('🗺️ Pixels', pixelCount, 'green')}
       ${statCard('⚔️ Army', armySize, 'red')}
+      ${statCard('🍞 Food', `${(Number.isFinite(c.food) ? c.food : 0).toFixed(1)} (${foodBal >= 0 ? '+' : ''}${foodBal.toFixed(1)}/hr)`, foodBal >= 0 ? 'green' : 'red')}
       ${statCard('📈 Income/hr', incomePerHr, 'blue')}
       ${statCard('🔧 Upkeep/hr', upkeep, 'muted')}
       ${statCard('🏗️ Buildings', `${myInfra.length}/${buildingCap}`, buildingsAtCap ? 'red' : 'gold')}

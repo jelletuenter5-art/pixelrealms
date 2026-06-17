@@ -133,7 +133,7 @@ class GameEngine {
     const pixelUpkeep = Math.max(0, this.country.army_upkeep_per_pixel * this.country.pixel_count);
     const armyUpkeep = this.country.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
     const borderUpkeep = calcBorderUpkeep(this.pixelData, this.country.id);
-    const currentGold = this.country.gold ?? 0;
+    const currentGold = Number.isFinite(this.country.gold) ? this.country.gold : 0;
     const newGold = Math.max(0, Math.round((currentGold + (hourlyIncome - pixelUpkeep - armyUpkeep - borderUpkeep) * hoursOffline) * 10000) / 10000);
 
     const { data } = await sb.from('countries')
@@ -541,9 +541,9 @@ class GameEngine {
         if (payload.new.player_id === this.playerId) {
           // Merge realtime update but preserve in-memory gold if DB returns null/NaN
           // (Postgres stores NaN as null in JSON; tickIncome already updated the local value)
-          const safeGold = (payload.new.gold == null || isNaN(payload.new.gold))
-            ? (this.country?.gold ?? 0) : payload.new.gold;
-          this.country = { ...payload.new, gold: safeGold };
+          const safeGold = Number.isFinite(payload.new.gold) ? payload.new.gold : (this.country?.gold ?? 0);
+          const safeFood = Number.isFinite(payload.new.food) ? payload.new.food : (this.country?.food ?? 0);
+          this.country = { ...payload.new, gold: safeGold, food: safeFood };
         }
         onUpdate(payload.new);
       }).subscribe();
@@ -668,11 +668,16 @@ async function tickIncome(engine) {
   const armyUpkeep = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
   const borderUpkeep = calcBorderUpkeep(engine.pixelData, c.id);
   const netHourly = hourlyIncome - pixelUpkeep - armyUpkeep - borderUpkeep;
-  const tick = netHourly * (CONFIG.INCOME_TICK_SECONDS / 3600);
-  const safeGold = (c.gold == null || isNaN(c.gold)) ? 0 : c.gold;
+  const tickHours = CONFIG.INCOME_TICK_SECONDS / 3600;
+  const tick = netHourly * tickHours;
+  const safeGold = Number.isFinite(c.gold) ? c.gold : 0;
   const newGold = Math.max(0, Math.round((safeGold + tick) * 10000) / 10000);
-  if (newGold === safeGold) return;
+  // Food accumulates/depletes each tick — no hard floor (deficit penalty already applied above)
+  const safeFood = Number.isFinite(c.food) ? c.food : 0;
+  const newFood = Math.max(0, Math.round((safeFood + foodBalance * tickHours) * 100) / 100);
+  if (newGold === safeGold && newFood === safeFood) return;
 
-  await sb.from('countries').update({ gold: newGold }).eq('id', c.id);
+  await sb.from('countries').update({ gold: newGold, food: newFood }).eq('id', c.id);
   engine.country.gold = newGold;
+  engine.country.food = newFood;
 }
