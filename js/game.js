@@ -572,7 +572,7 @@ class GameEngine {
 function calcMineIncome(mines, pixelCount) {
   if (mines === 0) return 0;
   const effectiveFlat = Math.max(0, CONFIG.INFRA_COSTS.mine.flatIncome - (mines - 1) * 0.1);
-  const effectivePixelBonus = Math.max(0, CONFIG.INFRA_COSTS.mine.pixelBonus - (mines - 1) * 0.003);
+  const effectivePixelBonus = Math.max(0, CONFIG.INFRA_COSTS.mine.pixelBonus - (mines - 1) * 0.002);
   return mines * effectiveFlat + effectivePixelBonus * pixelCount;
 }
 

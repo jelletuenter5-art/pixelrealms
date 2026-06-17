@@ -729,6 +729,7 @@ async function submitJoin(gameId) {
     gold: CONFIG.STARTING_GOLD,
     pixel_count: CONFIG.STARTING_PIXELS,
     pending_pixels: CONFIG.STARTING_EXPANSION_TOKENS,
+    army_size: CONFIG.STARTING_ARMY,
   }).select().single();
 
   if (error) { document.getElementById('joinError').textContent = error.message; return; }
