@@ -996,7 +996,7 @@ async function loadEventGames() {
       : `<span class="badge badge-waiting">Open</span>`;
     const action = finished || full
       ? `<button class="btn btn-primary" style="width:100%;margin-top:1rem;background:rgba(56,189,248,0.15);border:1px solid var(--blue);color:var(--blue)" onclick="spectateEventRealm('${g.id}')">👁️ Spectate</button>`
-      : `<button class="btn btn-primary" style="width:100%;margin-top:1rem" onclick="joinEventRealm('${g.id}', '${escapeHtmlLobby(g.name)}')">⚔️ Join</button>`;
+      : `<div style="display:flex;gap:0.5rem;margin-top:1rem"><button class="btn btn-primary" style="flex:1" onclick="joinEventRealm('${g.id}', '${escapeHtmlLobby(g.name)}')">⚔️ Join</button><button class="btn btn-primary" style="flex:1;background:rgba(56,189,248,0.15);border:1px solid var(--blue);color:var(--blue)" onclick="spectateEventRealm('${g.id}')">👁️ Spectate</button></div>`;
     return `<div class="game-card">
       <div class="game-card-header"><span class="game-name">${escapeHtmlLobby(g.name)}</span>${badge}</div>
       <div class="game-meta">

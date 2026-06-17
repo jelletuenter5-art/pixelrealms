@@ -13,6 +13,16 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const CONFIG = {
   BASE_INCOME_PER_PIXEL: 2,          // base gold per pixel per hour
   STARTING_ARMY: 5,                  // army units at nation creation
+  BORDER_UPKEEP_PER_NATION: 5,       // extra gold/hr upkeep per unique bordering nation
+  POPULATION_PER_PIXEL: 20,          // people per pixel owned
+  BARRACKS_POPULATION_COST: 100,     // population required per barracks
+  FOOD_PRODUCTION_PER_PIXEL: 0.3,    // base food/hr per pixel (foraging)
+  FOOD_PRODUCTION_PER_FARM: 5,       // food/hr per farm building
+  FOOD_CONSUMPTION_PER_PIXEL: 0.5,   // food/hr consumed per pixel of population
+  // Terrain multipliers for mine flat income (pixel bonus unaffected)
+  MINE_TERRAIN_MULT: { mountain: 1.8, hill: 1.3, grass: 0.9, desert: 0.5, water: 0 },
+  // Terrain multipliers for farm income
+  FARM_TERRAIN_MULT: { grass: 1.5, hill: 1.0, mountain: 0.5, desert: 0.3, water: 0 },
   PIXEL_SIZE: 8,                  // px per map tile
   INCOME_TICK_SECONDS: 10,        // how often gold income is applied
   PIXELS_PER_HOUR: 1,             // expansion tokens per hour offline

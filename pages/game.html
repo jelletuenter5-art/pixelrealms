@@ -403,19 +403,27 @@
       Expand your territory to unlock more slots — your current usage is shown in My Realm.
     </p>
     <ul style="font-size:0.82rem;color:var(--muted);line-height:1.8;margin-left:1.2rem">
-      <li>🌾 <strong>Farm</strong> (80g) — +0.2 gold/pixel/hr nation-wide. Scales with territory — best when large.</li>
-      <li>⛏️ <strong>Mine</strong> (80g) — Hybrid income: starts at 5g/hr flat + 0.1g/px/hr bonus per mine. Each additional mine slightly reduces the flat rate.</li>
+      <li>🌾 <strong>Farm</strong> (80g) — +0.1 gold/pixel/hr nation-wide, scaled by terrain (grass 1.5×, hill 1.0×, mountain 0.5×, desert 0.3×). Also produces <strong>5 food/hr</strong>.</li>
+      <li>⛏️ <strong>Mine</strong> (80g) — Hybrid income: starts at 5g/hr flat + 0.02g/px/hr per mine. Each additional mine slightly reduces the flat rate. Terrain matters: mountains yield the most, deserts the least.</li>
       <li>🏪 <strong>Market</strong> (100g) — reduces territory upkeep by 0.03/pixel/hr nation-wide. Stack them to lower costs, but upkeep can't go below 0.</li>
-      <li>⚔️ <strong>Barracks</strong> (120g) — instantly adds 20 army strength.</li>
+      <li>⚔️ <strong>Barracks</strong> (120g) — instantly adds 20 army strength. Requires <strong>100 population per barracks</strong> — grow your territory first.</li>
       <li>🧱 <strong>Wall</strong> (60g) — +50% defense on <em>that specific tile</em> only. Place on key frontline tiles.</li>
     </ul>
 
     <div class="section-label">💰 Economy</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Each pixel earns 1 gold/hr base. Farms raise this for your whole nation. Your army costs
-      0.25 gold/hr per unit, and territory costs 0.3 gold/pixel/hr (markets reduce this). Watch
-      <strong>Net gold/hr</strong> in <strong>My Realm</strong> — if it's negative your gold drains.
-      Build mines early, farms when large, markets to offset a big army.
+      Each pixel earns <strong>2 gold/hr</strong> base. Mines and farms add income on top. Your army costs
+      0.25 gold/hr per unit, and territory costs 0.3 gold/pixel/hr (markets reduce this).
+      You also pay <strong>5 gold/hr per unique neighboring nation</strong> — the more borders you share, the higher the border upkeep.
+      Watch <strong>Net gold/hr</strong> in <strong>My Realm</strong> — if it's negative your gold drains.
+    </p>
+
+    <div class="section-label">👥 Population &amp; 🌽 Food</div>
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
+      Your nation has <strong>20 population per pixel</strong> you own. Population unlocks barracks (100 pop each) and determines food demand.
+      Every pixel consumes <strong>0.5 food/hr</strong> while producing <strong>0.3 food/hr</strong> from foraging — meaning you'll run a food deficit without farms.
+      Build farms to cover the gap: each farm produces <strong>5 food/hr</strong>.
+      A food deficit penalises your entire income (up to −50% at extreme shortfall), so keep your people fed!
     </p>
 
     <div class="section-label">🤝 Trade</div>
@@ -473,11 +481,42 @@
 <div class="toast" id="toast"></div>
 
 <script>
-function calcMineIncome(mines, pixelCount) {
-  if (mines === 0) return 0;
-  const effectiveFlat = Math.max(0, CONFIG.INFRA_COSTS.mine.flatIncome - (mines - 1) * 0.1);
-  const effectivePixelBonus = Math.max(0, CONFIG.INFRA_COSTS.mine.pixelBonus - (mines - 1) * 0.002);
-  return mines * effectiveFlat + effectivePixelBonus * pixelCount;
+function calcMineIncome(mineInfra, pixelCount, pixelData) {
+  if (!mineInfra || mineInfra.length === 0) return 0;
+  let total = 0;
+  mineInfra.forEach((m, i) => {
+    const terrain = (pixelData || engine.pixelData)?.[`${m.pixel_x},${m.pixel_y}`]?.terrain || 'grass';
+    const terrainMult = CONFIG.MINE_TERRAIN_MULT[terrain] ?? 1.0;
+    const baseFlat = Math.max(0, CONFIG.INFRA_COSTS.mine.flatIncome - i * 0.1);
+    const pixelBonus = Math.max(0, CONFIG.INFRA_COSTS.mine.pixelBonus - i * 0.002);
+    total += baseFlat * terrainMult + pixelBonus * pixelCount;
+  });
+  return total;
+}
+function calcFarmIncome(farmInfra, pixelCount, pixelData) {
+  if (!farmInfra || farmInfra.length === 0) return 0;
+  return farmInfra.reduce((sum, f) => {
+    const terrain = (pixelData || engine.pixelData)?.[`${f.pixel_x},${f.pixel_y}`]?.terrain || 'grass';
+    const terrainMult = CONFIG.FARM_TERRAIN_MULT[terrain] ?? 1.0;
+    return sum + CONFIG.INFRA_COSTS.farm.incomeBonus * terrainMult * pixelCount;
+  }, 0);
+}
+function calcBorderUpkeep(pixelData, myCountryId) {
+  const neighborNations = new Set();
+  for (const [key, p] of Object.entries(pixelData)) {
+    if (p.country_id !== myCountryId) continue;
+    const [x, y] = key.split(',').map(Number);
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+      const n = pixelData[`${x+dx},${y+dy}`];
+      if (n?.country_id && n.country_id !== myCountryId) neighborNations.add(n.country_id);
+    }
+  }
+  return { nations: neighborNations.size, cost: neighborNations.size * CONFIG.BORDER_UPKEEP_PER_NATION };
+}
+function calcFoodBalance(farmCount, pixelCount) {
+  const production = pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmCount * CONFIG.FOOD_PRODUCTION_PER_FARM;
+  const consumption = pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL;
+  return production - consumption;
 }
 
 // ── GLOBALS ──────────────────────────────────────────
@@ -1027,15 +1066,29 @@ function showBuildMenu() {
     return;
   }
   // Render building cards
+  const existingBarracks = myInfra.filter(i => i.type === 'barracks').length;
+  const population = c.pixel_count * CONFIG.POPULATION_PER_PIXEL;
   document.getElementById('quickBuildGrid').innerHTML = Object.entries(CONFIG.INFRA_COSTS).map(([type, info]) => {
     const canAfford = (c.gold || 0) >= info.gold;
-    return `<div onclick="${canAfford ? `quickBuild('${type}')` : `showToast('Need ${info.gold} gold','error')`}"
-      style="background:var(--panel2);border:1px solid ${canAfford ? 'var(--border)' : '#374151'};border-radius:10px;padding:0.75rem;cursor:${canAfford ? 'pointer' : 'not-allowed'};opacity:${canAfford ? '1' : '0.45'};transition:border-color 0.15s"
-      onmouseover="if(${canAfford})this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='${canAfford ? 'var(--border)' : '#374151'}'">
+    let popOk = true, popNote = '';
+    if (type === 'barracks') {
+      const reqPop = (existingBarracks + 1) * CONFIG.BARRACKS_POPULATION_COST;
+      popOk = population >= reqPop;
+      popNote = `👥 Needs ${reqPop} pop (you have ${population})`;
+    }
+    const canBuild = canAfford && popOk;
+    let clickFn;
+    if (!canAfford) clickFn = `showToast('Need ${info.gold} gold','error')`;
+    else if (!popOk) clickFn = `showToast('${popNote}','error')`;
+    else clickFn = `quickBuild('${type}')`;
+    return `<div onclick="${clickFn}"
+      style="background:var(--panel2);border:1px solid ${canBuild ? 'var(--border)' : '#374151'};border-radius:10px;padding:0.75rem;cursor:${canBuild ? 'pointer' : 'not-allowed'};opacity:${canBuild ? '1' : '0.5'};transition:border-color 0.15s"
+      onmouseover="if(${canBuild})this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='${canBuild ? 'var(--border)' : '#374151'}'">
       <div style="font-size:1.5rem;text-align:center;margin-bottom:0.35rem">${INFRA_ICONS[type] || '🏗️'}</div>
       <div style="font-weight:700;font-size:0.82rem;text-align:center;margin-bottom:0.2rem">${type.charAt(0).toUpperCase()+type.slice(1)}</div>
       <div style="font-size:0.72rem;color:var(--muted);text-align:center;margin-bottom:0.35rem">${info.effect}</div>
       <div style="text-align:center;font-size:0.78rem;color:${canAfford ? 'var(--gold)' : 'var(--red)'};font-weight:600">💰 ${info.gold}g</div>
+      ${type === 'barracks' ? `<div style="text-align:center;font-size:0.68rem;color:${popOk ? 'var(--muted)' : 'var(--red)'};margin-top:0.15rem">${popNote}</div>` : ''}
     </div>`;
   }).join('');
   modal.style.display = 'flex';
@@ -1403,14 +1456,21 @@ async function spectateCountry(id, fromClick = false) {
   if (fresh) allCountriesCache[id] = fresh;
 
   const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id);
-  const mines = myInfra.filter(i => i.type === 'mine').length;
-  const farms = myInfra.filter(i => i.type === 'farm').length;
+  const mineInfra = myInfra.filter(i => i.type === 'mine');
+  const farmInfra = myInfra.filter(i => i.type === 'farm');
   const markets = myInfra.filter(i => i.type === 'market').length;
-  const mineIncomeSp = calcMineIncome(mines, c.pixel_count);
-  const incomePerHr = (CONFIG.BASE_INCOME_PER_PIXEL * c.pixel_count + farms * CONFIG.INFRA_COSTS.farm.incomeBonus * c.pixel_count + mineIncomeSp).toFixed(1);
+  const mineIncomeSp = calcMineIncome(mineInfra, c.pixel_count, engine.pixelData);
+  const farmIncomeSp = calcFarmIncome(farmInfra, c.pixel_count, engine.pixelData);
+  const foodBalSp = calcFoodBalance(farmInfra.length, c.pixel_count);
+  const foodMultSp = foodBalSp < 0 ? Math.max(0.5, 1 + foodBalSp * 0.02) : 1;
+  const borderSp = calcBorderUpkeep(engine.pixelData, c.id);
+  const baseIncomeSp = CONFIG.BASE_INCOME_PER_PIXEL * c.pixel_count;
+  const grossIncomeSp = (baseIncomeSp + farmIncomeSp + mineIncomeSp) * foodMultSp;
+  const incomePerHr = grossIncomeSp.toFixed(1);
   const pixelUpkeep = Math.max(0, c.army_upkeep_per_pixel * c.pixel_count);
   const armyUpkeep = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
-  const upkeep = (pixelUpkeep + armyUpkeep).toFixed(1);
+  const upkeep = (pixelUpkeep + armyUpkeep + borderSp.cost).toFixed(1);
+  const population = c.pixel_count * CONFIG.POPULATION_PER_PIXEL;
 
   body.innerHTML = `
     <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
@@ -1423,6 +1483,7 @@ async function spectateCountry(id, fromClick = false) {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem">
       ${statCard('💰 Gold', c.gold.toFixed(2), 'gold')}
       ${statCard('🗺️ Pixels', c.pixel_count, 'green')}
+      ${statCard('👥 Population', population.toLocaleString(), 'blue')}
       ${statCard('⚔️ Army', c.army_size, 'red')}
       ${statCard('📈 Income/hr', incomePerHr, 'blue')}
       ${statCard('🔧 Upkeep/hr', upkeep, 'muted')}
@@ -1431,15 +1492,22 @@ async function spectateCountry(id, fromClick = false) {
     </div>
     <div class="section-label">📈 Income</div>
     <div style="font-size:0.78rem;line-height:1.9;margin-bottom:0.5rem">
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🗺️ Base ${CONFIG.BASE_INCOME_PER_PIXEL}/px × ${c.pixel_count} px</span><span style="color:var(--gold)">+${(CONFIG.BASE_INCOME_PER_PIXEL * c.pixel_count).toFixed(1)} g/hr</span></div>
-      ${farms > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🌾 ${farms} farm${farms>1?'s':''} +${(farms * CONFIG.INFRA_COSTS.farm.incomeBonus).toFixed(2)}/px × ${c.pixel_count} px</span><span style="color:var(--gold)">+${(farms * CONFIG.INFRA_COSTS.farm.incomeBonus * c.pixel_count).toFixed(1)} g/hr</span></div>` : ''}
-      ${mines > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⛏️ ${mines} mine${mines>1?'s':''}</span><span style="color:var(--gold)">+${mineIncomeSp.toFixed(1)} g/hr</span></div>` : ''}
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🗺️ Base ${CONFIG.BASE_INCOME_PER_PIXEL}/px × ${c.pixel_count} px</span><span style="color:var(--gold)">+${baseIncomeSp.toFixed(1)} g/hr</span></div>
+      ${farmInfra.length > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🌾 ${farmInfra.length} farm${farmInfra.length>1?'s':''} (terrain-adjusted)</span><span style="color:var(--gold)">+${farmIncomeSp.toFixed(1)} g/hr</span></div>` : ''}
+      ${mineInfra.length > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⛏️ ${mineInfra.length} mine${mineInfra.length>1?'s':''} (terrain-adjusted)</span><span style="color:var(--gold)">+${mineIncomeSp.toFixed(1)} g/hr</span></div>` : ''}
+      ${foodBalSp < 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--red)">🍞 Food deficit penalty (${(-(1-foodMultSp)*100).toFixed(0)}%)</span><span style="color:var(--red)">${((grossIncomeSp / foodMultSp * (foodMultSp-1))).toFixed(1)} g/hr</span></div>` : ''}
     </div>
     <div class="section-label">📉 Upkeep</div>
     <div style="font-size:0.78rem;line-height:1.9;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🗺️ Territory (0.3 × ${c.pixel_count} px)</span><span style="color:var(--red)">−${(0.3 * c.pixel_count).toFixed(1)} g/hr</span></div>
       ${markets > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🏪 ${markets} market${markets>1?'s':''} savings</span><span style="color:var(--green)">+${(Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, 0.3) * c.pixel_count).toFixed(1)} g/hr</span></div>` : ''}
       <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚔️ Army (${CONFIG.ARMY_UPKEEP_PER_UNIT} × ${c.army_size})</span><span style="color:var(--red)">−${armyUpkeep.toFixed(1)} g/hr</span></div>
+      ${borderSp.nations > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🚧 Borders (${borderSp.nations} nation${borderSp.nations>1?'s':''})</span><span style="color:var(--red)">−${borderSp.cost.toFixed(1)} g/hr</span></div>` : ''}
+    </div>
+    <div class="section-label">🍞 Food & Population</div>
+    <div style="font-size:0.78rem;line-height:1.9;margin-bottom:0.75rem">
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">👥 Population</span><span>${population.toLocaleString()} people</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🍞 Food balance</span><span style="color:${foodBalSp >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBalSp >= 0 ? '+' : ''}${foodBalSp.toFixed(1)}/hr ${foodBalSp >= 0 ? '✓' : '⚠ deficit'}</span></div>
     </div>
     <div style="margin-top:0.5rem;font-size:0.75rem;color:var(--muted);text-align:center">👁️ Spectating — read only</div>
   `;
@@ -1479,19 +1547,24 @@ function renderMyCountry(body) {
   const pct = (fraction / nextToken * 100).toFixed(0);
 
   const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id);
-  const mines = myInfra.filter(i => i.type === 'mine').length;
-  const farms = myInfra.filter(i => i.type === 'farm').length;
+  const mineInfraArr = myInfra.filter(i => i.type === 'mine');
+  const farmInfraArr = myInfra.filter(i => i.type === 'farm');
   const markets = myInfra.filter(i => i.type === 'market').length;
-  const mineIncome = calcMineIncome(mines, c.pixel_count);
-  const effectiveFlat = mines > 0 ? Math.max(0, CONFIG.INFRA_COSTS.mine.flatIncome - (mines - 1) * 0.1) : 0;
-  const effectivePixelBonus = mines > 0 ? Math.max(0, CONFIG.INFRA_COSTS.mine.pixelBonus - (mines - 1) * 0.002) : 0;
+  const mines = mineInfraArr.length;
+  const farms = farmInfraArr.length;
+  const mineIncome = calcMineIncome(mineInfraArr, c.pixel_count, engine.pixelData);
+  const farmIncome = calcFarmIncome(farmInfraArr, c.pixel_count, engine.pixelData);
+  const foodBal = calcFoodBalance(farms, c.pixel_count);
+  const foodMult = foodBal < 0 ? Math.max(0.5, 1 + foodBal * 0.02) : 1;
+  const border = calcBorderUpkeep(engine.pixelData, c.id);
+  const population = c.pixel_count * CONFIG.POPULATION_PER_PIXEL;
 
   const baseIncome = CONFIG.BASE_INCOME_PER_PIXEL * c.pixel_count;
-  const farmIncome = farms * CONFIG.INFRA_COSTS.farm.incomeBonus * c.pixel_count;
-  const incomePerHr = (baseIncome + farmIncome + mineIncome).toFixed(1);
+  const grossIncome = (baseIncome + farmIncome + mineIncome) * foodMult;
+  const incomePerHr = grossIncome.toFixed(1);
   const pixelUpkeep = Math.max(0, c.army_upkeep_per_pixel * c.pixel_count);
   const armyUnitUpkeep = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
-  const upkeep = (pixelUpkeep + armyUnitUpkeep).toFixed(1);
+  const upkeep = (pixelUpkeep + armyUnitUpkeep + border.cost).toFixed(1);
   const buildingCap = Math.floor(c.pixel_count / 2);
   const buildingsAtCap = myInfra.length >= buildingCap;
 
@@ -1526,19 +1599,30 @@ function renderMyCountry(body) {
     </div>
     ${buildingsAtCap ? `<div style="font-size:0.75rem;color:var(--red);margin-bottom:0.5rem;padding:0.4rem 0.6rem;background:rgba(239,68,68,0.08);border-radius:6px;border:1px solid rgba(239,68,68,0.2)">🚧 Building cap reached — expand your territory to build more (1 building per 2 pixels)</div>` : `<div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem">🏗️ ${myInfra.length}/${buildingCap} buildings used · ${buildingCap - myInfra.length} slot${buildingCap - myInfra.length !== 1 ? 's' : ''} remaining</div>`}
 
+    <div class="section-label">👥 Population & 🍞 Food</div>
+    <div style="font-size:0.8rem;line-height:1.9;margin-bottom:0.75rem">
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">👥 Population</span><span>${population.toLocaleString()} people</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🍞 Food balance</span><span style="color:${foodBal >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBal >= 0 ? '+' : ''}${foodBal.toFixed(1)}/hr ${foodBal >= 0 ? '✓' : '⚠ deficit!'}</span></div>
+      ${foodBal < 0 ? `<div style="font-size:0.72rem;color:var(--red);margin-top:0.1rem">⚠ Food deficit reduces income by ${((1-foodMult)*100).toFixed(0)}%. Build farms to feed your people!</div>` : ''}
+    </div>
+
     <div class="section-label">📈 Income</div>
     <div style="font-size:0.8rem;line-height:2;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between">
         <span style="color:var(--muted)">🗺️ Base ${CONFIG.BASE_INCOME_PER_PIXEL}/px × ${c.pixel_count} px</span>
-        <span style="color:var(--gold)">+${(CONFIG.BASE_INCOME_PER_PIXEL * c.pixel_count).toFixed(1)} g/hr</span>
+        <span style="color:var(--gold)">+${baseIncome.toFixed(1)} g/hr</span>
       </div>
       ${farms > 0 ? `<div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">🌾 ${farms} farm${farms>1?'s':''} +${(farms * CONFIG.INFRA_COSTS.farm.incomeBonus).toFixed(2)}/px × ${c.pixel_count} px</span>
-        <span style="color:var(--gold)">+${(farms * CONFIG.INFRA_COSTS.farm.incomeBonus * c.pixel_count).toFixed(1)} g/hr</span>
+        <span style="color:var(--muted)">🌾 ${farms} farm${farms>1?'s':''} (terrain-adjusted)</span>
+        <span style="color:var(--gold)">+${farmIncome.toFixed(1)} g/hr</span>
       </div>` : ''}
       ${mines > 0 ? `<div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">⛏️ ${mines} mine${mines>1?'s':''} (${effectiveFlat.toFixed(1)}g flat×${mines} + ${effectivePixelBonus.toFixed(2)}/px)</span>
+        <span style="color:var(--muted)">⛏️ ${mines} mine${mines>1?'s':''} (terrain-adjusted)</span>
         <span style="color:var(--gold)">+${mineIncome.toFixed(1)} g/hr</span>
+      </div>` : ''}
+      ${foodBal < 0 ? `<div style="display:flex;justify-content:space-between">
+        <span style="color:var(--red)">🍞 Food deficit penalty</span>
+        <span style="color:var(--red)">−${((1-foodMult) * (baseIncome + farmIncome + mineIncome)).toFixed(1)} g/hr</span>
       </div>` : ''}
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
         <span style="color:var(--text);font-weight:600">Total income</span>
@@ -1553,13 +1637,17 @@ function renderMyCountry(body) {
         <span style="color:var(--red)">−${(0.3 * c.pixel_count).toFixed(1)} g/hr</span>
       </div>
       ${markets > 0 ? `<div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">🏪 Markets −${(Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, 0.3) * c.pixel_count).toFixed(1)} (${markets} × ${CONFIG.INFRA_COSTS.market.upkeepReduction}/px)</span>
+        <span style="color:var(--muted)">🏪 Markets savings</span>
         <span style="color:var(--green)">+${(Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, 0.3) * c.pixel_count).toFixed(1)} g/hr</span>
       </div>` : ''}
       <div style="display:flex;justify-content:space-between">
         <span style="color:var(--muted)">⚔️ Army (${CONFIG.ARMY_UPKEEP_PER_UNIT} × ${c.army_size} units)</span>
         <span style="color:var(--red)">−${armyUnitUpkeep.toFixed(1)} g/hr</span>
       </div>
+      ${border.nations > 0 ? `<div style="display:flex;justify-content:space-between">
+        <span style="color:var(--muted)">🚧 Borders (${border.nations} nation${border.nations>1?'s':''})</span>
+        <span style="color:var(--red)">−${border.cost.toFixed(1)} g/hr</span>
+      </div>` : ''}
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
         <span style="color:var(--text);font-weight:600">Total upkeep</span>
         <span style="color:var(--red);font-weight:700">−${upkeep} g/hr</span>

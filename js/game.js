@@ -78,7 +78,7 @@ class GameEngine {
     const markets = myInfra.filter(i => i.type === 'market').length;
 
     const correctPixelCount = myPixels.length;
-    const correctIncome = CONFIG.BASE_INCOME_PER_PIXEL + farms * CONFIG.INFRA_COSTS.farm.incomeBonus;
+    const correctIncome = CONFIG.BASE_INCOME_PER_PIXEL; // farms computed dynamically from terrain
     const correctUpkeep = Math.max(0.02, 0.3 - markets * CONFIG.INFRA_COSTS.market.upkeepReduction);
 
     const updates = {};
@@ -252,7 +252,6 @@ class GameEngine {
           this.infraData[key] = { ...capturedInfra, country_id: this.country.id };
           // Apply stat effect to attacker
           const infraUpdates = {};
-          if (capturedInfra.type === 'farm') infraUpdates.income_per_pixel = this.country.income_per_pixel + CONFIG.INFRA_COSTS.farm.incomeBonus;
           if (capturedInfra.type === 'market') infraUpdates.army_upkeep_per_pixel = Math.max(0.02, this.country.army_upkeep_per_pixel - CONFIG.INFRA_COSTS.market.upkeepReduction);
           if (capturedInfra.type === 'barracks') infraUpdates.army_size = this.country.army_size + CONFIG.INFRA_COSTS.barracks.armyBonus;
           if (Object.keys(infraUpdates).length) {
@@ -261,7 +260,6 @@ class GameEngine {
           }
           // Remove stat effect from defender
           const defUpdates = {};
-          if (capturedInfra.type === 'farm') defUpdates.income_per_pixel = Math.max(CONFIG.BASE_INCOME_PER_PIXEL, defender.income_per_pixel - CONFIG.INFRA_COSTS.farm.incomeBonus);
           if (capturedInfra.type === 'market') defUpdates.army_upkeep_per_pixel = Math.min(0.3, defender.army_upkeep_per_pixel + CONFIG.INFRA_COSTS.market.upkeepReduction);
           if (capturedInfra.type === 'barracks') defUpdates.army_size = Math.max(1, defender.army_size - CONFIG.INFRA_COSTS.barracks.armyBonus);
           if (Object.keys(defUpdates).length) await sb.from('countries').update(defUpdates).eq('id', defender.id);
@@ -271,7 +269,6 @@ class GameEngine {
           delete this.infraData[key];
           // Remove stat effect from defender
           const defUpdates = {};
-          if (capturedInfra.type === 'farm') defUpdates.income_per_pixel = Math.max(CONFIG.BASE_INCOME_PER_PIXEL, defender.income_per_pixel - CONFIG.INFRA_COSTS.farm.incomeBonus);
           if (capturedInfra.type === 'market') defUpdates.army_upkeep_per_pixel = Math.min(0.3, defender.army_upkeep_per_pixel + CONFIG.INFRA_COSTS.market.upkeepReduction);
           if (capturedInfra.type === 'barracks') defUpdates.army_size = Math.max(1, defender.army_size - CONFIG.INFRA_COSTS.barracks.armyBonus);
           if (Object.keys(defUpdates).length) await sb.from('countries').update(defUpdates).eq('id', defender.id);
@@ -328,10 +325,19 @@ class GameEngine {
     if (this.infraData[key]) {
       return { ok: false, msg: 'A building already stands on this tile.' };
     }
-    const buildingCount = Object.values(this.infraData).filter(i => i.country_id === this.country.id).length;
+    const myInfra = Object.values(this.infraData).filter(i => i.country_id === this.country.id);
+    const buildingCount = myInfra.length;
     const buildingCap = Math.floor(this.country.pixel_count / 2);
     if (buildingCount >= buildingCap) {
       return { ok: false, msg: `Building cap reached (${buildingCount}/${buildingCap}). You need ${(buildingCount + 1) * 2} pixels to build more.` };
+    }
+    if (type === 'barracks') {
+      const existingBarracks = myInfra.filter(i => i.type === 'barracks').length;
+      const population = this.country.pixel_count * CONFIG.POPULATION_PER_PIXEL;
+      const requiredPop = (existingBarracks + 1) * CONFIG.BARRACKS_POPULATION_COST;
+      if (population < requiredPop) {
+        return { ok: false, msg: `Need population of ${requiredPop} for barracks #${existingBarracks + 1}. You have ${population} — expand to ${Math.ceil(requiredPop / CONFIG.POPULATION_PER_PIXEL)} pixels.` };
+      }
     }
 
     const { data: infra, error } = await sb.from('infrastructure').insert({
@@ -347,9 +353,8 @@ class GameEngine {
     let updates = { gold: newGold };
 
     if (type === 'barracks') updates.army_size = this.country.army_size + cost.armyBonus;
-    if (type === 'farm') updates.income_per_pixel = this.country.income_per_pixel + cost.incomeBonus;
     if (type === 'market') updates.army_upkeep_per_pixel = Math.max(0.02, this.country.army_upkeep_per_pixel - cost.upkeepReduction);
-    // mine: ongoing flat income handled by tickIncome; wall: defense bonus handled in attack()
+    // farm: income computed dynamically from terrain; mine/wall: handled in tick/attack
 
     await sb.from('countries').update(updates).eq('id', this.country.id);
     Object.assign(this.country, updates);
@@ -569,22 +574,71 @@ class GameEngine {
 // ── Income ticker (runs client-side every few seconds for a smooth counter) ─
 // Mine income with diminishing returns:
 // Each additional mine reduces flat income by 1g/hr and pixel bonus by 0.01/px
-function calcMineIncome(mines, pixelCount) {
-  if (mines === 0) return 0;
-  const effectiveFlat = Math.max(0, CONFIG.INFRA_COSTS.mine.flatIncome - (mines - 1) * 0.1);
-  const effectivePixelBonus = Math.max(0, CONFIG.INFRA_COSTS.mine.pixelBonus - (mines - 1) * 0.002);
-  return mines * effectiveFlat + effectivePixelBonus * pixelCount;
+// mineInfra: array of {pixel_x, pixel_y} mine records; pixelData: engine.pixelData
+function calcMineIncome(mineInfra, pixelCount, pixelData) {
+  if (!mineInfra || mineInfra.length === 0) return 0;
+  let total = 0;
+  mineInfra.forEach((m, i) => {
+    const terrain = pixelData?.[`${m.pixel_x},${m.pixel_y}`]?.terrain || 'grass';
+    const terrainMult = CONFIG.MINE_TERRAIN_MULT[terrain] ?? 1.0;
+    const baseFlat = Math.max(0, CONFIG.INFRA_COSTS.mine.flatIncome - i * 0.1);
+    const pixelBonus = Math.max(0, CONFIG.INFRA_COSTS.mine.pixelBonus - i * 0.002);
+    total += baseFlat * terrainMult + pixelBonus * pixelCount;
+  });
+  return total;
+}
+
+// farmInfra: array of {pixel_x, pixel_y} farm records
+function calcFarmIncome(farmInfra, pixelCount, pixelData) {
+  if (!farmInfra || farmInfra.length === 0) return 0;
+  return farmInfra.reduce((sum, f) => {
+    const terrain = pixelData?.[`${f.pixel_x},${f.pixel_y}`]?.terrain || 'grass';
+    const terrainMult = CONFIG.FARM_TERRAIN_MULT[terrain] ?? 1.0;
+    return sum + CONFIG.INFRA_COSTS.farm.incomeBonus * terrainMult * pixelCount;
+  }, 0);
+}
+
+// Returns number of unique neighboring nations (each costs BORDER_UPKEEP_PER_NATION g/hr)
+function calcBorderUpkeep(pixelData, myCountryId) {
+  const neighborNations = new Set();
+  for (const [key, p] of Object.entries(pixelData)) {
+    if (p.country_id !== myCountryId) continue;
+    const [x, y] = key.split(',').map(Number);
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+      const n = pixelData[`${x+dx},${y+dy}`];
+      if (n?.country_id && n.country_id !== myCountryId) neighborNations.add(n.country_id);
+    }
+  }
+  return neighborNations.size * CONFIG.BORDER_UPKEEP_PER_NATION;
+}
+
+// Returns food/hr balance (positive = surplus, negative = deficit)
+function calcFoodBalance(farmCount, pixelCount) {
+  const production = pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmCount * CONFIG.FOOD_PRODUCTION_PER_FARM;
+  const consumption = pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL;
+  return production - consumption;
 }
 
 async function tickIncome(engine) {
   if (!engine.country) return;
   const c = engine.country;
-  const mines = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id && i.type === 'mine').length;
-  const mineIncome = calcMineIncome(mines, c.pixel_count);
-  const hourlyIncome = c.income_per_pixel * c.pixel_count + mineIncome;
+  const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id);
+  const mineInfra = myInfra.filter(i => i.type === 'mine');
+  const farmInfra = myInfra.filter(i => i.type === 'farm');
+
+  const baseIncome = c.income_per_pixel * c.pixel_count;
+  const farmIncome = calcFarmIncome(farmInfra, c.pixel_count, engine.pixelData);
+  const mineIncome = calcMineIncome(mineInfra, c.pixel_count, engine.pixelData);
+
+  // Food penalty: deficit reduces income (max -50%)
+  const foodBalance = calcFoodBalance(farmInfra.length, c.pixel_count);
+  const foodMult = foodBalance < 0 ? Math.max(0.5, 1 + foodBalance * 0.02) : 1;
+
+  const hourlyIncome = (baseIncome + farmIncome + mineIncome) * foodMult;
   const pixelUpkeep = Math.max(0, c.army_upkeep_per_pixel * c.pixel_count);
   const armyUpkeep = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
-  const netHourly = hourlyIncome - pixelUpkeep - armyUpkeep;
+  const borderUpkeep = calcBorderUpkeep(engine.pixelData, c.id);
+  const netHourly = hourlyIncome - pixelUpkeep - armyUpkeep - borderUpkeep;
   const tick = netHourly * (CONFIG.INCOME_TICK_SECONDS / 3600);
   const newGold = Math.max(0, Math.round((c.gold + tick) * 10000) / 10000);
   if (newGold === c.gold) return;
