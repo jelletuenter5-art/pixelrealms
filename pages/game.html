@@ -1532,15 +1532,22 @@ function switchRightTab(tab) {
 async function renderRightPanel() {
   const body = document.getElementById('rightPanelBody');
   if (rightTab === 'spectate') { if (spectateTargetId) spectateCountry(spectateTargetId); else body.innerHTML = '<div style="color:var(--muted);padding:1rem">Click a nation in the Nations tab to view their stats.</div>'; }
-  else if (rightTab === 'country') renderMyCountry(body);
+  else if (rightTab === 'country') await renderMyCountry(body);
   else if (rightTab === 'infra') renderInfra(body);
   else if (rightTab === 'chat') renderChat(body);
   else if (rightTab === 'admin') renderAdmin(body);
 }
 
-function renderMyCountry(body) {
+async function renderMyCountry(body) {
+  // Re-fetch country if missing (e.g. RLS timing on first load)
+  if (!engine.country) {
+    const { data } = await sb.from('countries').select('*')
+      .eq('game_id', GAME_ID).eq('player_id', currentUser.id).single();
+    if (data) engine.country = data;
+  }
   const c = engine.country;
   if (!c) { body.innerHTML = '<div style="color:var(--muted)">Not in this game</div>'; return; }
+  try {
 
   const livePending = engine.getLivePending();
   const liveTokens = Math.floor(livePending);
@@ -1668,6 +1675,10 @@ function renderMyCountry(body) {
       ${c.gold < 20 ? '⚠️ Low gold — build mines!' : '✅ Treasury healthy'}
     </div>
   `;
+  } catch(e) {
+    body.innerHTML = `<div style="color:var(--red);padding:1rem;font-size:0.8rem">Error loading stats: ${e.message}</div>`;
+    console.error('renderMyCountry error:', e);
+  }
 }
 
 async function buyExpansionToken() {
