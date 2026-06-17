@@ -730,6 +730,9 @@ async function submitJoin(gameId) {
     pixel_count: CONFIG.STARTING_PIXELS,
     pending_pixels: CONFIG.STARTING_EXPANSION_TOKENS,
     army_size: CONFIG.STARTING_ARMY,
+    income_per_pixel: CONFIG.BASE_INCOME_PER_PIXEL,
+    army_upkeep_per_pixel: 0.3,
+    last_active: new Date().toISOString(),
   }).select().single();
 
   if (error) { document.getElementById('joinError').textContent = error.message; return; }

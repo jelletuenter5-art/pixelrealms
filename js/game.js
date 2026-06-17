@@ -88,9 +88,9 @@ class GameEngine {
     if (myPixels.length > 0 && correctPixelCount !== this.country.pixel_count) updates.pixel_count = correctPixelCount;
     if (Math.abs(correctIncome - this.country.income_per_pixel) > 1e-6) updates.income_per_pixel = correctIncome;
     if (Math.abs(correctUpkeep - this.country.army_upkeep_per_pixel) > 1e-6) updates.army_upkeep_per_pixel = correctUpkeep;
-    // If pixel_count was wrongly zeroed (old bug), gold drained to 0 from army upkeep.
-    // Restore starting gold so the player isn't stuck with 0.
-    if (pixelCountWasWrong && (this.country.gold == null || isNaN(this.country.gold) || this.country.gold < CONFIG.STARTING_GOLD)) {
+    // Repair gold if it's null, NaN, or zero — could happen from a bad offline accrual
+    // (income_per_pixel was null for a new player, draining gold to 0 over a long offline period)
+    if (this.country.gold == null || isNaN(this.country.gold) || this.country.gold <= 0) {
       updates.gold = CONFIG.STARTING_GOLD;
     }
 
@@ -124,13 +124,15 @@ class GameEngine {
     const myInfra = Object.values(this.infraData || {}).filter(i => i.country_id === this.country.id);
     const mineInfra = myInfra.filter(i => i.type === 'mine');
     const farmInfra = myInfra.filter(i => i.type === 'farm');
-    const baseIncome = this.country.income_per_pixel * this.country.pixel_count;
+    const incomePerPx = this.country.income_per_pixel || CONFIG.BASE_INCOME_PER_PIXEL;
+    const upkeepPerPx = this.country.army_upkeep_per_pixel || 0.3;
+    const baseIncome = incomePerPx * this.country.pixel_count;
     const mineIncome = calcMineIncome(mineInfra, this.country.pixel_count, this.pixelData);
     const farmIncome = calcFarmIncome(farmInfra, this.country.pixel_count, this.pixelData);
-    const foodBalance = calcFoodBalance(farmInfra.length, this.country.pixel_count, this.country.army_size);
+    const foodBalance = calcFoodBalance(farmInfra.length, this.country.pixel_count, this.country.army_size, this.country.food_aggression || 0);
     const foodMult = foodBalance < 0 ? Math.max(0.5, 1 + foodBalance * 0.02) : 1;
     const hourlyIncome = (baseIncome + mineIncome + farmIncome) * foodMult;
-    const pixelUpkeep = Math.max(0, this.country.army_upkeep_per_pixel * this.country.pixel_count);
+    const pixelUpkeep = Math.max(0, upkeepPerPx * this.country.pixel_count);
     const armyUpkeep = this.country.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
     const borderUpkeep = calcBorderUpkeep(this.pixelData, this.country.id);
     const currentGold = Number.isFinite(this.country.gold) ? this.country.gold : 0;
@@ -258,8 +260,11 @@ class GameEngine {
     if (success) {
       await sb.from('pixels').update({ country_id: this.country.id, captured_at: new Date().toISOString() })
         .eq('game_id', this.gameId).eq('x', x).eq('y', y);
-      await sb.from('countries').update({ pixel_count: this.country.pixel_count + 1 })
+      // Aggression increases food consumption — decays 0.01/hr naturally
+      const newAggression = Math.round(((Number.isFinite(this.country.food_aggression) ? this.country.food_aggression : 0) + 0.05) * 1000) / 1000;
+      await sb.from('countries').update({ pixel_count: this.country.pixel_count + 1, food_aggression: newAggression })
         .eq('id', this.country.id);
+      this.country.food_aggression = newAggression;
       await sb.from('countries').update({ pixel_count: Math.max(0, defender.pixel_count - 1) })
         .eq('id', defender.id);
 
@@ -642,9 +647,9 @@ function calcBorderUpkeep(pixelData, myCountryId) {
 }
 
 // Returns food/hr balance (positive = surplus, negative = deficit)
-function calcFoodBalance(farmCount, pixelCount, armySize) {
+function calcFoodBalance(farmCount, pixelCount, armySize, aggression = 0) {
   const production = pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmCount * CONFIG.FOOD_PRODUCTION_PER_FARM;
-  const consumption = pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + (armySize || 0) * CONFIG.FOOD_CONSUMPTION_PER_ARMY;
+  const consumption = pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + (armySize || 0) * CONFIG.FOOD_CONSUMPTION_PER_ARMY + (aggression || 0);
   return production - consumption;
 }
 
@@ -655,29 +660,44 @@ async function tickIncome(engine) {
   const mineInfra = myInfra.filter(i => i.type === 'mine');
   const farmInfra = myInfra.filter(i => i.type === 'farm');
 
-  const baseIncome = c.income_per_pixel * c.pixel_count;
+  const incomePerPx = c.income_per_pixel || CONFIG.BASE_INCOME_PER_PIXEL;
+  const upkeepPerPx = c.army_upkeep_per_pixel || 0.3;
+  const baseIncome = incomePerPx * c.pixel_count;
   const farmIncome = calcFarmIncome(farmInfra, c.pixel_count, engine.pixelData);
   const mineIncome = calcMineIncome(mineInfra, c.pixel_count, engine.pixelData);
 
-  // Food penalty: deficit reduces income (max -50%)
-  const foodBalance = calcFoodBalance(farmInfra.length, c.pixel_count, c.army_size);
+  const aggression = Number.isFinite(c.food_aggression) ? c.food_aggression : 0;
+  const foodBalance = calcFoodBalance(farmInfra.length, c.pixel_count, c.army_size, aggression);
   const foodMult = foodBalance < 0 ? Math.max(0.5, 1 + foodBalance * 0.02) : 1;
 
   const hourlyIncome = (baseIncome + farmIncome + mineIncome) * foodMult;
-  const pixelUpkeep = Math.max(0, c.army_upkeep_per_pixel * c.pixel_count);
+  const pixelUpkeep = Math.max(0, upkeepPerPx * c.pixel_count);
   const armyUpkeep = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
   const borderUpkeep = calcBorderUpkeep(engine.pixelData, c.id);
   const netHourly = hourlyIncome - pixelUpkeep - armyUpkeep - borderUpkeep;
+
   const tickHours = CONFIG.INCOME_TICK_SECONDS / 3600;
   const tick = netHourly * tickHours;
   const safeGold = Number.isFinite(c.gold) ? c.gold : 0;
   const newGold = Math.max(0, Math.round((safeGold + tick) * 10000) / 10000);
-  // Food accumulates/depletes each tick — no hard floor (deficit penalty already applied above)
+
+  // Update gold first — critical, must not be blocked by food column issues
+  if (newGold !== safeGold) {
+    const { error } = await sb.from('countries').update({ gold: newGold }).eq('id', c.id);
+    if (!error) engine.country.gold = newGold;
+  }
+
+  // Food storage — separate update so food column issues never affect gold
   const safeFood = Number.isFinite(c.food) ? c.food : 0;
   const newFood = Math.max(0, Math.round((safeFood + foodBalance * tickHours) * 100) / 100);
-  if (newGold === safeGold && newFood === safeFood) return;
+  // Aggression decays at 0.01/hr
+  const newAggression = Math.max(0, Math.round((aggression - 0.01 * tickHours) * 10000) / 10000);
 
-  await sb.from('countries').update({ gold: newGold, food: newFood }).eq('id', c.id);
-  engine.country.gold = newGold;
-  engine.country.food = newFood;
+  if (newFood !== safeFood || newAggression !== aggression) {
+    const { error } = await sb.from('countries').update({ food: newFood, food_aggression: newAggression }).eq('id', c.id);
+    if (!error) {
+      engine.country.food = newFood;
+      engine.country.food_aggression = newAggression;
+    }
+  }
 }
