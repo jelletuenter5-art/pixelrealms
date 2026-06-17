@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>PixelRealms — Lobby</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -14,7 +14,9 @@
     --border: #2d3748; --green: #4ade80; --gold: #f59e0b;
     --red: #ef4444; --blue: #38bdf8; --text: #e2e8f0; --muted: #64748b;
   }
-  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overscroll-behavior: none; -webkit-overflow-scrolling: touch; }
+  button, a, input, select, textarea { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
   .topbar {
     background: var(--panel);

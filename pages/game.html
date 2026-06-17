@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>PixelRealms</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -16,7 +16,9 @@
     --border: #2d3748; --green: #4ade80; --gold: #f59e0b;
     --red: #ef4444; --blue: #38bdf8; --text: #e2e8f0; --muted: #64748b;
   }
-  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overscroll-behavior: none; }
+  button, a, input, select, textarea { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
   /* LAYOUT */
   .layout { display: grid; grid-template-columns: 260px 1fr 280px; grid-template-rows: 50px 1fr; height: 100vh; height: 100dvh; }
@@ -474,7 +476,7 @@
 function calcMineIncome(mines, pixelCount) {
   if (mines === 0) return 0;
   const effectiveFlat = Math.max(0, CONFIG.INFRA_COSTS.mine.flatIncome - (mines - 1) * 0.1);
-  const effectivePixelBonus = CONFIG.INFRA_COSTS.mine.pixelBonus;
+  const effectivePixelBonus = Math.max(0, CONFIG.INFRA_COSTS.mine.pixelBonus - (mines - 1) * 0.003);
   return mines * effectiveFlat + effectivePixelBonus * pixelCount;
 }
 
@@ -1474,7 +1476,7 @@ function renderMyCountry(body) {
   const markets = myInfra.filter(i => i.type === 'market').length;
   const mineIncome = calcMineIncome(mines, c.pixel_count);
   const effectiveFlat = mines > 0 ? Math.max(0, CONFIG.INFRA_COSTS.mine.flatIncome - (mines - 1) * 0.1) : 0;
-  const effectivePixelBonus = mines > 0 ? CONFIG.INFRA_COSTS.mine.pixelBonus : 0;
+  const effectivePixelBonus = mines > 0 ? Math.max(0, CONFIG.INFRA_COSTS.mine.pixelBonus - (mines - 1) * 0.003) : 0;
 
   const pixelIncome = c.income_per_pixel * c.pixel_count;
   const incomePerHr = (pixelIncome + mineIncome).toFixed(1);

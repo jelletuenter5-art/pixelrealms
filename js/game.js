@@ -78,7 +78,7 @@ class GameEngine {
     const markets = myInfra.filter(i => i.type === 'market').length;
 
     const correctPixelCount = myPixels.length;
-    const correctIncome = 0.5 + farms * CONFIG.INFRA_COSTS.farm.incomeBonus;
+    const correctIncome = CONFIG.BASE_INCOME_PER_PIXEL + farms * CONFIG.INFRA_COSTS.farm.incomeBonus;
     const correctUpkeep = Math.max(0.02, 0.3 - markets * CONFIG.INFRA_COSTS.market.upkeepReduction);
 
     const updates = {};
@@ -261,7 +261,7 @@ class GameEngine {
           }
           // Remove stat effect from defender
           const defUpdates = {};
-          if (capturedInfra.type === 'farm') defUpdates.income_per_pixel = Math.max(1, defender.income_per_pixel - CONFIG.INFRA_COSTS.farm.incomeBonus);
+          if (capturedInfra.type === 'farm') defUpdates.income_per_pixel = Math.max(CONFIG.BASE_INCOME_PER_PIXEL, defender.income_per_pixel - CONFIG.INFRA_COSTS.farm.incomeBonus);
           if (capturedInfra.type === 'market') defUpdates.army_upkeep_per_pixel = Math.min(0.3, defender.army_upkeep_per_pixel + CONFIG.INFRA_COSTS.market.upkeepReduction);
           if (capturedInfra.type === 'barracks') defUpdates.army_size = Math.max(1, defender.army_size - CONFIG.INFRA_COSTS.barracks.armyBonus);
           if (Object.keys(defUpdates).length) await sb.from('countries').update(defUpdates).eq('id', defender.id);
@@ -271,7 +271,7 @@ class GameEngine {
           delete this.infraData[key];
           // Remove stat effect from defender
           const defUpdates = {};
-          if (capturedInfra.type === 'farm') defUpdates.income_per_pixel = Math.max(1, defender.income_per_pixel - CONFIG.INFRA_COSTS.farm.incomeBonus);
+          if (capturedInfra.type === 'farm') defUpdates.income_per_pixel = Math.max(CONFIG.BASE_INCOME_PER_PIXEL, defender.income_per_pixel - CONFIG.INFRA_COSTS.farm.incomeBonus);
           if (capturedInfra.type === 'market') defUpdates.army_upkeep_per_pixel = Math.min(0.3, defender.army_upkeep_per_pixel + CONFIG.INFRA_COSTS.market.upkeepReduction);
           if (capturedInfra.type === 'barracks') defUpdates.army_size = Math.max(1, defender.army_size - CONFIG.INFRA_COSTS.barracks.armyBonus);
           if (Object.keys(defUpdates).length) await sb.from('countries').update(defUpdates).eq('id', defender.id);
@@ -562,7 +562,7 @@ class GameEngine {
 function calcMineIncome(mines, pixelCount) {
   if (mines === 0) return 0;
   const effectiveFlat = Math.max(0, CONFIG.INFRA_COSTS.mine.flatIncome - (mines - 1) * 0.1);
-  const effectivePixelBonus = CONFIG.INFRA_COSTS.mine.pixelBonus;
+  const effectivePixelBonus = Math.max(0, CONFIG.INFRA_COSTS.mine.pixelBonus - (mines - 1) * 0.003);
   return mines * effectiveFlat + effectivePixelBonus * pixelCount;
 }
 
