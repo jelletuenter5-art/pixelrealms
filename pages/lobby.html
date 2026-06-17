@@ -19,13 +19,28 @@
   .topbar {
     background: var(--panel);
     border-bottom: 1px solid var(--border);
-    padding: 0.9rem 1.5rem;
+    padding: 0.65rem 1.25rem;
     display: flex; align-items: center; justify-content: space-between;
-    position: sticky; top: 0; z-index: 100;
+    position: sticky; top: 0; z-index: 100; gap: 0.75rem;
   }
-  .topbar-logo { font-family: 'Cinzel', serif; font-size: 1.3rem; font-weight: 900;
+  .topbar-logo { font-family: 'Cinzel', serif; font-size: 1.2rem; font-weight: 900;
     background: linear-gradient(135deg, var(--green), var(--gold));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    flex-shrink: 0; }
+  .topbar-actions { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+  .topbar-icon-btn { display: flex; align-items: center; gap: 0.35rem; padding: 0.4rem 0.7rem;
+    border-radius: 8px; border: 1px solid var(--border); background: transparent;
+    color: var(--muted); cursor: pointer; font-size: 0.8rem; font-family: 'Inter', sans-serif;
+    transition: all 0.2s; text-decoration: none; white-space: nowrap; }
+  .topbar-icon-btn:hover { border-color: var(--green); color: var(--green); }
+  .topbar-icon-btn .label { display: none; }
+  .topbar-username { font-size: 0.8rem; color: var(--muted); flex: 1; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .topbar-username strong { color: var(--text); }
+  @media (min-width: 480px) {
+    .topbar-icon-btn .label { display: inline; }
+    .topbar { padding: 0.75rem 1.5rem; }
+  }
   .topbar-user { display: flex; align-items: center; gap: 1rem; }
   .username-badge { font-size: 0.85rem; color: var(--muted); }
   .username-badge strong { color: var(--text); }
@@ -170,11 +185,11 @@
 
 <div class="topbar">
   <span class="topbar-logo">PixelRealms</span>
-  <div class="topbar-user">
-    <span class="username-badge">Ruler: <strong id="topUsername">—</strong></span>
-    <button class="btn-sm" onclick="inviteFriends()">🔗 Invite Friends</button>
-    <a class="btn-sm" href="https://discord.gg/tpu54VgyZ8" target="_blank" rel="noopener" style="text-decoration:none; display:inline-flex; align-items:center;">💬 Discord</a>
-    <button class="btn-sm" onclick="logout()">Sign Out</button>
+  <span class="topbar-username">⚔️ <strong id="topUsername">—</strong></span>
+  <div class="topbar-actions">
+    <button class="topbar-icon-btn" onclick="inviteFriends()">🔗 <span class="label">Invite</span></button>
+    <a class="topbar-icon-btn" href="https://discord.gg/tpu54VgyZ8" target="_blank" rel="noopener">💬 <span class="label">Discord</span></a>
+    <button class="topbar-icon-btn" onclick="logout()">🚪 <span class="label">Sign Out</span></button>
   </div>
 </div>
 
@@ -344,19 +359,29 @@ const ADMIN_AVATAR_EMOJIS = ['🔱','⚡','🌟','🎖️','👁️','🔮','�
     if (newFeedback) document.getElementById('adminDot')?.classList.add('show');
   }
 
-  // Feedback red dot: any admin reply exists and not yet seen this session
+  // Issues red dot: new admin message in feedback_messages since last view
   const lastFeedbackView = parseInt(localStorage.getItem('pr_last_feedback_view') || '0');
-  const { data: anyReplies } = await sb.from('feedback').select('id')
-    .eq('user_id', currentUser.id).not('admin_reply', 'is', null).limit(1);
-  if (anyReplies?.length && Date.now() - lastFeedbackView > 60000) {
-    document.getElementById('feedbackDot')?.classList.add('show');
+  if (lastFeedbackView > 0) {
+    const myTickets = await sb.from('feedback').select('id').eq('user_id', currentUser.id);
+    const myIds = (myTickets.data || []).map(t => t.id);
+    if (myIds.length) {
+      const { data: newAdminMsgs } = await sb.from('feedback_messages').select('id')
+        .in('feedback_id', myIds).eq('sender', 'admin')
+        .gte('created_at', new Date(lastFeedbackView).toISOString()).limit(1);
+      if (newAdminMsgs?.length) document.getElementById('feedbackDot')?.classList.add('show');
+    }
   }
 
-  // Updates red dot: new update since last view
+  // Updates red dot: only show if user has visited Updates tab before and there's something newer
   const lastUpdatesView = parseInt(localStorage.getItem('pr_last_updates_view') || '0');
-  const { data: newUpdates } = await sb.from('game_updates').select('id')
-    .gte('created_at', new Date(lastUpdatesView || 0).toISOString()).limit(1);
-  if (newUpdates?.length) document.getElementById('updatesDot')?.classList.add('show');
+  if (lastUpdatesView === 0) {
+    // First ever visit — set baseline so we don't spam the dot on every login
+    localStorage.setItem('pr_last_updates_view', Date.now());
+  } else {
+    const { data: newUpdates } = await sb.from('game_updates').select('id')
+      .gte('created_at', new Date(lastUpdatesView).toISOString()).limit(1);
+    if (newUpdates?.length) document.getElementById('updatesDot')?.classList.add('show');
+  }
 
   initSettings();
   loadMyFeedback();

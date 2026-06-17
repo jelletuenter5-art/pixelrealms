@@ -332,6 +332,20 @@
 </div>
 
 <!-- Infra build modal -->
+<!-- Quick build selector -->
+<div id="quickBuildModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:310;align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeQuickBuildModal()">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:16px 16px 0 0;padding:1.25rem;width:100%;max-width:480px;max-height:80vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div>
+        <div style="font-family:'Cinzel',serif;font-weight:700;font-size:1rem">🏗️ Build on tile</div>
+        <div id="quickBuildCoords" style="font-size:0.75rem;color:var(--muted);margin-top:0.1rem"></div>
+      </div>
+      <button onclick="closeQuickBuildModal()" style="background:transparent;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:0.25rem">✕</button>
+    </div>
+    <div id="quickBuildGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem"></div>
+  </div>
+</div>
+
 <div id="buildModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:310;align-items:center;justify-content:center">
   <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.5rem;max-width:380px;width:90%;max-height:90vh;overflow-y:auto">
     <h3 style="font-family:'Cinzel',serif;margin-bottom:1rem" id="buildModalTitle">Build Structure</h3>
@@ -532,11 +546,11 @@ let lastMousePos = null;
     document.querySelector('.mode-bar').style.display = 'none';
     document.getElementById('spawnBanner').style.display = 'none';
     const specBanner = document.createElement('div');
-    specBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:rgba(245,158,11,0.15);border-bottom:1px solid rgba(245,158,11,0.3);padding:0.25rem 1rem;text-align:center;font-size:0.75rem;color:var(--gold);pointer-events:none;';
+    specBanner.style.cssText = 'position:relative;z-index:50;background:rgba(245,158,11,0.15);border-bottom:1px solid rgba(245,158,11,0.3);padding:0.25rem 1rem;text-align:center;font-size:0.75rem;color:var(--gold);pointer-events:none;';
     specBanner.textContent = '👁️ Admin Spectator Mode — view only';
-    document.body.appendChild(specBanner);
-    document.getElementById('appLayout').style.marginTop = '24px';
-    document.getElementById('appLayout').style.height = 'calc(100dvh - 24px)';
+    const layout = document.getElementById('appLayout');
+    layout.parentNode.insertBefore(specBanner, layout);
+    layout.style.height = 'calc(100dvh - 24px)';
     // Replace right panel tabs with spectate-only tabs
     document.querySelector('.right-panel .panel-tabs').innerHTML = `
       <button class="panel-tab active" data-tab="spectate" onclick="switchRightTab('spectate')">👁️ Stats</button>
@@ -960,6 +974,7 @@ async function handleClick(e) {
     const existing = engine.infraData?.[`${tx},${ty}`];
     if (existing) { openManageBuilding(tx, ty); return; }
     selectedBuildTile = { x: tx, y: ty };
+    document.getElementById('quickBuildCoords').textContent = `Tile (${tx}, ${ty}) · 💰 ${Math.floor(engine.country?.gold || 0)} gold available`;
     showBuildMenu();
   } else {
     // In any other mode, clicking your own tile with a building opens manage popup
@@ -972,12 +987,31 @@ async function handleClick(e) {
 
 // ── BUILD MENU ─────────────────────────────────────────
 function showBuildMenu() {
-  if (rightTab !== 'infra') {
-    switchRightTab('infra');
-  } else {
-    renderRightPanel();
-  }
-  showToast('Tile selected! Choose a building from the Build panel →');
+  const c = engine.country;
+  const modal = document.getElementById('quickBuildModal');
+  // Render building cards
+  document.getElementById('quickBuildGrid').innerHTML = Object.entries(CONFIG.INFRA_COSTS).map(([type, info]) => {
+    const canAfford = (c.gold || 0) >= info.gold;
+    return `<div onclick="${canAfford ? `quickBuild('${type}')` : `showToast('Need ${info.gold} gold','error')`}"
+      style="background:var(--panel2);border:1px solid ${canAfford ? 'var(--border)' : '#374151'};border-radius:10px;padding:0.75rem;cursor:${canAfford ? 'pointer' : 'not-allowed'};opacity:${canAfford ? '1' : '0.45'};transition:border-color 0.15s"
+      onmouseover="if(${canAfford})this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='${canAfford ? 'var(--border)' : '#374151'}'">
+      <div style="font-size:1.5rem;text-align:center;margin-bottom:0.35rem">${INFRA_ICONS[type] || '🏗️'}</div>
+      <div style="font-weight:700;font-size:0.82rem;text-align:center;margin-bottom:0.2rem">${type.charAt(0).toUpperCase()+type.slice(1)}</div>
+      <div style="font-size:0.72rem;color:var(--muted);text-align:center;margin-bottom:0.35rem">${info.effect}</div>
+      <div style="text-align:center;font-size:0.78rem;color:${canAfford ? 'var(--gold)' : 'var(--red)'};font-weight:600">💰 ${info.gold}g</div>
+    </div>`;
+  }).join('');
+  modal.style.display = 'flex';
+}
+
+function closeQuickBuildModal() {
+  document.getElementById('quickBuildModal').style.display = 'none';
+  selectedBuildTile = null;
+}
+
+function quickBuild(type) {
+  document.getElementById('quickBuildModal').style.display = 'none';
+  openBuildModal(type);
 }
 
 function openBuildModal(type) {
@@ -1197,51 +1231,69 @@ async function renderTrade(body) {
 
   const countries = Object.values(engine.countries).filter(c => c.id !== engine.country.id);
 
+  const pendingHtml = (pending || []).map(t => `
+    <div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:0.75rem;margin-bottom:0.5rem">
+      <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.6rem">
+        <div style="width:10px;height:10px;border-radius:2px;background:${t.from_country?.color};flex-shrink:0"></div>
+        <span style="font-weight:600;font-size:0.88rem">${t.from_country?.name}</span>
+        <span style="color:var(--muted);font-size:0.75rem;margin-left:auto">wants to send you</span>
+      </div>
+      <div style="font-size:1.3rem;font-weight:800;color:var(--gold);margin-bottom:0.6rem">💰 ${t.gold_offered} gold</div>
+      <div style="display:flex;gap:0.5rem">
+        <button onclick="acceptTrade('${t.id}')" style="flex:1;padding:0.45rem;border-radius:7px;border:none;background:linear-gradient(135deg,#166534,#15803d);color:#fff;font-weight:700;cursor:pointer;font-size:0.82rem">✓ Accept</button>
+        <button onclick="rejectTrade('${t.id}')" style="padding:0.45rem 0.75rem;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:0.82rem">✕ Decline</button>
+      </div>
+    </div>`).join('') || '<div style="color:var(--muted);font-size:0.82rem;padding:0.5rem 0">No incoming offers</div>';
+
+  const sentHtml = (sent || []).map(t => `
+    <div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:0.65rem 0.75rem;margin-bottom:0.4rem;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:0.78rem;color:var(--muted)">Awaiting response from</div>
+        <div style="font-weight:600;font-size:0.85rem"><span style="color:${t.to_country?.color}">●</span> ${t.to_country?.name}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="color:var(--gold);font-weight:700">💰 ${t.gold_offered}g</div>
+        <button onclick="cancelTrade('${t.id}')" style="font-size:0.72rem;padding:0.2rem 0.5rem;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;margin-top:0.25rem">Cancel</button>
+      </div>
+    </div>`).join('') || '<div style="color:var(--muted);font-size:0.82rem;padding:0.25rem 0">No outgoing offers</div>';
+
+  const historyHtml = (history || []).map(t => {
+    const outgoing = t.from_country_id === engine.country.id;
+    const other = outgoing ? t.to_country : t.from_country;
+    const statusColor = { accepted:'var(--green)', rejected:'var(--red)', cancelled:'var(--muted)' }[t.status] || 'var(--muted)';
+    const statusIcon = { accepted:'✅', rejected:'✕', cancelled:'⊘' }[t.status] || '';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:0.45rem 0;border-bottom:1px solid rgba(45,55,72,0.5)">
+      <div style="font-size:0.8rem">
+        <span style="color:${other?.color}">●</span> ${other?.name}
+        <span style="color:var(--muted);font-size:0.72rem;margin-left:0.3rem">${outgoing ? '↑ sent' : '↓ received'}</span>
+      </div>
+      <div style="text-align:right">
+        <span style="font-weight:600;font-size:0.82rem">💰 ${t.gold_offered}g</span>
+        <span style="display:block;font-size:0.7rem;color:${statusColor}">${statusIcon} ${t.status}</span>
+      </div>
+    </div>`;
+  }).join('') || '<div style="color:var(--muted);font-size:0.82rem;padding:0.5rem 0">No history yet</div>';
+
   body.innerHTML = `
-    <div class="section-label">Incoming Offers (${pending?.length || 0})</div>
-    ${(pending || []).map(t => `<div class="trade-offer">
-      <div class="trade-offer-header">
-        <span style="font-size:0.8rem">💰 <strong>${t.gold_offered}</strong> from <span style="color:${t.from_country?.color}">${t.from_country?.name}</span></span>
-        <div class="trade-btns">
-          <button class="btn-accept" onclick="acceptTrade('${t.id}')">Accept</button>
-          <button class="btn-reject" onclick="rejectTrade('${t.id}')">✕</button>
-        </div>
-      </div>
-    </div>`).join('') || '<div style="color:var(--muted);font-size:0.8rem">No pending offers</div>'}
+    ${(pending?.length) ? `<div class="section-label" style="color:var(--gold)">🔔 Incoming Offers (${pending.length})</div>${pendingHtml}` : ''}
 
-    <div class="section-label" style="margin-top:1rem">Your Pending Offers (${sent?.length || 0})</div>
-    ${(sent || []).map(t => `<div class="trade-offer">
-      <div class="trade-offer-header">
-        <span style="font-size:0.8rem">💰 <strong>${t.gold_offered}</strong> to <span style="color:${t.to_country?.color}">${t.to_country?.name}</span></span>
-        <div class="trade-btns">
-          <button class="btn-reject" onclick="cancelTrade('${t.id}')">Cancel</button>
-        </div>
-      </div>
-    </div>`).join('') || '<div style="color:var(--muted);font-size:0.8rem">No offers sent</div>'}
-
-    <div class="section-label" style="margin-top:1rem">Send Gold</div>
-    <div class="form-group" style="margin-bottom:0.5rem">
-      <select id="tradeTarget" style="width:100%;margin-bottom:0.5rem;font-size:0.8rem">
-        <option value="">Select nation…</option>
+    <div class="section-label" style="margin-top:0.75rem">💸 Send Gold</div>
+    <div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:0.75rem;margin-bottom:0.75rem">
+      <select id="tradeTarget" style="width:100%;margin-bottom:0.6rem;font-size:0.85rem;background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:0.5rem;color:var(--text)">
+        <option value="">Choose nation…</option>
         ${countries.map(c => `<option value="${c.id}">${c.flag_emoji || ''} ${c.name}</option>`).join('')}
       </select>
-      <input type="number" id="tradeAmount" placeholder="Gold amount" min="1" max="${engine.country.gold}" style="width:100%">
+      <div style="display:flex;gap:0.5rem">
+        <input type="number" id="tradeAmount" placeholder="Amount" min="1" max="${engine.country.gold}" style="flex:1;font-size:0.85rem">
+        <button onclick="sendTrade()" style="padding:0.5rem 1rem;border-radius:7px;border:none;background:linear-gradient(135deg,#92400e,#b45309);color:#fff;font-weight:700;cursor:pointer;font-size:0.82rem;white-space:nowrap">Send Offer</button>
+      </div>
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:0.4rem">You have 💰 ${Math.floor(engine.country.gold)} gold</div>
     </div>
-    <button class="btn btn-gold btn-full" onclick="sendTrade()">Send Gold Offer</button>
 
-    <div class="section-label" style="margin-top:1rem">Your Trade History (${history?.length || 0})</div>
-    ${(history || []).map(t => {
-      const outgoing = t.from_country_id === engine.country.id;
-      const other = outgoing ? t.to_country : t.from_country;
-      const statusLabel = { accepted: '✅ Completed', rejected: '✕ Rejected', cancelled: '⊘ Cancelled' }[t.status] || t.status;
-      const dir = outgoing ? `Sent to <span style="color:${other?.color}">${other?.name}</span>` : `Received from <span style="color:${other?.color}">${other?.name}</span>`;
-      return `<div class="trade-offer">
-        <div class="trade-offer-header">
-          <span style="font-size:0.8rem">💰 <strong>${t.gold_offered}</strong> — ${dir}</span>
-          <span style="font-size:0.72rem;color:var(--muted)">${statusLabel}</span>
-        </div>
-      </div>`;
-    }).join('') || '<div style="color:var(--muted);font-size:0.8rem">No trade history yet</div>'}
+    ${sent?.length ? `<div class="section-label">⏳ Your Pending Offers (${sent.length})</div>${sentHtml}` : ''}
+
+    <div class="section-label" style="margin-top:0.75rem">📜 History</div>
+    ${historyHtml}
   `;
 }
 
