@@ -1187,9 +1187,9 @@ function updateTopBar() {
   if (!c) return;
   document.getElementById('myCountryFlag').textContent = c.flag_emoji || '🏳️';
   document.getElementById('myCountryName').textContent = c.name;
-  document.getElementById('myGold').textContent = c.gold.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  document.getElementById('myPixels').textContent = c.pixel_count;
-  document.getElementById('myArmy').textContent = c.army_size;
+  document.getElementById('myGold').textContent = (c.gold ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  document.getElementById('myPixels').textContent = c.pixel_count ?? 0;
+  document.getElementById('myArmy').textContent = c.army_size ?? 0;
   document.getElementById('myTokens').textContent = engine.getLiveTokens();
 }
 
@@ -1555,26 +1555,33 @@ async function renderMyCountry(body) {
   const fraction = livePending % 1;
   const pct = (fraction / nextToken * 100).toFixed(0);
 
+  // Null-safe country fields
+  const gold = c.gold ?? 0;
+  const pixelCount = c.pixel_count ?? 0;
+  const armySize = c.army_size ?? 0;
+  const armyUpkeepPerPixel = c.army_upkeep_per_pixel ?? 0.3;
+  const incomePerPixel = c.income_per_pixel ?? CONFIG.BASE_INCOME_PER_PIXEL;
+
   const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id);
   const mineInfraArr = myInfra.filter(i => i.type === 'mine');
   const farmInfraArr = myInfra.filter(i => i.type === 'farm');
   const markets = myInfra.filter(i => i.type === 'market').length;
   const mines = mineInfraArr.length;
   const farms = farmInfraArr.length;
-  const mineIncome = calcMineIncome(mineInfraArr, c.pixel_count, engine.pixelData);
-  const farmIncome = calcFarmIncome(farmInfraArr, c.pixel_count, engine.pixelData);
-  const foodBal = calcFoodBalance(farms, c.pixel_count);
+  const mineIncome = calcMineIncome(mineInfraArr, pixelCount, engine.pixelData);
+  const farmIncome = calcFarmIncome(farmInfraArr, pixelCount, engine.pixelData);
+  const foodBal = calcFoodBalance(farms, pixelCount);
   const foodMult = foodBal < 0 ? Math.max(0.5, 1 + foodBal * 0.02) : 1;
   const border = calcBorderUpkeep(engine.pixelData, c.id);
-  const population = c.pixel_count * CONFIG.POPULATION_PER_PIXEL;
+  const population = pixelCount * CONFIG.POPULATION_PER_PIXEL;
 
-  const baseIncome = CONFIG.BASE_INCOME_PER_PIXEL * c.pixel_count;
+  const baseIncome = CONFIG.BASE_INCOME_PER_PIXEL * pixelCount;
   const grossIncome = (baseIncome + farmIncome + mineIncome) * foodMult;
   const incomePerHr = grossIncome.toFixed(1);
-  const pixelUpkeep = Math.max(0, c.army_upkeep_per_pixel * c.pixel_count);
-  const armyUnitUpkeep = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
+  const pixelUpkeep = Math.max(0, armyUpkeepPerPixel * pixelCount);
+  const armyUnitUpkeep = armySize * CONFIG.ARMY_UPKEEP_PER_UNIT;
   const upkeep = (pixelUpkeep + armyUnitUpkeep + border.cost).toFixed(1);
-  const buildingCap = Math.floor(c.pixel_count / 2);
+  const buildingCap = Math.floor(pixelCount / 2);
   const buildingsAtCap = myInfra.length >= buildingCap;
 
   body.innerHTML = `
@@ -1599,9 +1606,9 @@ async function renderMyCountry(body) {
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem">
-      ${statCard('💰 Gold', c.gold.toFixed(2), 'gold')}
-      ${statCard('🗺️ Pixels', c.pixel_count, 'green')}
-      ${statCard('⚔️ Army', c.army_size, 'red')}
+      ${statCard('💰 Gold', gold.toFixed(2), 'gold')}
+      ${statCard('🗺️ Pixels', pixelCount, 'green')}
+      ${statCard('⚔️ Army', armySize, 'red')}
       ${statCard('📈 Income/hr', incomePerHr, 'blue')}
       ${statCard('🔧 Upkeep/hr', upkeep, 'muted')}
       ${statCard('🏗️ Buildings', `${myInfra.length}/${buildingCap}`, buildingsAtCap ? 'red' : 'gold')}
@@ -1618,7 +1625,7 @@ async function renderMyCountry(body) {
     <div class="section-label">📈 Income</div>
     <div style="font-size:0.8rem;line-height:2;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">🗺️ Base ${CONFIG.BASE_INCOME_PER_PIXEL}/px × ${c.pixel_count} px</span>
+        <span style="color:var(--muted)">🗺️ Base ${CONFIG.BASE_INCOME_PER_PIXEL}/px × ${pixelCount} px</span>
         <span style="color:var(--gold)">+${baseIncome.toFixed(1)} g/hr</span>
       </div>
       ${farms > 0 ? `<div style="display:flex;justify-content:space-between">
@@ -1642,15 +1649,15 @@ async function renderMyCountry(body) {
     <div class="section-label">📉 Upkeep</div>
     <div style="font-size:0.8rem;line-height:2;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">🗺️ Territory (0.3 × ${c.pixel_count} px)</span>
-        <span style="color:var(--red)">−${(0.3 * c.pixel_count).toFixed(1)} g/hr</span>
+        <span style="color:var(--muted)">🗺️ Territory (0.3 × ${pixelCount} px)</span>
+        <span style="color:var(--red)">−${(0.3 * pixelCount).toFixed(1)} g/hr</span>
       </div>
       ${markets > 0 ? `<div style="display:flex;justify-content:space-between">
         <span style="color:var(--muted)">🏪 Markets savings</span>
-        <span style="color:var(--green)">+${(Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, 0.3) * c.pixel_count).toFixed(1)} g/hr</span>
+        <span style="color:var(--green)">+${(Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, 0.3) * pixelCount).toFixed(1)} g/hr</span>
       </div>` : ''}
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">⚔️ Army (${CONFIG.ARMY_UPKEEP_PER_UNIT} × ${c.army_size} units)</span>
+        <span style="color:var(--muted)">⚔️ Army (${CONFIG.ARMY_UPKEEP_PER_UNIT} × ${armySize} units)</span>
         <span style="color:var(--red)">−${armyUnitUpkeep.toFixed(1)} g/hr</span>
       </div>
       ${border.nations > 0 ? `<div style="display:flex;justify-content:space-between">
@@ -1670,9 +1677,9 @@ async function renderMyCountry(body) {
 
     <div class="section-label">Danger Zones</div>
     <div style="font-size:0.78rem;color:var(--muted)">
-      ${c.pixel_count > 30 ? '⚠️ Large territory — harder to defend' : '✅ Manageable size'}<br>
-      ${c.army_size < c.pixel_count ? '⚠️ Army too small for territory!' : '✅ Army strength adequate'}<br>
-      ${c.gold < 20 ? '⚠️ Low gold — build mines!' : '✅ Treasury healthy'}
+      ${pixelCount > 30 ? '⚠️ Large territory — harder to defend' : '✅ Manageable size'}<br>
+      ${armySize < pixelCount ? '⚠️ Army too small for territory!' : '✅ Army strength adequate'}<br>
+      ${gold < 20 ? '⚠️ Low gold — build mines!' : '✅ Treasury healthy'}
     </div>
   `;
   } catch(e) {

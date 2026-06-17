@@ -120,7 +120,8 @@ class GameEngine {
     const pixelUpkeep = Math.max(0, this.country.army_upkeep_per_pixel * this.country.pixel_count);
     const armyUpkeep = this.country.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
     const borderUpkeep = calcBorderUpkeep(this.pixelData, this.country.id);
-    const newGold = Math.max(0, Math.round((this.country.gold + (hourlyIncome - pixelUpkeep - armyUpkeep - borderUpkeep) * hoursOffline) * 10000) / 10000);
+    const currentGold = this.country.gold ?? 0;
+    const newGold = Math.max(0, Math.round((currentGold + (hourlyIncome - pixelUpkeep - armyUpkeep - borderUpkeep) * hoursOffline) * 10000) / 10000);
 
     const { data } = await sb.from('countries')
       .update({ pending_pixels: newTokens, gold: newGold, last_active: now.toISOString() })
