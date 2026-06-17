@@ -566,6 +566,7 @@ let lastMousePos = null;
     document.querySelector('.right-panel .panel-tabs').innerHTML = `
       <button class="panel-tab active" data-tab="spectate" onclick="switchRightTab('spectate')">👁️ Stats</button>
       <button class="panel-tab" data-tab="admin" id="adminTabBtn" onclick="switchRightTab('admin')">🛠️ Admin</button>
+      <button onclick="closePanels()" style="margin-left:auto;background:transparent;border:none;color:var(--muted);font-size:1rem;cursor:pointer;padding:0 0.75rem;line-height:1" title="Close panel">✕</button>
     `;
     rightTab = 'spectate';
   }
@@ -1368,6 +1369,7 @@ async function spectateCountry(id, fromClick = false) {
     rightTab = 'spectate';
     document.querySelectorAll('.right-panel .panel-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === 'spectate'));
     document.getElementById('chatFooter').style.display = 'none';
+    document.querySelector('.left-panel').classList.remove('open');
     document.querySelector('.right-panel').classList.add('open');
     document.getElementById('panelBackdrop').classList.add('show');
     body.innerHTML = '<div style="color:var(--muted);padding:1rem;text-align:center">Loading…</div>';
