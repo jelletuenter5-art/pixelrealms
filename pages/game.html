@@ -1163,8 +1163,27 @@ function openManageBuilding(x, y) {
   if (!infra) return;
   const cost = CONFIG.INFRA_COSTS[infra.type];
   document.getElementById('manageBuildingTitle').textContent = `${INFRA_ICONS[infra.type] || '🏗️'} ${infra.type.charAt(0).toUpperCase() + infra.type.slice(1)}`;
-  document.getElementById('manageBuildingCoords').textContent = `Location: (${x}, ${y})`;
-  document.getElementById('manageBuildingEffect').textContent = cost?.effect || '';
+  const tile = mapData?.[y]?.[x];
+  const terrain = tile?.terrain || 'grass';
+  const terrainLabel = terrain.charAt(0).toUpperCase() + terrain.slice(1);
+  document.getElementById('manageBuildingCoords').textContent = `Location: (${x}, ${y}) · ${terrainLabel}`;
+  let effectText = cost?.effect || '';
+  if (infra.type === 'farm') {
+    const terrMult = CONFIG.FARM_TERRAIN_MULT[terrain] ?? 1.0;
+    const c = engine.country;
+    const pixelCount = c?.pixel_count ?? 0;
+    const goldIncome = (CONFIG.INFRA_COSTS.farm.incomeBonus * terrMult * pixelCount).toFixed(1);
+    effectText = `+${goldIncome}g/hr income (${terrMult}x ${terrainLabel}) · +${CONFIG.FOOD_PRODUCTION_PER_FARM} food/hr`;
+  } else if (infra.type === 'mine') {
+    const terrMult = CONFIG.MINE_TERRAIN_MULT[terrain] ?? 1.0;
+    const c = engine.country;
+    const myMines = Object.values(engine.infraData || {}).filter(i => i.country_id === c?.id && i.type === 'mine');
+    const idx = myMines.findIndex(m => m.pixel_x === x && m.pixel_y === y);
+    const flatIncome = Math.max(0, CONFIG.INFRA_COSTS.mine.flatIncome - idx * 0.1) * terrMult;
+    const pixBonus = Math.max(0, CONFIG.INFRA_COSTS.mine.pixelBonus - idx * 0.002) * (c?.pixel_count ?? 0);
+    effectText = `~${(flatIncome + pixBonus).toFixed(1)}g/hr (${terrMult}x ${terrainLabel} · mine #${idx + 1})`;
+  }
+  document.getElementById('manageBuildingEffect').textContent = effectText;
   document.getElementById('manageBuildingDelete').onclick = async () => {
     closeManageBuildingModal();
     await deleteBuilding(infra.id, infra.type, x, y);

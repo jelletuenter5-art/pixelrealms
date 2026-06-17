@@ -84,9 +84,15 @@ class GameEngine {
     const updates = {};
     // Only correct pixel_count if the player actually has pixels — skip for brand-new players
     // who haven't chosen their spawn yet (their pixels live in DB but may not be seeded).
+    const pixelCountWasWrong = myPixels.length > 0 && this.country.pixel_count === 0;
     if (myPixels.length > 0 && correctPixelCount !== this.country.pixel_count) updates.pixel_count = correctPixelCount;
     if (Math.abs(correctIncome - this.country.income_per_pixel) > 1e-6) updates.income_per_pixel = correctIncome;
     if (Math.abs(correctUpkeep - this.country.army_upkeep_per_pixel) > 1e-6) updates.army_upkeep_per_pixel = correctUpkeep;
+    // If pixel_count was wrongly zeroed (old bug), gold drained to 0 from army upkeep.
+    // Restore starting gold so the player isn't stuck with 0.
+    if (pixelCountWasWrong && (this.country.gold == null || isNaN(this.country.gold) || this.country.gold < CONFIG.STARTING_GOLD)) {
+      updates.gold = CONFIG.STARTING_GOLD;
+    }
 
     if (Object.keys(updates).length > 0) {
       const { data } = await sb.from('countries').update(updates).eq('id', this.country.id).select().single();
@@ -657,8 +663,9 @@ async function tickIncome(engine) {
   const borderUpkeep = calcBorderUpkeep(engine.pixelData, c.id);
   const netHourly = hourlyIncome - pixelUpkeep - armyUpkeep - borderUpkeep;
   const tick = netHourly * (CONFIG.INCOME_TICK_SECONDS / 3600);
-  const newGold = Math.max(0, Math.round((c.gold + tick) * 10000) / 10000);
-  if (newGold === c.gold) return;
+  const safeGold = (c.gold == null || isNaN(c.gold)) ? 0 : c.gold;
+  const newGold = Math.max(0, Math.round((safeGold + tick) * 10000) / 10000);
+  if (newGold === safeGold) return;
 
   await sb.from('countries').update({ gold: newGold }).eq('id', c.id);
   engine.country.gold = newGold;
