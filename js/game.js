@@ -561,8 +561,8 @@ class GameEngine {
 // Each additional mine reduces flat income by 1g/hr and pixel bonus by 0.01/px
 function calcMineIncome(mines, pixelCount) {
   if (mines === 0) return 0;
-  const effectiveFlat = Math.max(0, CONFIG.INFRA_COSTS.mine.flatIncome - (mines - 1));
-  const effectivePixelBonus = Math.max(0, CONFIG.INFRA_COSTS.mine.pixelBonus - (mines - 1) * 0.01);
+  const effectiveFlat = Math.max(0, CONFIG.INFRA_COSTS.mine.flatIncome - (mines - 1) * 0.1);
+  const effectivePixelBonus = CONFIG.INFRA_COSTS.mine.pixelBonus;
   return mines * effectiveFlat + effectivePixelBonus * pixelCount;
 }
 

@@ -23,7 +23,7 @@ const CONFIG = {
   ARMY_UPKEEP_PER_UNIT: 0.25,      // gold/hr per army unit (scales with barracks)
   INFRA_COSTS: {
     farm:     { gold: 80,  effect: '+0.2 gold/pixel/hr income, nation-wide',       incomeBonus: 0.2 },
-    mine:     { gold: 80,  effect: '+8 gold/hr flat + 0.1 gold/pixel/hr hybrid income', flatIncome: 8, pixelBonus: 0.1 },
+    mine:     { gold: 80,  effect: '+5 gold/hr flat + 0.1 gold/pixel/hr hybrid income', flatIncome: 5, pixelBonus: 0.1 },
     market:   { gold: 100, effect: '-0.03 territory upkeep per pixel, nation-wide', upkeepReduction: 0.03 },
     barracks: { gold: 120, effect: '+20 army strength',                            armyBonus: 20 },
     wall:     { gold: 60,  effect: '+50% defense when this tile is attacked',      defenseBonus: 0.5 },
