@@ -389,16 +389,21 @@
       Your army size vs. their army size (modified by terrain defense —
       hills and mountains defend better) decides the outcome. Winning captures the tile and
       damages both armies; losing still costs you troops. Eliminate a nation by taking all their pixels.
+      If the captured tile has a building, there's a <strong>50% chance</strong> it transfers to you and a 50% chance it's destroyed.
     </p>
 
     <div class="section-label">🏗️ Build</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Switch to <strong>Build</strong> mode and click one of <strong>your own tiles</strong> to build or manage a building there.
-      Clicking a tile with an existing building shows a popup where you can <strong>delete it permanently</strong>.
+      Switch to <strong>Build</strong> mode and click one of <strong>your own tiles</strong> to open a building menu.
+      Clicking a tile with an existing building shows a popup where you can <strong>delete it</strong> (no refund).
+    </p>
+    <p style="font-size:0.85rem;color:var(--accent);line-height:1.6;margin-bottom:0.4rem">
+      ⚠️ <strong>Building cap: 1 building per 2 pixels.</strong> With 10 pixels you can have at most 5 buildings.
+      Expand your territory to unlock more slots — the Build tab shows your current usage.
     </p>
     <ul style="font-size:0.82rem;color:var(--muted);line-height:1.8;margin-left:1.2rem">
-      <li>🌾 <strong>Farm</strong> (80g) — +0.2 gold/pixel/hr nation-wide. Best once you have many pixels.</li>
-      <li>⛏️ <strong>Mine</strong> (80g) — +8 gold/hr flat <em>plus</em> a one-time +0.1 gold/pixel/hr bonus (regardless of how many mines you own). Build one early for the pixel bonus, then more for flat income.</li>
+      <li>🌾 <strong>Farm</strong> (80g) — +0.2 gold/pixel/hr nation-wide. Scales with territory — best when large.</li>
+      <li>⛏️ <strong>Mine</strong> (80g) — Hybrid income with <strong>diminishing returns</strong>: the 1st mine gives 8g/hr flat + 0.1g/px/hr bonus; each additional mine reduces flat by 1g and pixel bonus by 0.01. After ~8 mines the flat income hits 0; after ~10 the pixel bonus also hits 0. Build 1–3 early, then prefer farms.</li>
       <li>🏪 <strong>Market</strong> (100g) — reduces territory upkeep by 0.03/pixel/hr nation-wide. Stack them to lower costs, but upkeep can't go below 0.</li>
       <li>⚔️ <strong>Barracks</strong> (120g) — instantly adds 20 army strength.</li>
       <li>🧱 <strong>Wall</strong> (60g) — +50% defense on <em>that specific tile</em> only. Place on key frontline tiles.</li>
@@ -467,6 +472,13 @@
 <div class="toast" id="toast"></div>
 
 <script>
+function calcMineIncome(mines, pixelCount) {
+  if (mines === 0) return 0;
+  const effectiveFlat = Math.max(0, CONFIG.INFRA_COSTS.mine.flatIncome - (mines - 1));
+  const effectivePixelBonus = Math.max(0, CONFIG.INFRA_COSTS.mine.pixelBonus - (mines - 1) * 0.01);
+  return mines * effectiveFlat + effectivePixelBonus * pixelCount;
+}
+
 // ── GLOBALS ──────────────────────────────────────────
 const params = new URLSearchParams(location.search);
 const GAME_ID = params.get('game');
@@ -988,7 +1000,16 @@ async function handleClick(e) {
 // ── BUILD MENU ─────────────────────────────────────────
 function showBuildMenu() {
   const c = engine.country;
+  const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id);
+  const buildingCap = Math.floor(c.pixel_count / 2);
+  const atCap = myInfra.length >= buildingCap;
   const modal = document.getElementById('quickBuildModal');
+  if (atCap) {
+    document.getElementById('quickBuildCoords').textContent = `🚧 Building cap reached (${myInfra.length}/${buildingCap}) — expand your territory first`;
+    document.getElementById('quickBuildGrid').innerHTML = `<div style="grid-column:1/-1;color:var(--muted);font-size:0.85rem;text-align:center;padding:1rem">You need at least ${(myInfra.length + 1) * 2} pixels to build another building.<br>Current cap: 1 building per 2 pixels.</div>`;
+    modal.style.display = 'flex';
+    return;
+  }
   // Render building cards
   document.getElementById('quickBuildGrid').innerHTML = Object.entries(CONFIG.INFRA_COSTS).map(([type, info]) => {
     const canAfford = (c.gold || 0) >= info.gold;
@@ -1367,10 +1388,9 @@ async function spectateCountry(id, fromClick = false) {
   const mines = myInfra.filter(i => i.type === 'mine').length;
   const farms = myInfra.filter(i => i.type === 'farm').length;
   const markets = myInfra.filter(i => i.type === 'market').length;
-  const mineFlat = mines * CONFIG.INFRA_COSTS.mine.flatIncome;
-  const minePixel = mines > 0 ? CONFIG.INFRA_COSTS.mine.pixelBonus * c.pixel_count : 0;
+  const mineIncomeSp = calcMineIncome(mines, c.pixel_count);
   const pixelIncome = c.income_per_pixel * c.pixel_count;
-  const incomePerHr = (pixelIncome + mineFlat + minePixel).toFixed(1);
+  const incomePerHr = (pixelIncome + mineIncomeSp).toFixed(1);
   const pixelUpkeep = Math.max(0, c.army_upkeep_per_pixel * c.pixel_count);
   const armyUpkeep = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
   const upkeep = (pixelUpkeep + armyUpkeep).toFixed(1);
@@ -1396,7 +1416,7 @@ async function spectateCountry(id, fromClick = false) {
     <div style="font-size:0.78rem;line-height:1.9;margin-bottom:0.5rem">
       <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🗺️ Base 1.0/px × ${c.pixel_count} px</span><span style="color:var(--gold)">+${(1.0 * c.pixel_count).toFixed(1)} g/hr</span></div>
       ${farms > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🌾 ${farms} farm${farms>1?'s':''} +${(farms * CONFIG.INFRA_COSTS.farm.incomeBonus).toFixed(2)}/px × ${c.pixel_count} px</span><span style="color:var(--gold)">+${(farms * CONFIG.INFRA_COSTS.farm.incomeBonus * c.pixel_count).toFixed(1)} g/hr</span></div>` : ''}
-      ${mines > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⛏️ ${mines} mine${mines>1?'s':''} (${mineFlat}flat + 0.1×${c.pixel_count}px)</span><span style="color:var(--gold)">+${(mineFlat + minePixel).toFixed(1)} g/hr</span></div>` : ''}
+      ${mines > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⛏️ ${mines} mine${mines>1?'s':''}</span><span style="color:var(--gold)">+${mineIncomeSp.toFixed(1)} g/hr</span></div>` : ''}
     </div>
     <div class="section-label">📉 Upkeep</div>
     <div style="font-size:0.78rem;line-height:1.9;margin-bottom:0.75rem">
@@ -1445,15 +1465,17 @@ function renderMyCountry(body) {
   const mines = myInfra.filter(i => i.type === 'mine').length;
   const farms = myInfra.filter(i => i.type === 'farm').length;
   const markets = myInfra.filter(i => i.type === 'market').length;
-  const mineFlat = mines * CONFIG.INFRA_COSTS.mine.flatIncome;
-  const minePixel = mines > 0 ? CONFIG.INFRA_COSTS.mine.pixelBonus * c.pixel_count : 0;
-  const mineIncome = mineFlat + minePixel;
+  const mineIncome = calcMineIncome(mines, c.pixel_count);
+  const effectiveFlat = mines > 0 ? Math.max(0, CONFIG.INFRA_COSTS.mine.flatIncome - (mines - 1)) : 0;
+  const effectivePixelBonus = mines > 0 ? Math.max(0, CONFIG.INFRA_COSTS.mine.pixelBonus - (mines - 1) * 0.01) : 0;
 
   const pixelIncome = c.income_per_pixel * c.pixel_count;
   const incomePerHr = (pixelIncome + mineIncome).toFixed(1);
   const pixelUpkeep = Math.max(0, c.army_upkeep_per_pixel * c.pixel_count);
   const armyUnitUpkeep = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
   const upkeep = (pixelUpkeep + armyUnitUpkeep).toFixed(1);
+  const buildingCap = Math.floor(c.pixel_count / 2);
+  const buildingsAtCap = myInfra.length >= buildingCap;
 
   body.innerHTML = `
     <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
@@ -1482,8 +1504,9 @@ function renderMyCountry(body) {
       ${statCard('⚔️ Army', c.army_size, 'red')}
       ${statCard('📈 Income/hr', incomePerHr, 'blue')}
       ${statCard('🔧 Upkeep/hr', upkeep, 'muted')}
-      ${statCard('🏗️ Buildings', myInfra.length, 'gold')}
+      ${statCard('🏗️ Buildings', `${myInfra.length}/${buildingCap}`, buildingsAtCap ? 'red' : 'gold')}
     </div>
+    ${buildingsAtCap ? `<div style="font-size:0.75rem;color:var(--red);margin-bottom:0.5rem;padding:0.4rem 0.6rem;background:rgba(239,68,68,0.08);border-radius:6px;border:1px solid rgba(239,68,68,0.2)">🚧 Building cap reached — expand your territory to build more (1 building per 2 pixels)</div>` : `<div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem">🏗️ ${myInfra.length}/${buildingCap} buildings used · ${buildingCap - myInfra.length} slot${buildingCap - myInfra.length !== 1 ? 's' : ''} remaining</div>`}
 
     <div class="section-label">📈 Income</div>
     <div style="font-size:0.8rem;line-height:2;margin-bottom:0.75rem">
@@ -1496,7 +1519,7 @@ function renderMyCountry(body) {
         <span style="color:var(--gold)">+${(farms * CONFIG.INFRA_COSTS.farm.incomeBonus * c.pixel_count).toFixed(1)} g/hr</span>
       </div>` : ''}
       ${mines > 0 ? `<div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">⛏️ ${mines} mine${mines>1?'s':''} (${mines * CONFIG.INFRA_COSTS.mine.flatIncome}flat + ${CONFIG.INFRA_COSTS.mine.pixelBonus}×${c.pixel_count}px)</span>
+        <span style="color:var(--muted)">⛏️ ${mines} mine${mines>1?'s':''} (${effectiveFlat.toFixed(0)}g flat×${mines} + ${effectivePixelBonus.toFixed(2)}/px)</span>
         <span style="color:var(--gold)">+${mineIncome.toFixed(1)} g/hr</span>
       </div>` : ''}
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">

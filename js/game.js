@@ -107,7 +107,7 @@ class GameEngine {
 
     // Gold also accrues while offline, based on the same elapsed time
     const mines = Object.values(this.infraData || {}).filter(i => i.country_id === this.country.id && i.type === 'mine').length;
-    const mineIncome = mines * CONFIG.INFRA_COSTS.mine.flatIncome + (mines > 0 ? CONFIG.INFRA_COSTS.mine.pixelBonus * this.country.pixel_count : 0);
+    const mineIncome = calcMineIncome(mines, this.country.pixel_count);
     const hourlyIncome = this.country.income_per_pixel * this.country.pixel_count + mineIncome;
     const pixelUpkeep = Math.max(0, this.country.army_upkeep_per_pixel * this.country.pixel_count);
     const armyUpkeep = this.country.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
@@ -242,6 +242,41 @@ class GameEngine {
 
       this.pixelData[key] = { ...pixel, country_id: this.country.id };
       this.country.pixel_count++;
+
+      // 50/50: captured building is either transferred or destroyed
+      const capturedInfra = this.infraData[key];
+      if (capturedInfra) {
+        if (Math.random() < 0.5) {
+          // Transfer to attacker
+          await sb.from('infrastructure').update({ country_id: this.country.id }).eq('id', capturedInfra.id);
+          this.infraData[key] = { ...capturedInfra, country_id: this.country.id };
+          // Apply stat effect to attacker
+          const infraUpdates = {};
+          if (capturedInfra.type === 'farm') infraUpdates.income_per_pixel = this.country.income_per_pixel + CONFIG.INFRA_COSTS.farm.incomeBonus;
+          if (capturedInfra.type === 'market') infraUpdates.army_upkeep_per_pixel = Math.max(0.02, this.country.army_upkeep_per_pixel - CONFIG.INFRA_COSTS.market.upkeepReduction);
+          if (capturedInfra.type === 'barracks') infraUpdates.army_size = this.country.army_size + CONFIG.INFRA_COSTS.barracks.armyBonus;
+          if (Object.keys(infraUpdates).length) {
+            await sb.from('countries').update(infraUpdates).eq('id', this.country.id);
+            Object.assign(this.country, infraUpdates);
+          }
+          // Remove stat effect from defender
+          const defUpdates = {};
+          if (capturedInfra.type === 'farm') defUpdates.income_per_pixel = Math.max(1, defender.income_per_pixel - CONFIG.INFRA_COSTS.farm.incomeBonus);
+          if (capturedInfra.type === 'market') defUpdates.army_upkeep_per_pixel = Math.min(0.3, defender.army_upkeep_per_pixel + CONFIG.INFRA_COSTS.market.upkeepReduction);
+          if (capturedInfra.type === 'barracks') defUpdates.army_size = Math.max(1, defender.army_size - CONFIG.INFRA_COSTS.barracks.armyBonus);
+          if (Object.keys(defUpdates).length) await sb.from('countries').update(defUpdates).eq('id', defender.id);
+        } else {
+          // Destroy the building
+          await sb.from('infrastructure').delete().eq('id', capturedInfra.id);
+          delete this.infraData[key];
+          // Remove stat effect from defender
+          const defUpdates = {};
+          if (capturedInfra.type === 'farm') defUpdates.income_per_pixel = Math.max(1, defender.income_per_pixel - CONFIG.INFRA_COSTS.farm.incomeBonus);
+          if (capturedInfra.type === 'market') defUpdates.army_upkeep_per_pixel = Math.min(0.3, defender.army_upkeep_per_pixel + CONFIG.INFRA_COSTS.market.upkeepReduction);
+          if (capturedInfra.type === 'barracks') defUpdates.army_size = Math.max(1, defender.army_size - CONFIG.INFRA_COSTS.barracks.armyBonus);
+          if (Object.keys(defUpdates).length) await sb.from('countries').update(defUpdates).eq('id', defender.id);
+        }
+      }
     }
 
     this.country.army_size = newAttackerArmy;
@@ -292,6 +327,11 @@ class GameEngine {
     }
     if (this.infraData[key]) {
       return { ok: false, msg: 'A building already stands on this tile.' };
+    }
+    const buildingCount = Object.values(this.infraData).filter(i => i.country_id === this.country.id).length;
+    const buildingCap = Math.floor(this.country.pixel_count / 2);
+    if (buildingCount >= buildingCap) {
+      return { ok: false, msg: `Building cap reached (${buildingCount}/${buildingCap}). You need ${(buildingCount + 1) * 2} pixels to build more.` };
     }
 
     const { data: infra, error } = await sb.from('infrastructure').insert({
@@ -517,11 +557,20 @@ class GameEngine {
 }
 
 // ── Income ticker (runs client-side every few seconds for a smooth counter) ─
+// Mine income with diminishing returns:
+// Each additional mine reduces flat income by 1g/hr and pixel bonus by 0.01/px
+function calcMineIncome(mines, pixelCount) {
+  if (mines === 0) return 0;
+  const effectiveFlat = Math.max(0, CONFIG.INFRA_COSTS.mine.flatIncome - (mines - 1));
+  const effectivePixelBonus = Math.max(0, CONFIG.INFRA_COSTS.mine.pixelBonus - (mines - 1) * 0.01);
+  return mines * effectiveFlat + effectivePixelBonus * pixelCount;
+}
+
 async function tickIncome(engine) {
   if (!engine.country) return;
   const c = engine.country;
   const mines = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id && i.type === 'mine').length;
-  const mineIncome = mines * CONFIG.INFRA_COSTS.mine.flatIncome + (mines > 0 ? CONFIG.INFRA_COSTS.mine.pixelBonus * c.pixel_count : 0);
+  const mineIncome = calcMineIncome(mines, c.pixel_count);
   const hourlyIncome = c.income_per_pixel * c.pixel_count + mineIncome;
   const pixelUpkeep = Math.max(0, c.army_upkeep_per_pixel * c.pixel_count);
   const armyUpkeep = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
