@@ -409,6 +409,7 @@
       <li>⚔️ <strong>Barracks</strong> (150g) — instantly adds 20 army. Also <strong>regenerates 0.5 army/hr</strong> per barracks, up to a cap of 20 per barracks. 10 barracks = 200 army cap, regenerating 5/hr after losses. Requires <strong>100 population per barracks</strong>.</li>
       <li>🧱 <strong>Wall</strong> (60g) — +50% defense on <em>that specific tile</em> only. Place on key frontline tiles.</li>
       <li>🏕️ <strong>Outpost</strong> (80g) — reduces army food consumption by <strong>0.01 food/hr per army unit</strong> per outpost (terrain-adjusted). Best in desert (1.0×), hill (0.7×), mountain (0.5×), weakest on grass (0.4×). Stacks across all your outposts; army food rate can't drop below 50% of base (0.05/unit). With 200 army and 3 desert outposts: saves 200 × 0.03 = <strong>6 food/hr</strong>.</li>
+      <li>🏛️ <strong>Trading Post</strong> (90g) — earns <strong>+1g/hr flat + 2g/hr per unique neighboring nation</strong> (terrain-adjusted). Best in desert (1.5×), hill (1.1×), grass (0.9×), mountain (0.5×). Scales with diplomacy: 0 neighbors = barely anything; 3 neighbors = (1 + 6) × terrain; 5 neighbors = (1 + 10) × terrain. Best placed in desert where you border many nations. Shown in income breakdown as "X trading posts (Y neighbors)".</li>
     </ul>
 
     <div class="section-label">💰 Economy</div>
@@ -514,17 +515,31 @@ function calcFarmIncome(farmInfra, pixelCount, pixelData) {
 }
 function calcBorderUpkeep(pixelData, myCountryId) {
   let borderPixels = 0;
+  const neighborNations = new Set();
   for (const [key, p] of Object.entries(pixelData)) {
     if (p.country_id !== myCountryId) continue;
     const [x, y] = key.split(',').map(Number);
-    const hasForeignNeighbor = [[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy]) => {
+    let hasForeignNeighbor = false;
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
       const n = pixelData[`${x+dx},${y+dy}`];
-      return n?.country_id && n.country_id !== myCountryId;
-    });
+      if (n?.country_id && n.country_id !== myCountryId) {
+        hasForeignNeighbor = true;
+        neighborNations.add(n.country_id);
+      }
+    }
     if (hasForeignNeighbor) borderPixels++;
   }
-  return { borderPixels, cost: borderPixels * CONFIG.BORDER_UPKEEP_PER_NATION };
+  return { borderPixels, nations: neighborNations.size, cost: borderPixels * CONFIG.BORDER_UPKEEP_PER_NATION };
 }
+function calcTradingPostIncome(tradingPostInfra, pixelData, borderNations) {
+  if (!tradingPostInfra || tradingPostInfra.length === 0) return 0;
+  return tradingPostInfra.reduce((sum, t) => {
+    const terrain = pixelData?.[`${t.pixel_x},${t.pixel_y}`]?.terrain || 'grass';
+    const mult = CONFIG.TRADING_POST_TERRAIN_MULT[terrain] ?? 0.9;
+    return sum + (CONFIG.INFRA_COSTS.trading_post.flatIncome + borderNations * CONFIG.INFRA_COSTS.trading_post.incomePerNation) * mult;
+  }, 0);
+}
+
 function calcOutpostReduction(outpostInfra, pixelData) {
   if (!outpostInfra || outpostInfra.length === 0) return 0;
   return outpostInfra.reduce((sum, o) => {
@@ -563,7 +578,7 @@ let rightTab = 'country';
 let spawnSelectionMode = false;
 let _spawning = false;
 
-const INFRA_ICONS = { farm: '🌾', barracks: '⚔️', market: '🏪', wall: '🧱', mine: '⛏️', outpost: '🏕️' };
+const INFRA_ICONS = { farm: '🌾', barracks: '⚔️', market: '🏪', wall: '🧱', mine: '⛏️', outpost: '🏕️', trading_post: '🏛️' };
 
 // Canvas & viewport
 let canvas, ctx;
@@ -1131,6 +1146,11 @@ function showBuildMenu() {
       const terrMult = CONFIG.OUTPOST_TERRAIN_MULT[terrain] ?? 0.4;
       const reduction = (info.armyFoodReduction * terrMult).toFixed(3);
       extraNote = `${terrainLabel}: −${reduction} food/hr per army unit (${terrMult}x terrain)`;
+    } else if (type === 'trading_post') {
+      const terrMult = CONFIG.TRADING_POST_TERRAIN_MULT[terrain] ?? 0.9;
+      const border = calcBorderUpkeep(engine.pixelData, engine.country?.id);
+      const perPost = (info.flatIncome + border.nations * info.incomePerNation) * terrMult;
+      extraNote = `${terrainLabel}: +${perPost.toFixed(1)}g/hr · ${border.nations} neighbor${border.nations!==1?'s':''} now (${terrMult}x terrain)`;
     }
 
     const canBuild = canAfford && popOk;
@@ -1649,20 +1669,23 @@ async function renderMyCountry(body) {
   const mines = mineInfraArr.length;
   const farms = farmInfraArr.length;
   const outpostInfraArr = myInfra.filter(i => i.type === 'outpost');
+  const tradingPostInfraArr = myInfra.filter(i => i.type === 'trading_post');
   const outposts = outpostInfraArr.length;
+  const tradingPosts = tradingPostInfraArr.length;
   const mineIncome = calcMineIncome(mineInfraArr, pixelCount, engine.pixelData);
   const farmIncome = calcFarmIncome(farmInfraArr, pixelCount, engine.pixelData);
   const outpostReduction = calcOutpostReduction(outpostInfraArr, engine.pixelData);
+  const border = calcBorderUpkeep(engine.pixelData, c.id);
+  const tradingPostIncome = calcTradingPostIncome(tradingPostInfraArr, engine.pixelData, border.nations);
   const aggression = Number.isFinite(c.food_aggression) ? c.food_aggression : 0;
   const foodBal = calcFoodBalance(farms, pixelCount, armySize, aggression, outpostReduction);
   const foodMult = foodBal < 0 ? Math.max(0.5, 1 + foodBal * 0.02) : 1;
-  const border = calcBorderUpkeep(engine.pixelData, c.id);
   const population = pixelCount * CONFIG.POPULATION_PER_PIXEL;
   const armyFoodRate = Math.round(Math.max(CONFIG.FOOD_CONSUMPTION_PER_ARMY * 0.5, CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggression - outpostReduction) * 100) / 100;
   const armyFoodCost = Math.floor(armySize) * armyFoodRate;
 
   const baseIncome = CONFIG.BASE_INCOME_PER_PIXEL * pixelCount;
-  const grossIncome = (baseIncome + farmIncome + mineIncome) * foodMult;
+  const grossIncome = (baseIncome + farmIncome + mineIncome + tradingPostIncome) * foodMult;
   const incomePerHr = grossIncome.toFixed(1);
   const pixelUpkeep = Math.max(0, armyUpkeepPerPixel * pixelCount);
   const armyUnitUpkeep = armySize * CONFIG.ARMY_UPKEEP_PER_UNIT;
@@ -1743,9 +1766,13 @@ async function renderMyCountry(body) {
         <span style="color:var(--muted)">⛏️ ${mines} mine${mines>1?'s':''} (terrain-adjusted)</span>
         <span style="color:var(--gold)">+${mineIncome.toFixed(1)} g/hr</span>
       </div>` : ''}
+      ${tradingPosts > 0 ? `<div style="display:flex;justify-content:space-between">
+        <span style="color:var(--muted)">🏛️ ${tradingPosts} trading post${tradingPosts>1?'s':''} (${border.nations} neighbor${border.nations!==1?'s':''})</span>
+        <span style="color:var(--gold)">+${tradingPostIncome.toFixed(1)} g/hr</span>
+      </div>` : ''}
       ${foodBal < 0 ? `<div style="display:flex;justify-content:space-between">
         <span style="color:var(--red)">🍞 Food deficit penalty</span>
-        <span style="color:var(--red)">−${((1-foodMult) * (baseIncome + farmIncome + mineIncome)).toFixed(1)} g/hr</span>
+        <span style="color:var(--red)">−${((1-foodMult) * (baseIncome + farmIncome + mineIncome + tradingPostIncome)).toFixed(1)} g/hr</span>
       </div>` : ''}
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
         <span style="color:var(--text);font-weight:600">Total income</span>
