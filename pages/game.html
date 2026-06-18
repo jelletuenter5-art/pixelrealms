@@ -1550,8 +1550,6 @@ async function spectateCountry(id, fromClick = false) {
       ${statCard('👥 Population', population.toLocaleString(), 'blue')}
       ${statCard('⚔️ Army', c.army_size, 'red')}
       ${statCard('🍞 Food', (Number.isFinite(c.food) ? c.food : 0).toFixed(1), 'green')}
-      ${statCard('📈 Income/hr', incomePerHr, 'blue')}
-      ${statCard('🔧 Upkeep/hr', upkeep, 'muted')}
       ${statCard('🏗️ Buildings', myInfra.length, 'gold')}
       ${statCard('🎯 Tokens', Math.floor(Math.min((c.pending_pixels || 0) + Math.max(0, (Date.now() - new Date(c.last_active)) / 3600000) * CONFIG.PIXELS_PER_HOUR, CONFIG.MAX_STACK)), 'green')}
     </div>
@@ -1642,6 +1640,8 @@ async function renderMyCountry(body) {
   const foodMult = foodBal < 0 ? Math.max(0.5, 1 + foodBal * 0.02) : 1;
   const border = calcBorderUpkeep(engine.pixelData, c.id);
   const population = pixelCount * CONFIG.POPULATION_PER_PIXEL;
+  const armyFoodRate = CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggression;
+  const armyFoodCost = Math.floor(armySize) * armyFoodRate;
 
   const baseIncome = CONFIG.BASE_INCOME_PER_PIXEL * pixelCount;
   const grossIncome = (baseIncome + farmIncome + mineIncome) * foodMult;
@@ -1703,14 +1703,14 @@ async function renderMyCountry(body) {
       <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${CONFIG.FOOD_PRODUCTION_PER_PIXEL} (foraging)${farms > 0 ? ` + ${farms} farm${farms>1?'s':''} × ${CONFIG.FOOD_PRODUCTION_PER_FARM}` : ''}</div>
       <div style="display:flex;justify-content:space-between;margin-top:0.2rem">
         <span style="color:var(--muted)">Consumption</span>
-        <span style="color:var(--red)">−${(pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + armySize * (CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggression)).toFixed(1)}/hr</span>
+        <span style="color:var(--red)">−${(pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + armyFoodCost).toFixed(1)}/hr</span>
       </div>
-      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${CONFIG.FOOD_CONSUMPTION_PER_PIXEL} + ${armySize} army × ${(CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggression).toFixed(2)}${aggression > 0 ? ` <span style="color:var(--red)">(war: +${aggression.toFixed(2)}/unit, decaying)</span>` : ''}</div>
+      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${CONFIG.FOOD_CONSUMPTION_PER_PIXEL} + ${Math.floor(armySize)} army × ${armyFoodRate.toFixed(2)}${aggression > 0 ? ` <span style="color:var(--red)">(war: +${aggression.toFixed(2)}/unit, decaying)</span>` : ''}</div>
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
         <span style="font-weight:600">Balance</span>
         <span style="font-weight:700;color:${foodBal >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBal >= 0 ? '+' : ''}${foodBal.toFixed(1)}/hr ${foodBal >= 0 ? '✓' : '⚠'}</span>
       </div>
-      ${foodBal < 0 ? `<div style="font-size:0.72rem;color:var(--red);margin-top:0.1rem;padding:0.3rem 0.5rem;background:rgba(239,68,68,0.08);border-radius:5px">Deficit: income −${((1-foodMult)*100).toFixed(0)}%. Need ${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM)} more farm${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM) !== 1 ? 's' : ''} to break even. (Army uses ${(armySize * (CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggression)).toFixed(1)} food/hr${aggression > 0 ? ` — war rate ×${(CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggression).toFixed(2)}/unit` : ''})</div>` : ''}
+      ${foodBal < 0 ? `<div style="font-size:0.72rem;color:var(--red);margin-top:0.1rem;padding:0.3rem 0.5rem;background:rgba(239,68,68,0.08);border-radius:5px">Deficit: income −${((1-foodMult)*100).toFixed(0)}%. Need ${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM)} more farm${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM) !== 1 ? 's' : ''} to break even. (Army uses ${armyFoodCost.toFixed(1)} food/hr${aggression > 0 ? ` — war rate ×${armyFoodRate.toFixed(2)}/unit` : ''})</div>` : ''}
     </div>
 
     <div class="section-label">📈 Income</div>
