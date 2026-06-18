@@ -408,6 +408,7 @@
       <li>🏪 <strong>Market</strong> (100g) — reduces territory upkeep by 0.03/pixel/hr nation-wide. Stack them to lower costs.</li>
       <li>⚔️ <strong>Barracks</strong> (150g) — instantly adds 20 army. Also <strong>regenerates 0.5 army/hr</strong> per barracks, up to a cap of 20 per barracks. 10 barracks = 200 army cap, regenerating 5/hr after losses. Requires <strong>100 population per barracks</strong>.</li>
       <li>🧱 <strong>Wall</strong> (60g) — +50% defense on <em>that specific tile</em> only. Place on key frontline tiles.</li>
+      <li>🏕️ <strong>Outpost</strong> (80g) — reduces army food consumption by <strong>0.01 food/hr per army unit</strong> per outpost (terrain-adjusted). Best in desert (1.0×), hill (0.7×), mountain (0.5×), weakest on grass (0.4×). Stacks across all your outposts; army food rate can't drop below 50% of base (0.05/unit). With 200 army and 3 desert outposts: saves 200 × 0.03 = <strong>6 food/hr</strong>.</li>
     </ul>
 
     <div class="section-label">💰 Economy</div>
@@ -524,9 +525,19 @@ function calcBorderUpkeep(pixelData, myCountryId) {
   }
   return { borderPixels, cost: borderPixels * CONFIG.BORDER_UPKEEP_PER_NATION };
 }
-function calcFoodBalance(farmCount, pixelCount, armySize, aggression = 0) {
+function calcOutpostReduction(outpostInfra, pixelData) {
+  if (!outpostInfra || outpostInfra.length === 0) return 0;
+  return outpostInfra.reduce((sum, o) => {
+    const terrain = pixelData?.[`${o.pixel_x},${o.pixel_y}`]?.terrain || 'grass';
+    const mult = CONFIG.OUTPOST_TERRAIN_MULT[terrain] ?? 0.4;
+    return sum + CONFIG.INFRA_COSTS.outpost.armyFoodReduction * mult;
+  }, 0);
+}
+
+function calcFoodBalance(farmCount, pixelCount, armySize, aggression = 0, outpostReduction = 0) {
   const production = pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmCount * CONFIG.FOOD_PRODUCTION_PER_FARM;
-  const armyRate = CONFIG.FOOD_CONSUMPTION_PER_ARMY + (aggression || 0);
+  const baseRate = CONFIG.FOOD_CONSUMPTION_PER_ARMY;
+  const armyRate = Math.max(baseRate * 0.5, baseRate + (aggression || 0) - outpostReduction);
   const consumption = pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + (armySize || 0) * armyRate;
   return production - consumption;
 }
@@ -552,7 +563,7 @@ let rightTab = 'country';
 let spawnSelectionMode = false;
 let _spawning = false;
 
-const INFRA_ICONS = { farm: '🌾', barracks: '⚔️', market: '🏪', wall: '🧱', mine: '⛏️' };
+const INFRA_ICONS = { farm: '🌾', barracks: '⚔️', market: '🏪', wall: '🧱', mine: '⛏️', outpost: '🏕️' };
 
 // Canvas & viewport
 let canvas, ctx;
@@ -1116,6 +1127,10 @@ function showBuildMenu() {
       const thisFarmIncome = info.incomeBonus * terrMult * pixelCount;
       const foodProd = CONFIG.FOOD_PRODUCTION_PER_FARM;
       extraNote = `${terrainLabel}: +${thisFarmIncome.toFixed(1)}g/hr (${terrMult}x terrain) · +${foodProd} food/hr`;
+    } else if (type === 'outpost') {
+      const terrMult = CONFIG.OUTPOST_TERRAIN_MULT[terrain] ?? 0.4;
+      const reduction = (info.armyFoodReduction * terrMult).toFixed(3);
+      extraNote = `${terrainLabel}: −${reduction} food/hr per army unit (${terrMult}x terrain)`;
     }
 
     const canBuild = canAfford && popOk;
@@ -1633,14 +1648,17 @@ async function renderMyCountry(body) {
   const markets = myInfra.filter(i => i.type === 'market').length;
   const mines = mineInfraArr.length;
   const farms = farmInfraArr.length;
+  const outpostInfraArr = myInfra.filter(i => i.type === 'outpost');
+  const outposts = outpostInfraArr.length;
   const mineIncome = calcMineIncome(mineInfraArr, pixelCount, engine.pixelData);
   const farmIncome = calcFarmIncome(farmInfraArr, pixelCount, engine.pixelData);
+  const outpostReduction = calcOutpostReduction(outpostInfraArr, engine.pixelData);
   const aggression = Number.isFinite(c.food_aggression) ? c.food_aggression : 0;
-  const foodBal = calcFoodBalance(farms, pixelCount, armySize, aggression);
+  const foodBal = calcFoodBalance(farms, pixelCount, armySize, aggression, outpostReduction);
   const foodMult = foodBal < 0 ? Math.max(0.5, 1 + foodBal * 0.02) : 1;
   const border = calcBorderUpkeep(engine.pixelData, c.id);
   const population = pixelCount * CONFIG.POPULATION_PER_PIXEL;
-  const armyFoodRate = Math.round((CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggression) * 100) / 100;
+  const armyFoodRate = Math.round(Math.max(CONFIG.FOOD_CONSUMPTION_PER_ARMY * 0.5, CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggression - outpostReduction) * 100) / 100;
   const armyFoodCost = Math.floor(armySize) * armyFoodRate;
 
   const baseIncome = CONFIG.BASE_INCOME_PER_PIXEL * pixelCount;
@@ -1703,7 +1721,7 @@ async function renderMyCountry(body) {
         <span style="color:var(--muted)">Consumption</span>
         <span style="color:var(--red)">−${(pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + armyFoodCost).toFixed(1)}/hr</span>
       </div>
-      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${CONFIG.FOOD_CONSUMPTION_PER_PIXEL} + ${Math.floor(armySize)} army × ${armyFoodRate.toFixed(2)}${aggression > 0 ? ` <span style="color:var(--red)">(war: +${aggression.toFixed(2)}/unit, decaying)</span>` : ''}</div>
+      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${CONFIG.FOOD_CONSUMPTION_PER_PIXEL} + ${Math.floor(armySize)} army × ${armyFoodRate.toFixed(2)}${aggression > 0 ? ` <span style="color:var(--red)">(war: +${aggression.toFixed(2)}/unit, decaying)</span>` : ''}${outpostReduction > 0 ? ` <span style="color:var(--green)">(outpost: −${outpostReduction.toFixed(2)}/unit)</span>` : ''}</div>
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
         <span style="font-weight:600">Balance</span>
         <span style="font-weight:700;color:${foodBal >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBal >= 0 ? '+' : ''}${foodBal.toFixed(1)}/hr ${foodBal >= 0 ? '✓' : '⚠'}</span>
@@ -2094,13 +2112,15 @@ function showAttackPreview(tx, ty) {
 
   const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === engine.country?.id);
   const myFarms = myInfra.filter(i => i.type === 'farm').length;
+  const myOutposts = myInfra.filter(i => i.type === 'outpost');
+  const myOutpostReduction = calcOutpostReduction(myOutposts, engine.pixelData);
   const myPixels = engine.country?.pixel_count || 0;
   const myArmySize = engine.country?.army_size || 0;
   const curAggression = Number.isFinite(engine.country?.food_aggression) ? engine.country.food_aggression : 0;
   const aggressionAfter = curAggression + CONFIG.FOOD_AGGRESSION_PER_ATTACK;
-  const curArmyRate = (CONFIG.FOOD_CONSUMPTION_PER_ARMY + curAggression).toFixed(2);
-  const newArmyRate = (CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggressionAfter).toFixed(2);
-  const foodBalAfter = calcFoodBalance(myFarms, myPixels, myArmySize, aggressionAfter);
+  const curArmyRate = Math.max(CONFIG.FOOD_CONSUMPTION_PER_ARMY * 0.5, CONFIG.FOOD_CONSUMPTION_PER_ARMY + curAggression - myOutpostReduction).toFixed(2);
+  const newArmyRate = Math.max(CONFIG.FOOD_CONSUMPTION_PER_ARMY * 0.5, CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggressionAfter - myOutpostReduction).toFixed(2);
+  const foodBalAfter = calcFoodBalance(myFarms, myPixels, myArmySize, aggressionAfter, myOutpostReduction);
 
   document.getElementById('attackPreviewBody').innerHTML = `
     <div>Target: <strong style="color:${defender.color}">${defender.flag_emoji || ''} ${defender.name}</strong></div>
