@@ -1261,7 +1261,7 @@ function openManageBuilding(x, y) {
     await deleteBuilding(infra.id, infra.type, x, y);
   };
 
-  // Show/hide fortification button
+  // Fortify button — only shown when not yet fortified; cannot be removed once built
   let fortBtn = document.getElementById('manageBuildingFortify');
   if (!fortBtn) {
     fortBtn = document.createElement('button');
@@ -1270,12 +1270,7 @@ function openManageBuilding(x, y) {
     fortBtn.style.cssText = 'margin-top:0.5rem;width:100%';
     deleteBtn.parentNode.insertBefore(fortBtn, deleteBtn.nextSibling);
   }
-  if (wall) {
-    fortBtn.textContent = 'Remove Fortification';
-    fortBtn.style.background = 'var(--red)';
-    fortBtn.onclick = async () => { closeManageBuildingModal(); await deleteBuilding(wall.id, 'wall', x, y); };
-    fortBtn.style.display = 'block';
-  } else {
+  if (!wall) {
     const fortCost = CONFIG.INFRA_COSTS.wall.gold;
     const canAffordFort = (engine.country?.gold || 0) >= fortCost;
     fortBtn.textContent = canAffordFort ? `Fortify Tile (${fortCost}g)` : `Fortify (need ${fortCost}g)`;
@@ -1290,6 +1285,8 @@ function openManageBuilding(x, y) {
       if (res.ok) { renderMap(); renderRightPanel(); }
     };
     fortBtn.style.display = 'block';
+  } else {
+    fortBtn.style.display = 'none';
   }
   document.getElementById('manageBuildingModal').style.display = 'flex';
 }
@@ -2031,8 +2028,7 @@ async function deleteBuilding(infraId, type, x, y) {
   const { error } = await sb.from('infrastructure').delete().eq('id', infraId);
   if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
 
-  if (type === 'wall') delete engine.wallData[`${x},${y}`];
-  else delete engine.infraData[`${x},${y}`];
+  delete engine.infraData[`${x},${y}`];
 
   const c = engine.country;
   const updates = { gold: Math.round((c.gold + refund) * 10000) / 10000 };
