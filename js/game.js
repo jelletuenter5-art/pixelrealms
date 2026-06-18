@@ -680,19 +680,9 @@ function calcTradingPostIncome(tradingPostInfra, pixelData, borderNations) {
   }, 0);
 }
 
-function calcOutpostReduction(outpostInfra, pixelData) {
-  if (!outpostInfra || outpostInfra.length === 0) return 0;
-  return outpostInfra.reduce((sum, o) => {
-    const terrain = pixelData?.[`${o.pixel_x},${o.pixel_y}`]?.terrain || 'grass';
-    const mult = CONFIG.OUTPOST_TERRAIN_MULT[terrain] ?? 0.4;
-    return sum + CONFIG.INFRA_COSTS.outpost.armyFoodReduction * mult;
-  }, 0);
-}
-
-function calcFoodBalance(farmCount, pixelCount, armySize, aggression = 0, outpostReduction = 0) {
+function calcFoodBalance(farmCount, pixelCount, armySize, aggression = 0) {
   const production = pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmCount * CONFIG.FOOD_PRODUCTION_PER_FARM;
-  const baseRate = CONFIG.FOOD_CONSUMPTION_PER_ARMY;
-  const armyRate = Math.max(baseRate * 0.5, baseRate + (aggression || 0) - outpostReduction);
+  const armyRate = CONFIG.FOOD_CONSUMPTION_PER_ARMY + (aggression || 0);
   const consumption = pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + (armySize || 0) * armyRate;
   return production - consumption;
 }
@@ -714,9 +704,7 @@ async function tickIncome(engine) {
   const tradingPostIncome = calcTradingPostIncome(tradingPostInfra, engine.pixelData, border.nations);
 
   const aggression = Number.isFinite(c.food_aggression) ? c.food_aggression : 0;
-  const outpostInfra = myInfra.filter(i => i.type === 'outpost');
-  const outpostReduction = calcOutpostReduction(outpostInfra, engine.pixelData);
-  const foodBalance = calcFoodBalance(farmInfra.length, c.pixel_count, c.army_size, aggression, outpostReduction);
+  const foodBalance = calcFoodBalance(farmInfra.length, c.pixel_count, c.army_size, aggression);
   const foodMult = foodBalance < 0 ? Math.max(0.5, 1 + foodBalance * 0.02) : 1;
 
   const hourlyIncome = (baseIncome + farmIncome + mineIncome + tradingPostIncome) * foodMult;
