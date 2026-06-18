@@ -448,17 +448,17 @@
       Attacking costs your troops no matter the outcome. Each attack (win or lose) raises your army's
       <strong>food consumption rate by +0.05/unit</strong> — so a 100-army nation goes from 10 food/hr to 15 food/hr after one attack.
       This <strong>war aggression decays at −0.02/hr</strong> back to the base rate, so your supply lines recover if you stop fighting.
-      Sustained campaigns without farms will quickly cause a food deficit and penalise your gold income.
+      Stocking up food reserves before a war is key — if your stored food drops below <strong>25% of your population</strong>, your gold income is penalised by up to <strong>−80%</strong>.
       The attack preview shows exactly how your food balance will change before you confirm.
     </p>
 
     <div class="section-label">👥 Population &amp; 🌽 Food</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
       Your nation has <strong>20 population per pixel</strong>. Population unlocks barracks (100 pop = 5 pixels each).
-      Each pixel produces <strong>0.25 food/hr</strong> (foraging) and consumes <strong>0.1 food/hr</strong>.
+      Each pixel produces <strong>0.5 food/hr</strong> (foraging) and consumes <strong>0.1 food/hr</strong>.
       Your army consumes <strong>0.1 food/hr per unit</strong> at peace — this rises with war aggression (see above).
       Build farms to cover deficits: each farm produces <strong>5 food/hr</strong>, boosted by terrain.
-      A food deficit penalises your entire gold income by up to <strong>−50%</strong>.
+      If your stored food drops below <strong>25% of your population</strong>, your gold income is reduced by up to <strong>−80%</strong> — so stockpile food before long campaigns.
     </p>
 
     <div class="section-label">🤝 Trade</div>
@@ -1638,7 +1638,11 @@ async function spectateCountry(id, fromClick = false) {
   const mineIncomeSp = calcMineIncome(mineInfra, c.pixel_count, engine.pixelData);
   const farmIncomeSp = calcFarmIncome(farmInfra, c.pixel_count, engine.pixelData);
   const foodBalSp = calcFoodBalance(farmInfra.length, c.pixel_count, c.army_size, c.food_aggression || 0);
-  const foodMultSp = foodBalSp < 0 ? Math.max(0.5, 1 + foodBalSp * 0.02) : 1;
+  const foodThresholdSp = c.pixel_count * CONFIG.POPULATION_PER_PIXEL * 0.25;
+  const currentFoodSp = Number.isFinite(c.food) ? c.food : 0;
+  const foodMultSp = (foodThresholdSp > 0 && currentFoodSp < foodThresholdSp)
+    ? Math.max(0.2, currentFoodSp / foodThresholdSp)
+    : 1;
   const borderSp = calcBorderUpkeep(engine.pixelData, c.id);
   const baseIncomeSp = CONFIG.BASE_INCOME_PER_PIXEL * c.pixel_count;
   const grossIncomeSp = (baseIncomeSp + farmIncomeSp + mineIncomeSp) * foodMultSp;
@@ -1670,7 +1674,7 @@ async function spectateCountry(id, fromClick = false) {
       <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🗺️ Base ${CONFIG.BASE_INCOME_PER_PIXEL}/px × ${c.pixel_count} px</span><span style="color:var(--gold)">+${baseIncomeSp.toFixed(1)} g/hr</span></div>
       ${farmInfra.length > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🌾 ${farmInfra.length} farm${farmInfra.length>1?'s':''} (terrain-adjusted)</span><span style="color:var(--gold)">+${farmIncomeSp.toFixed(1)} g/hr</span></div>` : ''}
       ${mineInfra.length > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⛏️ ${mineInfra.length} mine${mineInfra.length>1?'s':''} (terrain-adjusted)</span><span style="color:var(--gold)">+${mineIncomeSp.toFixed(1)} g/hr</span></div>` : ''}
-      ${foodBalSp < 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--red)">🍞 Food deficit penalty (${(-(1-foodMultSp)*100).toFixed(0)}%)</span><span style="color:var(--red)">${((grossIncomeSp / foodMultSp * (foodMultSp-1))).toFixed(1)} g/hr</span></div>` : ''}
+      ${foodMultSp < 1 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--red)">🍞 Low food reserves (−${((1-foodMultSp)*100).toFixed(0)}%)</span><span style="color:var(--red)">${((grossIncomeSp / foodMultSp * (foodMultSp-1))).toFixed(1)} g/hr</span></div>` : ''}
     </div>
     <div class="section-label">📉 Upkeep</div>
     <div style="font-size:0.78rem;line-height:1.9;margin-bottom:0.75rem">
@@ -1754,8 +1758,12 @@ async function renderMyCountry(body) {
   const tradingPostIncome = calcTradingPostIncome(tradingPostInfraArr, engine.pixelData, border.nations);
   const aggression = Number.isFinite(c.food_aggression) ? c.food_aggression : 0;
   const foodBal = calcFoodBalance(farms, pixelCount, armySize, aggression);
-  const foodMult = foodBal < 0 ? Math.max(0.5, 1 + foodBal * 0.02) : 1;
   const population = pixelCount * CONFIG.POPULATION_PER_PIXEL;
+  const foodThreshold = population * 0.25;
+  const currentFood = Number.isFinite(c.food) ? c.food : 0;
+  const foodMult = (foodThreshold > 0 && currentFood < foodThreshold)
+    ? Math.max(0.2, currentFood / foodThreshold)
+    : 1;
   const armyFoodRate = Math.round((CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggression) * 100) / 100;
   const armyFoodCost = Math.floor(armySize) * armyFoodRate;
 
@@ -1794,7 +1802,7 @@ async function renderMyCountry(body) {
       ${statCard('💰 Gold', gold.toFixed(2), 'gold')}
       ${statCard('🗺️ Pixels', pixelCount, 'green')}
       ${statCard('⚔️ Army', displayArmy, 'muted')}
-      ${statCard('🍞 Food', (Number.isFinite(c.food) ? c.food : 0).toFixed(1), foodBal >= 0 ? 'green' : 'red')}
+      ${statCard('🍞 Food', (Number.isFinite(c.food) ? c.food : 0).toFixed(1), currentFood <= foodThreshold ? 'red' : 'green')}
       ${statCard('🏗️ Buildings', `${myInfra.length}/${buildingCap}`, buildingsAtCap ? 'red' : 'gold')}
     </div>
     ${buildingsAtCap ? `<div style="font-size:0.75rem;color:var(--red);margin-bottom:0.5rem;padding:0.4rem 0.6rem;background:rgba(239,68,68,0.08);border-radius:6px;border:1px solid rgba(239,68,68,0.2)">🚧 Building cap reached — expand your territory to build more (1 building per 2 pixels)</div>` : `<div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem">🏗️ ${myInfra.length}/${buildingCap} buildings used · ${buildingCap - myInfra.length} slot${buildingCap - myInfra.length !== 1 ? 's' : ''} remaining</div>`}
@@ -1825,7 +1833,8 @@ async function renderMyCountry(body) {
         <span style="font-weight:600">Balance</span>
         <span style="font-weight:700;color:${foodBal >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBal >= 0 ? '+' : ''}${foodBal.toFixed(1)}/hr ${foodBal >= 0 ? '✓' : '⚠'}</span>
       </div>
-      ${foodBal < 0 ? `<div style="font-size:0.72rem;color:var(--red);margin-top:0.1rem;padding:0.3rem 0.5rem;background:rgba(239,68,68,0.08);border-radius:5px">Deficit: income −${((1-foodMult)*100).toFixed(0)}%. Need ${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM)} more farm${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM) !== 1 ? 's' : ''} to break even. (Army uses ${armyFoodCost.toFixed(1)} food/hr${aggression > 0 ? ` — war rate ×${armyFoodRate.toFixed(2)}/unit` : ''})</div>` : ''}
+      ${foodMult < 1 ? `<div style="font-size:0.72rem;color:var(--red);margin-top:0.1rem;padding:0.3rem 0.5rem;background:rgba(239,68,68,0.08);border-radius:5px">⚠ Food reserves low (${currentFood.toFixed(1)} / ${foodThreshold.toFixed(0)} needed): income −${((1-foodMult)*100).toFixed(0)}%. Stock up food before going to war!</div>` : ''}
+      ${foodBal < 0 ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:0.1rem">Food draining: −${(-foodBal).toFixed(1)}/hr. Need ${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM)} more farm${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM) !== 1 ? 's' : ''} to break even.</div>` : ''}
     </div>
 
     <div class="section-label">📈 Income</div>
@@ -1846,8 +1855,8 @@ async function renderMyCountry(body) {
         <span style="color:var(--muted)">🏛️ ${tradingPosts} trading post${tradingPosts>1?'s':''} (${border.nations} neighbor${border.nations!==1?'s':''})</span>
         <span style="color:var(--gold)">+${tradingPostIncome.toFixed(1)} g/hr</span>
       </div>` : ''}
-      ${foodBal < 0 ? `<div style="display:flex;justify-content:space-between">
-        <span style="color:var(--red)">🍞 Food deficit penalty</span>
+      ${foodMult < 1 ? `<div style="display:flex;justify-content:space-between">
+        <span style="color:var(--red)">🍞 Low food reserves (−${((1-foodMult)*100).toFixed(0)}%)</span>
         <span style="color:var(--red)">−${((1-foodMult) * (baseIncome + farmIncome + mineIncome + tradingPostIncome)).toFixed(1)} g/hr</span>
       </div>` : ''}
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">

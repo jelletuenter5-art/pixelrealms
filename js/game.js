@@ -141,7 +141,11 @@ class GameEngine {
     const tradingPostIncome = calcTradingPostIncome(tradingPostInfra, this.pixelData, border.nations);
     const currentAggression = Number.isFinite(this.country.food_aggression) ? this.country.food_aggression : 0;
     const foodBalance = calcFoodBalance(farmInfra.length, this.country.pixel_count, this.country.army_size, currentAggression);
-    const foodMult = foodBalance < 0 ? Math.max(0.5, 1 + foodBalance * 0.02) : 1;
+    const foodThreshold = this.country.pixel_count * CONFIG.POPULATION_PER_PIXEL * 0.25;
+    const currentFood = Number.isFinite(this.country.food) ? this.country.food : 0;
+    const foodMult = (foodThreshold > 0 && currentFood < foodThreshold)
+      ? Math.max(0.2, currentFood / foodThreshold)
+      : 1;
     const hourlyIncome = (baseIncome + mineIncome + farmIncome + tradingPostIncome) * foodMult;
     const pixelUpkeep = Math.max(0, upkeepPerPx * this.country.pixel_count);
     const armyUpkeep = this.country.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
@@ -744,7 +748,11 @@ async function tickIncome(engine) {
 
   const aggression = Number.isFinite(c.food_aggression) ? c.food_aggression : 0;
   const foodBalance = calcFoodBalance(farmInfra.length, c.pixel_count, c.army_size, aggression);
-  const foodMult = foodBalance < 0 ? Math.max(0.5, 1 + foodBalance * 0.02) : 1;
+  const foodThreshold = c.pixel_count * CONFIG.POPULATION_PER_PIXEL * 0.25;
+  const currentFood = Number.isFinite(c.food) ? c.food : 0;
+  const foodMult = (foodThreshold > 0 && currentFood < foodThreshold)
+    ? Math.max(0.2, currentFood / foodThreshold)
+    : 1;
 
   const hourlyIncome = (baseIncome + farmIncome + mineIncome + tradingPostIncome) * foodMult;
   const pixelUpkeep = Math.max(0, upkeepPerPx * c.pixel_count);
