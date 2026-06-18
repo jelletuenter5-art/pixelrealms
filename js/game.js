@@ -167,9 +167,13 @@ class GameEngine {
 
   // ── Expansion ────────────────────────────────────────────
   async expandTo(x, y) {
+    // Lock prevents rapid double-clicks from both passing the token check before DB returns
+    if (this._expanding) return { ok: false, msg: 'Already processing expansion...' };
     if (!this.country || this.getLiveTokens() < 1) {
       return { ok: false, msg: 'No expansion tokens available. Come back later!' };
     }
+    this._expanding = true;
+    try {
 
     const key = `${x},${y}`;
     let pixel = this.pixelData[key];
@@ -220,6 +224,9 @@ class GameEngine {
 
     await this._logEvent('expand', `${this.country.name} expanded to (${x},${y})`);
     return { ok: true, msg: `Expanded! Tokens left: ${this.getLiveTokens()}` };
+    } finally {
+      this._expanding = false;
+    }
   }
 
   // ── Combat ────────────────────────────────────────────────
@@ -259,10 +266,10 @@ class GameEngine {
     await sb.from('countries').update({ army_size: newDefenderArmy })
       .eq('id', defender.id);
 
-    // Every attack (win or lose) increases food aggression — troops need feeding during campaigns
-    const aggressionGained = success ? CONFIG.FOOD_AGGRESSION_PER_CAPTURE : CONFIG.FOOD_AGGRESSION_PER_CAPTURE * 0.3;
+    // Every attack (win or lose) raises the per-pixel food rate by 0.05
+    const aggressionGained = CONFIG.FOOD_AGGRESSION_PER_ATTACK;
     const curAggression = Number.isFinite(this.country.food_aggression) ? this.country.food_aggression : 0;
-    const newAggression = Math.round((curAggression + aggressionGained) * 1000) / 1000;
+    const newAggression = Math.round((curAggression + aggressionGained) * 10000) / 10000;
     await sb.from('countries').update({ food_aggression: newAggression }).eq('id', this.country.id);
     this.country.food_aggression = newAggression;
 
@@ -324,8 +331,8 @@ class GameEngine {
     });
 
     const msg = success
-      ? `⚔️ Victory! Captured (${x},${y}). Lost ${attackerLoss} troops. 🍞 −${aggressionGained.toFixed(1)} food/hr`
-      : `❌ Failed attack on (${x},${y}). Lost ${attackerLoss} troops. 🍞 −${aggressionGained.toFixed(1)} food/hr`;
+      ? `⚔️ Victory! Captured (${x},${y}). Lost ${attackerLoss} troops. 🍞 Food rate +${aggressionGained.toFixed(2)}/px`
+      : `❌ Failed attack on (${x},${y}). Lost ${attackerLoss} troops. 🍞 Food rate +${aggressionGained.toFixed(2)}/px`;
     await this._logEvent('attack', `${this.country.name} attacked ${defender.name} at (${x},${y}) — ${success ? 'SUCCESS' : 'FAILED'}`);
 
     // Check if defender is eliminated
@@ -655,9 +662,14 @@ function calcBorderUpkeep(pixelData, myCountryId) {
 }
 
 // Returns food/hr balance (positive = surplus, negative = deficit)
+// aggression = extra per-pixel food rate added by war (e.g. 0.05 per attack)
+// No war: px × 0.10 + army × 0.10
+// After 1 attack: px × 0.15 + army × 0.10  (aggression = 0.05)
+// After 2 attacks: px × 0.20 + army × 0.10 (aggression = 0.10)
 function calcFoodBalance(farmCount, pixelCount, armySize, aggression = 0) {
   const production = pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmCount * CONFIG.FOOD_PRODUCTION_PER_FARM;
-  const consumption = pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + (armySize || 0) * CONFIG.FOOD_CONSUMPTION_PER_ARMY + (aggression || 0);
+  const pixelRate = CONFIG.FOOD_CONSUMPTION_PER_PIXEL + (aggression || 0);
+  const consumption = pixelCount * pixelRate + (armySize || 0) * CONFIG.FOOD_CONSUMPTION_PER_ARMY;
   return production - consumption;
 }
 
@@ -699,7 +711,7 @@ async function tickIncome(engine) {
   const safeFood = Number.isFinite(c.food) ? c.food : 0;
   const newFood = Math.max(0, Math.round((safeFood + foodBalance * tickHours) * 100) / 100);
   // Aggression decays at 0.01/hr
-  const newAggression = Math.max(0, Math.round((aggression - CONFIG.FOOD_AGGRESSION_DECAY * tickHours) * 10000) / 10000);
+  const newAggression = Math.max(0, Math.round((aggression - CONFIG.FOOD_AGGRESSION_DECAY * tickHours) * 100000) / 100000);
 
   if (newFood !== safeFood || newAggression !== aggression) {
     const { error } = await sb.from('countries').update({ food: newFood, food_aggression: newAggression }).eq('id', c.id);

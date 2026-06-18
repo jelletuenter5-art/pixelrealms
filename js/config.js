@@ -20,8 +20,8 @@ const CONFIG = {
   FOOD_PRODUCTION_PER_FARM: 5,       // food/hr per farm building
   FOOD_CONSUMPTION_PER_PIXEL: 0.1,   // base food/hr per pixel (low — army drives the rest)
   FOOD_CONSUMPTION_PER_ARMY: 0.1,    // food/hr per army unit — wars/barracks increase food need
-  FOOD_AGGRESSION_PER_CAPTURE: 1.0,  // food/hr added to consumption per pixel captured in war
-  FOOD_AGGRESSION_DECAY: 0.1,        // food/hr of war aggression that decays each real hour
+  FOOD_AGGRESSION_PER_ATTACK: 0.05,  // added to per-pixel food rate per attack (win or loss)
+  FOOD_AGGRESSION_DECAY: 0.01,       // per-pixel rate decrease per real hour (back to base 0.1)
   // Terrain multipliers for mine flat income (pixel bonus unaffected)
   MINE_TERRAIN_MULT: { mountain: 1.8, hill: 1.3, grass: 0.9, desert: 0.5, water: 0 },
   // Terrain multipliers for farm income
