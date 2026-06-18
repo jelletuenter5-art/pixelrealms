@@ -153,7 +153,6 @@ class GameEngine {
     const newGold = Math.max(0, Math.round((currentGold + (hourlyIncome - pixelUpkeep - armyUpkeep - border.cost) * hoursOffline) * 10000) / 10000);
 
     // Food offline
-    const currentFood = Number.isFinite(this.country.food) ? this.country.food : 0;
     const newFood = Math.max(0, Math.round((currentFood + foodBalance * hoursOffline) * 100) / 100);
 
     // Army regen offline — barracks regenerate up to their cap
