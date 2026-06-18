@@ -16,7 +16,7 @@ const CONFIG = {
   BORDER_UPKEEP_PER_NATION: 2,       // gold/hr upkeep per border pixel (pixel of yours touching an enemy pixel)
   POPULATION_PER_PIXEL: 20,          // people per pixel owned
   BARRACKS_POPULATION_COST: 100,     // population required per barracks
-  FOOD_PRODUCTION_PER_PIXEL: 0.3,    // base food/hr per pixel (foraging)
+  FOOD_PRODUCTION_PER_PIXEL: 0.25,   // base food/hr per pixel (foraging)
   FOOD_PRODUCTION_PER_FARM: 5,       // food/hr per farm building
   FOOD_CONSUMPTION_PER_PIXEL: 0.1,   // base food/hr per pixel (low — army drives the rest)
   FOOD_CONSUMPTION_PER_ARMY: 0.1,    // food/hr per army unit — wars/barracks increase food need
