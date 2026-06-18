@@ -1694,7 +1694,11 @@ async function renderMyCountry(body) {
         <span style="color:var(--muted)">Consumption</span>
         <span style="color:var(--red)">−${(pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + armySize * CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggression).toFixed(1)}/hr</span>
       </div>
-      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${CONFIG.FOOD_CONSUMPTION_PER_PIXEL}${armySize > 0 ? ` + ${armySize} army × ${CONFIG.FOOD_CONSUMPTION_PER_ARMY}` : ''}${aggression > 0 ? ` + ${aggression.toFixed(2)} war aggression` : ''}</div>
+      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${CONFIG.FOOD_CONSUMPTION_PER_PIXEL}${armySize > 0 ? ` + ${armySize} army × ${CONFIG.FOOD_CONSUMPTION_PER_ARMY}` : ''}</div>
+      ${aggression > 0 ? `<div style="display:flex;justify-content:space-between;margin-top:0.1rem">
+        <span style="font-size:0.7rem;color:var(--red)">⚔️ War aggression</span>
+        <span style="font-size:0.7rem;color:var(--red)">−${aggression.toFixed(2)}/hr (decaying)</span>
+      </div>` : ''}
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
         <span style="font-weight:600">Balance</span>
         <span style="font-weight:700;color:${foodBal >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBal >= 0 ? '+' : ''}${foodBal.toFixed(1)}/hr ${foodBal >= 0 ? '✓' : '⚠'}</span>
@@ -2074,9 +2078,10 @@ function showAttackPreview(tx, ty) {
   const myPixels = engine.country?.pixel_count || 0;
   const myArmySize = engine.country?.army_size || 0;
   const curAggression = Number.isFinite(engine.country?.food_aggression) ? engine.country.food_aggression : 0;
-  const curFoodBal = calcFoodBalance(myFarms, myPixels, myArmySize, curAggression);
-  const newFoodBal = calcFoodBalance(myFarms, myPixels, myArmySize, curAggression + CONFIG.FOOD_AGGRESSION_PER_CAPTURE);
-  const foodDelta = newFoodBal - curFoodBal;
+  const aggressionOnWin = CONFIG.FOOD_AGGRESSION_PER_CAPTURE;
+  const aggressionOnLoss = CONFIG.FOOD_AGGRESSION_PER_CAPTURE * 0.3;
+  const foodBalWin  = calcFoodBalance(myFarms, myPixels, myArmySize, curAggression + aggressionOnWin);
+  const foodBalLoss = calcFoodBalance(myFarms, myPixels, myArmySize, curAggression + aggressionOnLoss);
 
   document.getElementById('attackPreviewBody').innerHTML = `
     <div>Target: <strong style="color:${defender.color}">${defender.flag_emoji || ''} ${defender.name}</strong></div>
@@ -2086,10 +2091,11 @@ function showAttackPreview(tx, ty) {
     <div>Their army: <strong>${theirArmy}</strong> (effective: ${effectiveDef.toFixed(0)})</div>
     <div style="margin-top:0.75rem;font-size:0.95rem">${outcome}</div>
     <div style="font-size:0.75rem;color:var(--muted);margin-top:0.25rem">Both sides lose troops regardless of outcome.</div>
-    <div style="margin-top:0.6rem;padding:0.4rem 0.6rem;background:rgba(239,68,68,0.08);border-radius:6px;border:1px solid rgba(239,68,68,0.2);font-size:0.75rem">
-      <span style="color:var(--muted)">🍞 Food if victorious:</span>
-      <span style="color:var(--red)"> ${foodDelta.toFixed(1)}/hr (war aggression +${CONFIG.FOOD_AGGRESSION_PER_CAPTURE}, decays ${CONFIG.FOOD_AGGRESSION_DECAY}/hr)</span>
-      <br><span style="color:var(--muted)">New balance: </span><span style="color:${newFoodBal >= 0 ? 'var(--green)' : 'var(--red)'}">${newFoodBal >= 0 ? '+' : ''}${newFoodBal.toFixed(1)}/hr</span>
+    <div style="margin-top:0.6rem;padding:0.4rem 0.6rem;background:rgba(239,68,68,0.08);border-radius:6px;border:1px solid rgba(239,68,68,0.2);font-size:0.75rem;line-height:1.8">
+      <div style="font-weight:600;color:var(--text);margin-bottom:0.2rem">🍞 Food impact (war aggression)</div>
+      <div><span style="color:var(--green)">If victorious:</span> −${aggressionOnWin.toFixed(1)} food/hr → balance <span style="color:${foodBalWin >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBalWin >= 0 ? '+' : ''}${foodBalWin.toFixed(1)}/hr</span></div>
+      <div><span style="color:var(--muted)">If defeated:</span> −${aggressionOnLoss.toFixed(1)} food/hr → balance <span style="color:${foodBalLoss >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBalLoss >= 0 ? '+' : ''}${foodBalLoss.toFixed(1)}/hr</span></div>
+      <div style="color:var(--muted);font-size:0.7rem">Aggression decays −${CONFIG.FOOD_AGGRESSION_DECAY}/hr over time</div>
     </div>
   `;
 
@@ -2099,7 +2105,7 @@ function showAttackPreview(tx, ty) {
     modal.style.display = 'none';
     const res = await engine.attack(tx, ty);
     showToast(res.msg, res.ok && res.success ? 'ok' : 'error');
-    if (res.ok) { renderMap(); updateTopBar(); }
+    if (res.ok) { renderMap(); updateTopBar(); if (rightTab === 'country') renderRightPanel(); }
   };
 }
 

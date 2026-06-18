@@ -259,14 +259,18 @@ class GameEngine {
     await sb.from('countries').update({ army_size: newDefenderArmy })
       .eq('id', defender.id);
 
+    // Every attack (win or lose) increases food aggression — troops need feeding during campaigns
+    const aggressionGained = success ? CONFIG.FOOD_AGGRESSION_PER_CAPTURE : CONFIG.FOOD_AGGRESSION_PER_CAPTURE * 0.3;
+    const curAggression = Number.isFinite(this.country.food_aggression) ? this.country.food_aggression : 0;
+    const newAggression = Math.round((curAggression + aggressionGained) * 1000) / 1000;
+    await sb.from('countries').update({ food_aggression: newAggression }).eq('id', this.country.id);
+    this.country.food_aggression = newAggression;
+
     if (success) {
       await sb.from('pixels').update({ country_id: this.country.id, captured_at: new Date().toISOString() })
         .eq('game_id', this.gameId).eq('x', x).eq('y', y);
-      // Aggression increases food consumption — decays 0.01/hr naturally
-      const newAggression = Math.round(((Number.isFinite(this.country.food_aggression) ? this.country.food_aggression : 0) + CONFIG.FOOD_AGGRESSION_PER_CAPTURE) * 1000) / 1000;
-      await sb.from('countries').update({ pixel_count: this.country.pixel_count + 1, food_aggression: newAggression })
+      await sb.from('countries').update({ pixel_count: this.country.pixel_count + 1 })
         .eq('id', this.country.id);
-      this.country.food_aggression = newAggression;
       await sb.from('countries').update({ pixel_count: Math.max(0, defender.pixel_count - 1) })
         .eq('id', defender.id);
 
@@ -320,8 +324,8 @@ class GameEngine {
     });
 
     const msg = success
-      ? `⚔️ Victory! Captured (${x},${y}). Lost ${attackerLoss} troops.`
-      : `❌ Failed attack on (${x},${y}). Lost ${attackerLoss} troops.`;
+      ? `⚔️ Victory! Captured (${x},${y}). Lost ${attackerLoss} troops. 🍞 −${aggressionGained.toFixed(1)} food/hr`
+      : `❌ Failed attack on (${x},${y}). Lost ${attackerLoss} troops. 🍞 −${aggressionGained.toFixed(1)} food/hr`;
     await this._logEvent('attack', `${this.country.name} attacked ${defender.name} at (${x},${y}) — ${success ? 'SUCCESS' : 'FAILED'}`);
 
     // Check if defender is eliminated
@@ -336,7 +340,7 @@ class GameEngine {
       this.countries[defender.id] = { ...defender, pixel_count: defenderPixelsLeft, army_size: newDefenderArmy };
     }
 
-    return { ok: true, msg, success, attackerLoss, defenderLoss };
+    return { ok: true, msg, success, attackerLoss, defenderLoss, aggressionGained, newAggression };
   }
 
   // ── Infrastructure ─────────────────────────────────────────
