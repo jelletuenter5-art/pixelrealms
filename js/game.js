@@ -724,9 +724,13 @@ async function tickIncome(engine) {
   }
 
   // Army regeneration — barracks refill army up to their cap (barracks × 20) at 0.5/hr per barracks
+  // Uses actual wall-clock elapsed time so browser tab throttling doesn't starve regen
   const barracksCount = myInfra.filter(i => i.type === 'barracks').length;
+  const now = Date.now();
+  const regenElapsedHours = engine._lastRegenTime ? (now - engine._lastRegenTime) / 3600000 : tickHours;
+  engine._lastRegenTime = now;
   if (barracksCount > 0 && c.army_size < barracksCount * CONFIG.INFRA_COSTS.barracks.armyBonus) {
-    engine._armyRegenAccum = (engine._armyRegenAccum || 0) + barracksCount * CONFIG.BARRACKS_REGEN_PER_HOUR * tickHours;
+    engine._armyRegenAccum = (engine._armyRegenAccum || 0) + barracksCount * CONFIG.BARRACKS_REGEN_PER_HOUR * regenElapsedHours;
     const wholeRegen = Math.floor(engine._armyRegenAccum);
     if (wholeRegen >= 1) {
       engine._armyRegenAccum -= wholeRegen;

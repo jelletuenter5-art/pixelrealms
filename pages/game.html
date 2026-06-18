@@ -1678,8 +1678,6 @@ async function renderMyCountry(body) {
       ${statCard('🗺️ Pixels', pixelCount, 'green')}
       ${statCard('⚔️ Army', armySize, 'red')}
       ${statCard('🍞 Food', (Number.isFinite(c.food) ? c.food : 0).toFixed(1), foodBal >= 0 ? 'green' : 'red')}
-      ${statCard('📈 Income/hr', incomePerHr, 'blue')}
-      ${statCard('🔧 Upkeep/hr', upkeep, 'muted')}
       ${statCard('🏗️ Buildings', `${myInfra.length}/${buildingCap}`, buildingsAtCap ? 'red' : 'gold')}
     </div>
     ${buildingsAtCap ? `<div style="font-size:0.75rem;color:var(--red);margin-bottom:0.5rem;padding:0.4rem 0.6rem;background:rgba(239,68,68,0.08);border-radius:6px;border:1px solid rgba(239,68,68,0.2)">🚧 Building cap reached — expand your territory to build more (1 building per 2 pixels)</div>` : `<div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem">🏗️ ${myInfra.length}/${buildingCap} buildings used · ${buildingCap - myInfra.length} slot${buildingCap - myInfra.length !== 1 ? 's' : ''} remaining</div>`}
