@@ -1360,7 +1360,7 @@ function updateTopBar() {
   document.getElementById('myCountryName').textContent = c.name;
   document.getElementById('myGold').textContent = (Number.isFinite(c.gold) ? c.gold : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   document.getElementById('myPixels').textContent = c.pixel_count ?? 0;
-  document.getElementById('myArmy').textContent = c.army_size ?? 0;
+  document.getElementById('myArmy').textContent = Math.floor((c.army_size ?? 0) + (engine._armyRegenAccum || 0));
   document.getElementById('myTokens').textContent = engine.getLiveTokens();
 }
 
@@ -1736,6 +1736,7 @@ async function renderMyCountry(body) {
   const gold = Number.isFinite(c.gold) ? c.gold : 0;
   const pixelCount = c.pixel_count ?? 0;
   const armySize = c.army_size ?? 0;
+  const displayArmy = Math.floor(armySize + (engine._armyRegenAccum || 0));
   const armyUpkeepPerPixel = c.army_upkeep_per_pixel ?? 0.3;
   const incomePerPixel = c.income_per_pixel ?? CONFIG.BASE_INCOME_PER_PIXEL;
 
@@ -1792,7 +1793,7 @@ async function renderMyCountry(body) {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem">
       ${statCard('💰 Gold', gold.toFixed(2), 'gold')}
       ${statCard('🗺️ Pixels', pixelCount, 'green')}
-      ${statCard('⚔️ Army', armySize, 'muted')}
+      ${statCard('⚔️ Army', displayArmy, 'muted')}
       ${statCard('🍞 Food', (Number.isFinite(c.food) ? c.food : 0).toFixed(1), foodBal >= 0 ? 'green' : 'red')}
       ${statCard('🏗️ Buildings', `${myInfra.length}/${buildingCap}`, buildingsAtCap ? 'red' : 'gold')}
     </div>
@@ -1819,7 +1820,7 @@ async function renderMyCountry(body) {
         <span style="color:var(--muted)">Consumption</span>
         <span style="color:var(--red)">−${(pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + armyFoodCost).toFixed(1)}/hr</span>
       </div>
-      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${CONFIG.FOOD_CONSUMPTION_PER_PIXEL} + ${Math.floor(armySize)} army × ${armyFoodRate.toFixed(2)}${aggression > 0 ? ` <span style="color:var(--red)">(war: +${aggression.toFixed(2)}/unit, decaying)</span>` : ''}</div>
+      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${CONFIG.FOOD_CONSUMPTION_PER_PIXEL} + ${displayArmy} army × ${armyFoodRate.toFixed(2)}${aggression > 0 ? ` <span style="color:var(--red)">(war: +${aggression.toFixed(2)}/unit, decaying)</span>` : ''}</div>
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
         <span style="font-weight:600">Balance</span>
         <span style="font-weight:700;color:${foodBal >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBal >= 0 ? '+' : ''}${foodBal.toFixed(1)}/hr ${foodBal >= 0 ? '✓' : '⚠'}</span>
@@ -1866,7 +1867,7 @@ async function renderMyCountry(body) {
         <span style="color:var(--green)">+${(Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, 0.3) * pixelCount).toFixed(1)} g/hr</span>
       </div>` : ''}
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">⚔️ Army (${CONFIG.ARMY_UPKEEP_PER_UNIT} × ${armySize} units)</span>
+        <span style="color:var(--muted)">⚔️ Army (${CONFIG.ARMY_UPKEEP_PER_UNIT} × ${displayArmy} units)</span>
         <span style="color:var(--red)">−${armyUnitUpkeep.toFixed(1)} g/hr</span>
       </div>
       <div style="display:flex;justify-content:space-between">
@@ -1892,7 +1893,7 @@ async function renderMyCountry(body) {
     <div style="font-size:0.8rem;line-height:1.9;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between">
         <span style="color:var(--muted)">${barracksBuilt} barracks × 20 cap</span>
-        <span style="font-weight:600">${Math.floor(armySize)} / ${armyCap}</span>
+        <span style="font-weight:600">${displayArmy} / ${armyCap}</span>
       </div>
       ${armySize < armyCap ? `<div style="font-size:0.7rem;color:var(--green)">+${regenRate}/hr regenerating back to ${armyCap}</div>` : `<div style="font-size:0.7rem;color:var(--muted)">At full strength</div>`}
     </div>` : '';
