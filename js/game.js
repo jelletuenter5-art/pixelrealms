@@ -662,14 +662,15 @@ function calcBorderUpkeep(pixelData, myCountryId) {
 }
 
 // Returns food/hr balance (positive = surplus, negative = deficit)
-// aggression = extra per-pixel food rate added by war (e.g. 0.05 per attack)
-// No war: px × 0.10 + army × 0.10
-// After 1 attack: px × 0.15 + army × 0.10  (aggression = 0.05)
-// After 2 attacks: px × 0.20 + army × 0.10 (aggression = 0.10)
+// aggression = extra per-army food rate added by war (e.g. 0.05 per attack)
+// Pixels stay fixed: px × 0.10
+// No war:       army × 0.10
+// After 1 attack: army × 0.15  (aggression = 0.05)
+// After 2 attacks: army × 0.20 (aggression = 0.10)
 function calcFoodBalance(farmCount, pixelCount, armySize, aggression = 0) {
   const production = pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmCount * CONFIG.FOOD_PRODUCTION_PER_FARM;
-  const pixelRate = CONFIG.FOOD_CONSUMPTION_PER_PIXEL + (aggression || 0);
-  const consumption = pixelCount * pixelRate + (armySize || 0) * CONFIG.FOOD_CONSUMPTION_PER_ARMY;
+  const armyRate = CONFIG.FOOD_CONSUMPTION_PER_ARMY + (aggression || 0);
+  const consumption = pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + (armySize || 0) * armyRate;
   return production - consumption;
 }
 
