@@ -125,29 +125,52 @@ class GameEngine {
       CONFIG.MAX_STACK
     );
 
-    // Gold also accrues while offline, based on the same elapsed time
+    // Compute offline accruals for gold, food, army, and aggression decay
     const myInfra = Object.values(this.infraData || {}).filter(i => i.country_id === this.country.id);
     const mineInfra = myInfra.filter(i => i.type === 'mine');
     const farmInfra = myInfra.filter(i => i.type === 'farm');
+    const tradingPostInfra = myInfra.filter(i => i.type === 'trading_post');
+    const barracksCount = myInfra.filter(i => i.type === 'barracks').length;
+
     const incomePerPx = this.country.income_per_pixel || CONFIG.BASE_INCOME_PER_PIXEL;
     const upkeepPerPx = this.country.army_upkeep_per_pixel || 0.3;
     const baseIncome = incomePerPx * this.country.pixel_count;
     const mineIncome = calcMineIncome(mineInfra, this.country.pixel_count, this.pixelData);
     const farmIncome = calcFarmIncome(farmInfra, this.country.pixel_count, this.pixelData);
-    const foodBalance = calcFoodBalance(farmInfra.length, this.country.pixel_count, this.country.army_size, this.country.food_aggression || 0);
+    const border = calcBorderUpkeep(this.pixelData, this.country.id);
+    const tradingPostIncome = calcTradingPostIncome(tradingPostInfra, this.pixelData, border.nations);
+    const currentAggression = Number.isFinite(this.country.food_aggression) ? this.country.food_aggression : 0;
+    const foodBalance = calcFoodBalance(farmInfra.length, this.country.pixel_count, this.country.army_size, currentAggression);
     const foodMult = foodBalance < 0 ? Math.max(0.5, 1 + foodBalance * 0.02) : 1;
-    const hourlyIncome = (baseIncome + mineIncome + farmIncome) * foodMult;
+    const hourlyIncome = (baseIncome + mineIncome + farmIncome + tradingPostIncome) * foodMult;
     const pixelUpkeep = Math.max(0, upkeepPerPx * this.country.pixel_count);
     const armyUpkeep = this.country.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
-    const borderUpkeep = calcBorderUpkeep(this.pixelData, this.country.id).cost;
     const currentGold = Number.isFinite(this.country.gold) ? this.country.gold : 0;
-    const newGold = Math.max(0, Math.round((currentGold + (hourlyIncome - pixelUpkeep - armyUpkeep - borderUpkeep) * hoursOffline) * 10000) / 10000);
+    const newGold = Math.max(0, Math.round((currentGold + (hourlyIncome - pixelUpkeep - armyUpkeep - border.cost) * hoursOffline) * 10000) / 10000);
 
-    const { data } = await sb.from('countries')
-      .update({ pending_pixels: newTokens, gold: newGold, last_active: now.toISOString() })
-      .eq('id', this.country.id)
-      .select().single();
+    // Food offline
+    const currentFood = Number.isFinite(this.country.food) ? this.country.food : 0;
+    const newFood = Math.max(0, Math.round((currentFood + foodBalance * hoursOffline) * 100) / 100);
 
+    // Army regen offline — barracks regenerate up to their cap
+    const armyCap = barracksCount * CONFIG.INFRA_COSTS.barracks.armyBonus;
+    const currentArmy = this.country.army_size || 0;
+    const newArmy = barracksCount > 0 && currentArmy < armyCap
+      ? Math.min(armyCap, Math.floor(currentArmy + barracksCount * CONFIG.BARRACKS_REGEN_PER_HOUR * hoursOffline))
+      : currentArmy;
+
+    // Food aggression decays offline
+    const newAggression = Math.max(0, Math.round((currentAggression - CONFIG.FOOD_AGGRESSION_DECAY * hoursOffline) * 100000) / 100000);
+
+    const updates = {
+      pending_pixels: newTokens,
+      gold: newGold,
+      food: newFood,
+      army_size: newArmy,
+      food_aggression: newAggression,
+      last_active: now.toISOString(),
+    };
+    const { data } = await sb.from('countries').update(updates).eq('id', this.country.id).select().single();
     if (data) this.country = data;
   }
 
