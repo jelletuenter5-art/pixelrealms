@@ -18,8 +18,8 @@ const CONFIG = {
   BARRACKS_POPULATION_COST: 100,     // population required per barracks
   FOOD_PRODUCTION_PER_PIXEL: 0.5,    // base food/hr per pixel (foraging)
   FOOD_PRODUCTION_PER_FARM: 5,       // food/hr per farm building
-  FOOD_CONSUMPTION_PER_PIXEL: 0.1,   // base food/hr per pixel (low — army drives the rest)
-  FOOD_CONSUMPTION_PER_ARMY: 0.2,    // food/hr per army unit — wars/barracks increase food need
+  FOOD_CONSUMPTION_PER_PIXEL: 0.2,   // base food/hr per pixel
+  FOOD_CONSUMPTION_PER_ARMY: 0.1,    // food/hr per army unit at peace — rises with war aggression
   FOOD_AGGRESSION_PER_ATTACK: 0.05,  // added to per-pixel food rate per attack (win or loss)
   FOOD_AGGRESSION_DECAY: 0.02,       // per-pixel rate decrease per real hour (back to base 0.1)
   // Terrain multipliers for mine flat income (pixel bonus unaffected)

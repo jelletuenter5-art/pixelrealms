@@ -456,8 +456,8 @@
     <div class="section-label">👥 Population &amp; 🌽 Food</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
       Your nation has <strong>20 population per pixel</strong>. Population unlocks barracks (100 pop = 5 pixels each).
-      Each pixel produces <strong>0.5 food/hr</strong> (foraging) and consumes <strong>0.1 food/hr</strong>.
-      Your army consumes <strong>0.2 food/hr per unit</strong> at peace — this rises with war aggression (see above).
+      Each pixel produces <strong>0.5 food/hr</strong> (foraging) and consumes <strong>0.2 food/hr</strong>.
+      Your army consumes <strong>0.1 food/hr per unit</strong> at peace — this rises with war aggression (see above).
       Build farms to cover deficits: each farm produces <strong>5 food/hr</strong>, boosted by terrain.
       If your stored food drops below <strong>25% of your population</strong>, your gold income is reduced by up to <strong>−80%</strong> — so stockpile food before long campaigns.
     </p>
@@ -2254,7 +2254,7 @@ function showAttackPreview(tx, ty) {
       <div style="font-weight:600;color:var(--text);margin-bottom:0.2rem">🍞 Food impact (win or lose)</div>
       <div>Army rate: ${curArmyRate} → <span style="color:var(--red)">${newArmyRate}/unit</span> (+${CONFIG.FOOD_AGGRESSION_PER_ATTACK.toFixed(2)})</div>
       <div>New food balance: <span style="color:${foodBalAfter >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBalAfter >= 0 ? '+' : ''}${foodBalAfter.toFixed(1)}/hr</span></div>
-      <div style="color:var(--muted);font-size:0.7rem">Decays −${CONFIG.FOOD_AGGRESSION_DECAY}/unit/hr back to 0.20</div>
+      <div style="color:var(--muted);font-size:0.7rem">Decays −${CONFIG.FOOD_AGGRESSION_DECAY}/unit/hr back to 0.10</div>
     </div>
   `;
 

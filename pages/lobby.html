@@ -202,11 +202,11 @@
 <div class="main">
   <div class="page-tabs">
     <button class="page-tab active" onclick="showSection('myGames', event)">⚔️ My Realms</button>
-    <button class="page-tab" onclick="showSection('archived', event)">📦 Archived</button>
     <button class="page-tab" onclick="showSection('browse', event)">🌍 Worlds</button>
+    <button class="page-tab" onclick="showSection('archived', event)">📦 Archived</button>
     <button class="page-tab" onclick="showSection('leaderboard', event)">🏆 Leaderboard</button>
-    <button class="page-tab" onclick="showSection('settings', event)">⚙️ Settings</button>
     <button class="page-tab" onclick="showSection('feedback', event)">🎫 Issues<span class="notif-dot-tab" id="feedbackDot"></span></button>
+    <button class="page-tab" onclick="showSection('settings', event)">⚙️ Settings</button>
     <button class="page-tab" onclick="showSection('updates', event)">📋 Updates<span class="notif-dot-tab" id="updatesDot"></span></button>
     <button class="page-tab" id="adminTab" onclick="showSection('admin', event)" style="display:none">🛠️ Admin<span class="notif-dot-tab" id="adminDot"></span></button>
   </div>
@@ -517,6 +517,7 @@ async function loadMyGames() {
         <span><span class="country-dot" style="background:${c.color}"></span> ${c.name}</span>
         <span>🗺️ ${c.pixel_count} pixels</span>
         <span>💰 ${Math.floor(c.gold)} gold</span>
+        <span>👥 ${g.current_players || 0}/${g.max_players} players</span>
       </div>
       ${deleteWarning}
       <div style="margin-top:0.75rem; display:flex; justify-content:space-between; align-items:center">
