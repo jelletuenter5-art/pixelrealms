@@ -402,14 +402,38 @@
       ⚠️ <strong>Building cap: 1 building per 2 pixels.</strong> With 10 pixels you can have at most 5 buildings.
       Expand your territory to unlock more slots — your current usage is shown in My Realm.
     </p>
-    <ul style="font-size:0.82rem;color:var(--muted);line-height:1.8;margin-left:1.2rem">
-      <li>🌾 <strong>Farm</strong> (80g) — +0.05 gold/pixel/hr nation-wide, scaled by terrain (grass 1.5×, hill 1.0×, mountain 0.5×, desert 0.3×). Also produces <strong>5 food/hr</strong>. Best placed on grassland.</li>
-      <li>⛏️ <strong>Mine</strong> (80g) — Hybrid income: starts at 5g/hr flat + 0.02g/px/hr. Each additional mine slightly reduces the flat rate. Best on mountains (1.8×), weakest on desert (0.5×).</li>
-      <li>🏪 <strong>Market</strong> (100g) — reduces territory upkeep by 0.03/pixel/hr nation-wide. Stack them to lower costs.</li>
-      <li>⚔️ <strong>Barracks</strong> (150g) — instantly adds 20 army. Also <strong>regenerates 0.5 army/hr</strong> per barracks, up to a cap of 20 per barracks. 10 barracks = 200 army cap, regenerating 5/hr after losses. Requires <strong>100 population per barracks</strong>.</li>
-      <li>🧱 <strong>Fortification</strong> (60g) — +50% defense on <em>that specific tile</em> when attacked. <strong>Does not count toward the building cap</strong> and can be placed on any owned tile, including tiles that already have a building. Shown on the map as bright white border lines on exposed edges. Destroyed when the tile is captured.</li>
-      <li>🏛️ <strong>Trading Post</strong> (90g) — earns <strong>+1g/hr flat + 2g/hr per unique neighboring nation</strong> (terrain-adjusted). Best in desert (1.5×), hill (1.1×), grass (0.9×), mountain (0.5×). Scales with diplomacy: 0 neighbors = barely anything; 3 neighbors = (1 + 6) × terrain; 5 neighbors = (1 + 10) × terrain.</li>
-    </ul>
+    <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.25rem">
+      <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🌾 Farm <span style="color:var(--gold);font-weight:400">80g</span></div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+0.05 gold/pixel/hr nation-wide · +5 food/hr</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Terrain: grass 1.5× · hill 1.0× · mountain 0.5× · desert 0.3×</div>
+      </div>
+      <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">⛏️ Mine <span style="color:var(--gold);font-weight:400">80g</span></div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+5g/hr flat + 0.02g/px/hr · each extra mine slightly reduces the flat rate</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Terrain: mountain 1.8× · hill 1.3× · grass 0.9× · desert 0.5×</div>
+      </div>
+      <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🏪 Market <span style="color:var(--gold);font-weight:400">100g</span></div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">−0.03 territory upkeep/pixel/hr nation-wide · stacks across markets</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">No terrain effect</div>
+      </div>
+      <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">⚔️ Barracks <span style="color:var(--gold);font-weight:400">150g</span></div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+20 army instantly · regenerates 0.5 army/hr per barracks up to 20/barracks cap</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Requires 100 population per barracks · no terrain effect</div>
+      </div>
+      <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🧱 Fortification <span style="color:var(--gold);font-weight:400">60g</span></div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+50% defense on that tile when attacked · visible as white border lines on the map</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">No building cap · stacks with other buildings · destroyed if the tile is captured</div>
+      </div>
+      <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🏛️ Trading Post <span style="color:var(--gold);font-weight:400">90g</span></div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+1g/hr flat + 2g/hr per unique neighboring nation · scales with how many nations you border</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Terrain: desert 1.5× · hill 1.1× · grass 0.9× · mountain 0.5×</div>
+      </div>
+    </div>
 
     <div class="section-label">💰 Economy</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
