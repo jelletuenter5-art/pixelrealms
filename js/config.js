@@ -36,11 +36,12 @@ const CONFIG = {
   ARMY_PER_PIXEL: 2,              // army units per pixel at start
   ATTACK_GOLD_COST: 0,
   ARMY_UPKEEP_PER_UNIT: 0.25,      // gold/hr per army unit (scales with barracks)
+  BARRACKS_REGEN_PER_HOUR: 0.5,    // army units regenerated per hour per barracks built
   INFRA_COSTS: {
-    farm:     { gold: 80,  effect: '+0.1 gold/pixel/hr income, nation-wide',       incomeBonus: 0.1 },
+    farm:     { gold: 80,  effect: '+0.05 gold/pixel/hr income, nation-wide',      incomeBonus: 0.05 },
     mine:     { gold: 80,  effect: '+5 gold/hr flat + 0.02 gold/pixel/hr hybrid income', flatIncome: 5, pixelBonus: 0.02 },
     market:   { gold: 100, effect: '-0.03 territory upkeep per pixel, nation-wide', upkeepReduction: 0.03 },
-    barracks: { gold: 120, effect: '+20 army strength',                            armyBonus: 20 },
+    barracks: { gold: 150, effect: '+20 army instantly · regenerates 0.5 army/hr per barracks up to cap', armyBonus: 20 },
     wall:     { gold: 60,  effect: '+50% defense when this tile is attacked',      defenseBonus: 0.5 },
   },
   TOKEN_BUY_COST: 1000,            // gold cost to buy 1 expansion token

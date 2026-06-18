@@ -403,27 +403,37 @@
       Expand your territory to unlock more slots — your current usage is shown in My Realm.
     </p>
     <ul style="font-size:0.82rem;color:var(--muted);line-height:1.8;margin-left:1.2rem">
-      <li>🌾 <strong>Farm</strong> (80g) — +0.1 gold/pixel/hr nation-wide, scaled by terrain (grass 1.5×, hill 1.0×, mountain 0.5×, desert 0.3×). Also produces <strong>5 food/hr</strong>.</li>
-      <li>⛏️ <strong>Mine</strong> (80g) — Hybrid income: starts at 5g/hr flat + 0.02g/px/hr per mine. Each additional mine slightly reduces the flat rate. Terrain matters: mountains yield the most, deserts the least.</li>
-      <li>🏪 <strong>Market</strong> (100g) — reduces territory upkeep by 0.03/pixel/hr nation-wide. Stack them to lower costs, but upkeep can't go below 0.</li>
-      <li>⚔️ <strong>Barracks</strong> (120g) — instantly adds 20 army strength. Requires <strong>100 population per barracks</strong> — grow your territory first.</li>
+      <li>🌾 <strong>Farm</strong> (80g) — +0.05 gold/pixel/hr nation-wide, scaled by terrain (grass 1.5×, hill 1.0×, mountain 0.5×, desert 0.3×). Also produces <strong>5 food/hr</strong>. Best placed on grassland.</li>
+      <li>⛏️ <strong>Mine</strong> (80g) — Hybrid income: starts at 5g/hr flat + 0.02g/px/hr. Each additional mine slightly reduces the flat rate. Best on mountains (1.8×), weakest on desert (0.5×).</li>
+      <li>🏪 <strong>Market</strong> (100g) — reduces territory upkeep by 0.03/pixel/hr nation-wide. Stack them to lower costs.</li>
+      <li>⚔️ <strong>Barracks</strong> (150g) — instantly adds 20 army. Also <strong>regenerates 0.5 army/hr</strong> per barracks, up to a cap of 20 per barracks. 10 barracks = 200 army cap, regenerating 5/hr after losses. Requires <strong>100 population per barracks</strong>.</li>
       <li>🧱 <strong>Wall</strong> (60g) — +50% defense on <em>that specific tile</em> only. Place on key frontline tiles.</li>
     </ul>
 
     <div class="section-label">💰 Economy</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
       Each pixel earns <strong>2 gold/hr</strong> base. Mines and farms add income on top. Your army costs
-      0.25 gold/hr per unit, and territory costs 0.3 gold/pixel/hr (markets reduce this).
-      You also pay <strong>5 gold/hr per unique neighboring nation</strong> — the more borders you share, the higher the border upkeep.
+      <strong>0.25 gold/hr per unit</strong>, and territory costs <strong>0.3 gold/pixel/hr</strong> (markets reduce this).
+      You also pay <strong>2 gold/hr per border pixel</strong> — each of your pixels touching an enemy tile adds upkeep, so compact empires are cheaper to defend than sprawling ones.
       Watch <strong>Net gold/hr</strong> in <strong>My Realm</strong> — if it's negative your gold drains.
+    </p>
+
+    <div class="section-label">⚔️ Attacking &amp; War Aggression</div>
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
+      Attacking costs your troops no matter the outcome. Each attack (win or lose) raises your army's
+      <strong>food consumption rate by +0.05/unit</strong> — so a 100-army nation goes from 10 food/hr to 15 food/hr after one attack.
+      This <strong>war aggression decays at −0.01/hr</strong> back to the base rate, so your supply lines recover if you stop fighting.
+      Sustained campaigns without farms will quickly cause a food deficit and penalise your gold income.
+      The attack preview shows exactly how your food balance will change before you confirm.
     </p>
 
     <div class="section-label">👥 Population &amp; 🌽 Food</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Your nation has <strong>20 population per pixel</strong> you own. Population unlocks barracks (100 pop each) and determines food demand.
-      Each pixel produces <strong>0.25 food/hr</strong> from foraging and consumes <strong>0.1 food/hr</strong>. Your army consumes <strong>0.1 food/hr per unit</strong> (rises with war aggression) — large armies are the main driver of food deficits.
-      Build farms to cover the gap: each farm produces <strong>5 food/hr</strong>.
-      A food deficit penalises your entire income (up to −50% at extreme shortfall), so keep your people fed!
+      Your nation has <strong>20 population per pixel</strong>. Population unlocks barracks (100 pop = 5 pixels each).
+      Each pixel produces <strong>0.25 food/hr</strong> (foraging) and consumes <strong>0.1 food/hr</strong>.
+      Your army consumes <strong>0.1 food/hr per unit</strong> at peace — this rises with war aggression (see above).
+      Build farms to cover deficits: each farm produces <strong>5 food/hr</strong>, boosted by terrain.
+      A food deficit penalises your entire gold income by up to <strong>−50%</strong>.
     </p>
 
     <div class="section-label">🤝 Trade</div>
@@ -1700,7 +1710,7 @@ async function renderMyCountry(body) {
         <span style="font-weight:600">Balance</span>
         <span style="font-weight:700;color:${foodBal >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBal >= 0 ? '+' : ''}${foodBal.toFixed(1)}/hr ${foodBal >= 0 ? '✓' : '⚠'}</span>
       </div>
-      ${foodBal < 0 ? `<div style="font-size:0.72rem;color:var(--red);margin-top:0.1rem;padding:0.3rem 0.5rem;background:rgba(239,68,68,0.08);border-radius:5px">Deficit: income −${((1-foodMult)*100).toFixed(0)}%. Need ${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM)} more farm${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM) !== 1 ? 's' : ''} to break even. (Army uses ${(armySize * CONFIG.FOOD_CONSUMPTION_PER_ARMY).toFixed(1)} food/hr)</div>` : ''}
+      ${foodBal < 0 ? `<div style="font-size:0.72rem;color:var(--red);margin-top:0.1rem;padding:0.3rem 0.5rem;background:rgba(239,68,68,0.08);border-radius:5px">Deficit: income −${((1-foodMult)*100).toFixed(0)}%. Need ${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM)} more farm${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM) !== 1 ? 's' : ''} to break even. (Army uses ${(armySize * (CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggression)).toFixed(1)} food/hr${aggression > 0 ? ` — war rate ×${(CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggression).toFixed(2)}/unit` : ''})</div>` : ''}
     </div>
 
     <div class="section-label">📈 Income</div>
@@ -1755,6 +1765,20 @@ async function renderMyCountry(body) {
       <span style="font-weight:700;font-size:0.85rem">💹 Net gold/hr</span>
       <span style="font-weight:800;font-size:1.1rem;color:${parseFloat(incomePerHr) - parseFloat(upkeep) >= 0 ? 'var(--green)' : 'var(--red)'}">${parseFloat(incomePerHr) - parseFloat(upkeep) >= 0 ? '+' : ''}${(parseFloat(incomePerHr) - parseFloat(upkeep)).toFixed(1)}</span>
     </div>
+
+    ${(() => {
+      const barracksBuilt = myInfra.filter(i => i.type === 'barracks').length;
+      const armyCap = barracksBuilt * CONFIG.INFRA_COSTS.barracks.armyBonus;
+      const regenRate = barracksBuilt * CONFIG.BARRACKS_REGEN_PER_HOUR;
+      return barracksBuilt > 0 ? `<div class="section-label">⚔️ Army Regeneration</div>
+    <div style="font-size:0.8rem;line-height:1.9;margin-bottom:0.75rem">
+      <div style="display:flex;justify-content:space-between">
+        <span style="color:var(--muted)">${barracksBuilt} barracks × 20 cap</span>
+        <span style="font-weight:600">${Math.floor(armySize)} / ${armyCap}</span>
+      </div>
+      ${armySize < armyCap ? `<div style="font-size:0.7rem;color:var(--green)">+${regenRate}/hr regenerating back to ${armyCap}</div>` : `<div style="font-size:0.7rem;color:var(--muted)">At full strength</div>`}
+    </div>` : '';
+    })()}
 
     <div class="section-label">Danger Zones</div>
     <div style="font-size:0.78rem;color:var(--muted)">

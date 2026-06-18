@@ -711,14 +711,29 @@ async function tickIncome(engine) {
   // Food storage — separate update so food column issues never affect gold
   const safeFood = Number.isFinite(c.food) ? c.food : 0;
   const newFood = Math.max(0, Math.round((safeFood + foodBalance * tickHours) * 100) / 100);
-  // Aggression decays at 0.01/hr
-  const newAggression = Math.max(0, Math.round((aggression - CONFIG.FOOD_AGGRESSION_DECAY * tickHours) * 100000) / 100000);
+  if (newFood !== safeFood) {
+    const { error } = await sb.from('countries').update({ food: newFood }).eq('id', c.id);
+    if (!error) engine.country.food = newFood;
+  }
 
-  if (newFood !== safeFood || newAggression !== aggression) {
-    const { error } = await sb.from('countries').update({ food: newFood, food_aggression: newAggression }).eq('id', c.id);
-    if (!error) {
-      engine.country.food = newFood;
-      engine.country.food_aggression = newAggression;
+  // War aggression decays at 0.01/hr — separate update so missing food column can't block it
+  const newAggression = Math.max(0, Math.round((aggression - CONFIG.FOOD_AGGRESSION_DECAY * tickHours) * 100000) / 100000);
+  if (newAggression !== aggression) {
+    const { error } = await sb.from('countries').update({ food_aggression: newAggression }).eq('id', c.id);
+    if (!error) engine.country.food_aggression = newAggression;
+  }
+
+  // Army regeneration — barracks refill army up to their cap (barracks × 20) at 0.5/hr per barracks
+  const barracksCount = myInfra.filter(i => i.type === 'barracks').length;
+  if (barracksCount > 0 && c.army_size < barracksCount * CONFIG.INFRA_COSTS.barracks.armyBonus) {
+    engine._armyRegenAccum = (engine._armyRegenAccum || 0) + barracksCount * CONFIG.BARRACKS_REGEN_PER_HOUR * tickHours;
+    const wholeRegen = Math.floor(engine._armyRegenAccum);
+    if (wholeRegen >= 1) {
+      engine._armyRegenAccum -= wholeRegen;
+      const armyCap = barracksCount * CONFIG.INFRA_COSTS.barracks.armyBonus;
+      const newArmy = Math.min(armyCap, c.army_size + wholeRegen);
+      const { error } = await sb.from('countries').update({ army_size: newArmy }).eq('id', c.id);
+      if (!error) engine.country.army_size = newArmy;
     }
   }
 }
