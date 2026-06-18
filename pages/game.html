@@ -1548,7 +1548,7 @@ async function spectateCountry(id, fromClick = false) {
       ${statCard('💰 Gold', (Number.isFinite(c.gold) ? c.gold : 0).toFixed(2), 'gold')}
       ${statCard('🗺️ Pixels', c.pixel_count, 'green')}
       ${statCard('👥 Population', population.toLocaleString(), 'blue')}
-      ${statCard('⚔️ Army', c.army_size, 'red')}
+      ${statCard('⚔️ Army', c.army_size, 'muted')}
       ${statCard('🍞 Food', (Number.isFinite(c.food) ? c.food : 0).toFixed(1), 'green')}
       ${statCard('🏗️ Buildings', myInfra.length, 'gold')}
       ${statCard('🎯 Tokens', Math.floor(Math.min((c.pending_pixels || 0) + Math.max(0, (Date.now() - new Date(c.last_active)) / 3600000) * CONFIG.PIXELS_PER_HOUR, CONFIG.MAX_STACK)), 'green')}
@@ -1640,7 +1640,7 @@ async function renderMyCountry(body) {
   const foodMult = foodBal < 0 ? Math.max(0.5, 1 + foodBal * 0.02) : 1;
   const border = calcBorderUpkeep(engine.pixelData, c.id);
   const population = pixelCount * CONFIG.POPULATION_PER_PIXEL;
-  const armyFoodRate = CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggression;
+  const armyFoodRate = Math.round((CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggression) * 100) / 100;
   const armyFoodCost = Math.floor(armySize) * armyFoodRate;
 
   const baseIncome = CONFIG.BASE_INCOME_PER_PIXEL * pixelCount;
@@ -1676,7 +1676,7 @@ async function renderMyCountry(body) {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem">
       ${statCard('💰 Gold', gold.toFixed(2), 'gold')}
       ${statCard('🗺️ Pixels', pixelCount, 'green')}
-      ${statCard('⚔️ Army', armySize, 'red')}
+      ${statCard('⚔️ Army', armySize, 'muted')}
       ${statCard('🍞 Food', (Number.isFinite(c.food) ? c.food : 0).toFixed(1), foodBal >= 0 ? 'green' : 'red')}
       ${statCard('🏗️ Buildings', `${myInfra.length}/${buildingCap}`, buildingsAtCap ? 'red' : 'gold')}
     </div>
