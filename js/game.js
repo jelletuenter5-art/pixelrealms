@@ -54,10 +54,13 @@ class GameEngine {
       this.countries[c.id] = c;
     });
 
-    // Index infrastructure (one building per tile)
+    // Index infrastructure — walls (fortifications) stored separately so a tile
+    // can have both a regular building and a fortification simultaneously
     this.infraData = {};
+    this.wallData = {};
     (infraRes.data || []).forEach(i => {
-      this.infraData[`${i.pixel_x},${i.pixel_y}`] = i;
+      if (i.type === 'wall') this.wallData[`${i.pixel_x},${i.pixel_y}`] = i;
+      else this.infraData[`${i.pixel_x},${i.pixel_y}`] = i;
     });
 
     // Calculate pending pixels from time offline
@@ -243,8 +246,8 @@ class GameEngine {
     if (!defender) return { ok: false, msg: 'Defender not found.' };
 
     // Combat formula
-    const wall = this.infraData[key];
-    const wallBonus = wall?.type === 'wall' ? CONFIG.INFRA_COSTS.wall.defenseBonus : 0;
+    const wall = this.wallData[key];
+    const wallBonus = wall ? CONFIG.INFRA_COSTS.wall.defenseBonus : 0;
     const terrainDef = (CONFIG.TERRAIN_DEFENSE[pixel.terrain] || 1) * (1 + wallBonus);
     const attackPower = this.country.army_size * (Math.random() * 0.4 + 0.8);
     const defensePower = defender.army_size * terrainDef * (Math.random() * 0.4 + 0.8);
@@ -283,6 +286,13 @@ class GameEngine {
 
       this.pixelData[key] = { ...pixel, country_id: this.country.id };
       this.country.pixel_count++;
+
+      // Fortifications are always destroyed on capture
+      const capturedWall = this.wallData[key];
+      if (capturedWall) {
+        await sb.from('infrastructure').delete().eq('id', capturedWall.id);
+        delete this.wallData[key];
+      }
 
       // 50/50: captured building is either transferred or destroyed
       const capturedInfra = this.infraData[key];
@@ -363,14 +373,17 @@ class GameEngine {
     if (this.pixelData[key]?.country_id !== this.country.id) {
       return { ok: false, msg: 'You must own this tile to build here.' };
     }
-    if (this.infraData[key]) {
-      return { ok: false, msg: 'A building already stands on this tile.' };
-    }
-    const myInfra = Object.values(this.infraData).filter(i => i.country_id === this.country.id);
-    const buildingCount = myInfra.length;
-    const buildingCap = Math.floor(this.country.pixel_count / 2);
-    if (buildingCount >= buildingCap) {
-      return { ok: false, msg: `Building cap reached (${buildingCount}/${buildingCap}). You need ${(buildingCount + 1) * 2} pixels to build more.` };
+
+    if (type === 'wall') {
+      // Fortifications are independent of building cap and can stack with any building
+      if (this.wallData[key]) return { ok: false, msg: 'This tile is already fortified.' };
+    } else {
+      if (this.infraData[key]) return { ok: false, msg: 'A building already stands on this tile.' };
+      const myBuildings = Object.values(this.infraData).filter(i => i.country_id === this.country.id);
+      const buildingCap = Math.floor(this.country.pixel_count / 2);
+      if (myBuildings.length >= buildingCap) {
+        return { ok: false, msg: `Building cap reached (${myBuildings.length}/${buildingCap}). You need ${(myBuildings.length + 1) * 2} pixels to build more.` };
+      }
     }
     if (type === 'barracks') {
       const existingBarracks = myInfra.filter(i => i.type === 'barracks').length;
@@ -388,7 +401,8 @@ class GameEngine {
     }).select().single();
     if (error) return { ok: false, msg: error.message };
 
-    this.infraData[key] = infra;
+    if (type === 'wall') this.wallData[key] = infra;
+    else this.infraData[key] = infra;
 
     const newGold = this.country.gold - cost.gold;
     let updates = { gold: newGold };
@@ -587,7 +601,9 @@ class GameEngine {
         filter: `game_id=eq.${this.gameId}`
       }, payload => {
         const i = payload.new;
-        this.infraData[`${i.pixel_x},${i.pixel_y}`] = i;
+        const key = `${i.pixel_x},${i.pixel_y}`;
+        if (i.type === 'wall') this.wallData[key] = i;
+        else this.infraData[key] = i;
         onInfra(i);
       }).subscribe();
     this.realtimeSubs.push(sub);

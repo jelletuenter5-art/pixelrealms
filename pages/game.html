@@ -407,7 +407,7 @@
       <li>⛏️ <strong>Mine</strong> (80g) — Hybrid income: starts at 5g/hr flat + 0.02g/px/hr. Each additional mine slightly reduces the flat rate. Best on mountains (1.8×), weakest on desert (0.5×).</li>
       <li>🏪 <strong>Market</strong> (100g) — reduces territory upkeep by 0.03/pixel/hr nation-wide. Stack them to lower costs.</li>
       <li>⚔️ <strong>Barracks</strong> (150g) — instantly adds 20 army. Also <strong>regenerates 0.5 army/hr</strong> per barracks, up to a cap of 20 per barracks. 10 barracks = 200 army cap, regenerating 5/hr after losses. Requires <strong>100 population per barracks</strong>.</li>
-      <li>🧱 <strong>Wall</strong> (60g) — +50% defense on <em>that specific tile</em> only. Place on key frontline tiles.</li>
+      <li>🧱 <strong>Fortification</strong> (60g) — +50% defense on <em>that specific tile</em> when attacked. <strong>Does not count toward the building cap</strong> and can be placed on any owned tile, including tiles that already have a building. Shown on the map as bright white border lines on exposed edges. Destroyed when the tile is captured.</li>
       <li>🏛️ <strong>Trading Post</strong> (90g) — earns <strong>+1g/hr flat + 2g/hr per unique neighboring nation</strong> (terrain-adjusted). Best in desert (1.5×), hill (1.1×), grass (0.9×), mountain (0.5×). Scales with diplomacy: 0 neighbors = barely anything; 3 neighbors = (1 + 6) × terrain; 5 neighbors = (1 + 10) × terrain.</li>
     </ul>
 
@@ -946,6 +946,28 @@ function renderMap() {
         ctx.fillRect(px, py, 0.5, pw);
       }
 
+      // Fortification — thick bright lines on exposed border edges
+      const fort = engine.wallData?.[`${x},${y}`];
+      if (fort && ownerId) {
+        const inset = Math.max(1, ps * 0.1);
+        const fw = Math.max(1.5, ps * 0.15);
+        ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+        ctx.lineWidth = fw;
+        ctx.lineCap = 'round';
+        const fortEdges = [
+          [0, -1, px + inset, py + inset, px + pw - inset, py + inset],
+          [0,  1, px + inset, py + pw - inset, px + pw - inset, py + pw - inset],
+          [-1, 0, px + inset, py + inset, px + inset, py + pw - inset],
+          [ 1, 0, px + pw - inset, py + inset, px + pw - inset, py + pw - inset],
+        ];
+        for (const [dx, dy, x1f, y1f, x2f, y2f] of fortEdges) {
+          const nb = engine.pixelData[`${x + dx},${y + dy}`];
+          if (!nb || nb.country_id !== ownerId) {
+            ctx.beginPath(); ctx.moveTo(x1f, y1f); ctx.lineTo(x2f, y2f); ctx.stroke();
+          }
+        }
+      }
+
       // Infrastructure icon
       const infra = engine.infraData?.[`${x},${y}`];
       if (infra && ps > 6) {
@@ -1064,7 +1086,9 @@ async function handleClick(e) {
       showToast('Select one of your own tiles to build on.', 'error'); return;
     }
     const existing = engine.infraData?.[`${tx},${ty}`];
+    const existingWall = engine.wallData?.[`${tx},${ty}`];
     if (existing) { openManageBuilding(tx, ty); return; }
+    // Only a wall, or empty — open build menu (wall shown as already fortified in menu)
     selectedBuildTile = { x: tx, y: ty };
     document.getElementById('quickBuildCoords').textContent = `Tile (${tx}, ${ty}) · 💰 ${Math.floor(engine.country?.gold || 0)} gold available`;
     showBuildMenu();
@@ -1090,66 +1114,76 @@ function showBuildMenu() {
   const buildingCap = Math.floor(pixelCount / 2);
   const atCap = myInfra.length >= buildingCap;
   const modal = document.getElementById('quickBuildModal');
+  const tileKey = selectedBuildTile ? `${selectedBuildTile.x},${selectedBuildTile.y}` : null;
+  const tileAlreadyFortified = tileKey ? !!engine.wallData?.[tileKey] : false;
 
   // Get terrain of the selected tile
   const tile = selectedBuildTile ? mapData?.[selectedBuildTile.y]?.[selectedBuildTile.x] : null;
   const terrain = tile?.terrain || 'grass';
   const terrainLabel = terrain.charAt(0).toUpperCase() + terrain.slice(1);
 
+  const fortifiedNote = tileAlreadyFortified ? ' · 🧱 Fortified' : '';
   document.getElementById('quickBuildCoords').textContent = atCap
-    ? `Building cap reached (${myInfra.length}/${buildingCap}) — expand first`
-    : `Building on ${terrainLabel} · ${myInfra.length}/${buildingCap} slots used`;
-
-  if (atCap) {
-    document.getElementById('quickBuildGrid').innerHTML = `<div style="grid-column:1/-1;color:var(--muted);font-size:0.85rem;text-align:center;padding:1rem">Need at least ${(myInfra.length + 1) * 2} pixels to build more. Cap: 1 building per 2 pixels.</div>`;
-    modal.style.display = 'flex';
-    return;
-  }
+    ? `Cap reached (${myInfra.length}/${buildingCap}) — can still fortify${fortifiedNote}`
+    : `Building on ${terrainLabel} · ${myInfra.length}/${buildingCap} slots used${fortifiedNote}`;
 
   const existingBarracks = myInfra.filter(i => i.type === 'barracks').length;
   const existingMines = myInfra.filter(i => i.type === 'mine').length;
   const population = pixelCount * CONFIG.POPULATION_PER_PIXEL;
 
   document.getElementById('quickBuildGrid').innerHTML = Object.entries(CONFIG.INFRA_COSTS).map(([type, info]) => {
+    const isFortification = type === 'wall';
     const canAfford = gold >= info.gold;
-    let popOk = true, extraNote = '';
+    let popOk = true, extraNote = '', blocked = false, blockedMsg = '';
 
-    if (type === 'barracks') {
-      const reqPop = (existingBarracks + 1) * CONFIG.BARRACKS_POPULATION_COST;
-      popOk = population >= reqPop;
-      const pixelsNeeded = Math.ceil(reqPop / CONFIG.POPULATION_PER_PIXEL);
-      extraNote = popOk
-        ? `Population OK: ${population} / ${reqPop} required`
-        : `Need ${reqPop} pop (= ${pixelsNeeded} pixels). You have ${population}`;
-    } else if (type === 'mine') {
-      const terrMult = CONFIG.MINE_TERRAIN_MULT[terrain] ?? 1.0;
-      const flatIncome = Math.max(0, info.flatIncome - existingMines * 0.1) * terrMult;
-      const pixBonus = Math.max(0, info.pixelBonus - existingMines * 0.002) * pixelCount;
-      extraNote = `${terrainLabel}: ~${(flatIncome + pixBonus).toFixed(1)}g/hr (${terrMult}x terrain mult)`;
-    } else if (type === 'farm') {
-      const terrMult = CONFIG.FARM_TERRAIN_MULT[terrain] ?? 1.0;
-      const thisFarmIncome = info.incomeBonus * terrMult * pixelCount;
-      const foodProd = CONFIG.FOOD_PRODUCTION_PER_FARM;
-      extraNote = `${terrainLabel}: +${thisFarmIncome.toFixed(1)}g/hr (${terrMult}x terrain) · +${foodProd} food/hr`;
-    } else if (type === 'trading_post') {
-      const terrMult = CONFIG.TRADING_POST_TERRAIN_MULT[terrain] ?? 0.9;
-      const border = calcBorderUpkeep(engine.pixelData, engine.country?.id);
-      const perPost = (info.flatIncome + border.nations * info.incomePerNation) * terrMult;
-      extraNote = `${terrainLabel}: +${perPost.toFixed(1)}g/hr · ${border.nations} neighbor${border.nations!==1?'s':''} now (${terrMult}x terrain)`;
+    // Fortifications bypass cap and can stack with buildings
+    if (isFortification) {
+      if (tileAlreadyFortified) { blocked = true; blockedMsg = 'Already fortified'; }
+      extraNote = 'No cap limit · stacks with any building';
+    } else {
+      if (atCap) { blocked = true; blockedMsg = `Need ${(myInfra.length + 1) * 2} pixels`; }
     }
 
-    const canBuild = canAfford && popOk;
+    if (!isFortification && !blocked) {
+      if (type === 'barracks') {
+        const reqPop = (existingBarracks + 1) * CONFIG.BARRACKS_POPULATION_COST;
+        popOk = population >= reqPop;
+        const pixelsNeeded = Math.ceil(reqPop / CONFIG.POPULATION_PER_PIXEL);
+        extraNote = popOk
+          ? `Population OK: ${population} / ${reqPop} required`
+          : `Need ${reqPop} pop (= ${pixelsNeeded} pixels). You have ${population}`;
+      } else if (type === 'mine') {
+        const terrMult = CONFIG.MINE_TERRAIN_MULT[terrain] ?? 1.0;
+        const flatIncome = Math.max(0, info.flatIncome - existingMines * 0.1) * terrMult;
+        const pixBonus = Math.max(0, info.pixelBonus - existingMines * 0.002) * pixelCount;
+        extraNote = `${terrainLabel}: ~${(flatIncome + pixBonus).toFixed(1)}g/hr (${terrMult}x terrain mult)`;
+      } else if (type === 'farm') {
+        const terrMult = CONFIG.FARM_TERRAIN_MULT[terrain] ?? 1.0;
+        const thisFarmIncome = info.incomeBonus * terrMult * pixelCount;
+        const foodProd = CONFIG.FOOD_PRODUCTION_PER_FARM;
+        extraNote = `${terrainLabel}: +${thisFarmIncome.toFixed(1)}g/hr (${terrMult}x terrain) · +${foodProd} food/hr`;
+      } else if (type === 'trading_post') {
+        const terrMult = CONFIG.TRADING_POST_TERRAIN_MULT[terrain] ?? 0.9;
+        const border = calcBorderUpkeep(engine.pixelData, engine.country?.id);
+        const perPost = (info.flatIncome + border.nations * info.incomePerNation) * terrMult;
+        extraNote = `${terrainLabel}: +${perPost.toFixed(1)}g/hr · ${border.nations} neighbor${border.nations!==1?'s':''} now (${terrMult}x terrain)`;
+      }
+    }
+
+    const canBuild = canAfford && popOk && !blocked;
     let clickFn;
-    if (!canAfford) clickFn = `showToast('Need ${info.gold} gold','error')`;
+    if (blocked) clickFn = `showToast('${blockedMsg}','error')`;
+    else if (!canAfford) clickFn = `showToast('Need ${info.gold} gold','error')`;
     else if (!popOk) clickFn = `showToast('Need more population — expand to more pixels first','error')`;
     else clickFn = `quickBuild('${type}')`;
+    const noteText = blocked ? blockedMsg : extraNote;
     return `<div onclick="${clickFn}"
       style="background:var(--panel2);border:1px solid ${canBuild ? 'var(--border)' : '#374151'};border-radius:10px;padding:0.75rem;cursor:${canBuild ? 'pointer' : 'not-allowed'};opacity:${canBuild ? '1' : '0.5'};transition:border-color 0.15s"
       onmouseover="if(${canBuild})this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='${canBuild ? 'var(--border)' : '#374151'}'">
       <div style="font-size:1.5rem;text-align:center;margin-bottom:0.35rem">${INFRA_ICONS[type] || '🏗️'}</div>
-      <div style="font-weight:700;font-size:0.82rem;text-align:center;margin-bottom:0.2rem">${type.charAt(0).toUpperCase()+type.slice(1)}</div>
+      <div style="font-weight:700;font-size:0.82rem;text-align:center;margin-bottom:0.2rem">${type === 'wall' ? 'Fortification' : type.charAt(0).toUpperCase()+type.slice(1)}</div>
       <div style="font-size:0.7rem;color:var(--muted);text-align:center;margin-bottom:0.3rem">${info.effect}</div>
-      ${extraNote ? `<div style="text-align:center;font-size:0.68rem;color:${(type==='barracks'&&!popOk)?'var(--red)':'var(--green)'};margin-bottom:0.25rem;line-height:1.3">${extraNote}</div>` : ''}
+      ${noteText ? `<div style="text-align:center;font-size:0.68rem;color:${blocked?'var(--red)':(type==='barracks'&&!popOk)?'var(--red)':'var(--green)'};margin-bottom:0.25rem;line-height:1.3">${noteText}</div>` : ''}
       <div style="text-align:center;font-size:0.78rem;color:${canAfford ? 'var(--gold)' : 'var(--red)'};font-weight:600">💰 ${info.gold}g</div>
     </div>`;
   }).join('');
@@ -1192,9 +1226,10 @@ function closeBuildModal() { document.getElementById('buildModal').style.display
 
 function openManageBuilding(x, y) {
   const infra = engine.infraData?.[`${x},${y}`];
+  const wall = engine.wallData?.[`${x},${y}`];
   if (!infra) return;
   const cost = CONFIG.INFRA_COSTS[infra.type];
-  document.getElementById('manageBuildingTitle').textContent = `${INFRA_ICONS[infra.type] || '🏗️'} ${infra.type.charAt(0).toUpperCase() + infra.type.slice(1)}`;
+  document.getElementById('manageBuildingTitle').textContent = `${INFRA_ICONS[infra.type] || '🏗️'} ${infra.type === 'trading_post' ? 'Trading Post' : infra.type.charAt(0).toUpperCase() + infra.type.slice(1)}${wall ? ' · 🧱 Fortified' : ''}`;
   const tile = mapData?.[y]?.[x];
   const terrain = tile?.terrain || 'grass';
   const terrainLabel = terrain.charAt(0).toUpperCase() + terrain.slice(1);
@@ -1215,11 +1250,47 @@ function openManageBuilding(x, y) {
     const pixBonus = Math.max(0, CONFIG.INFRA_COSTS.mine.pixelBonus - idx * 0.002) * (c?.pixel_count ?? 0);
     effectText = `~${(flatIncome + pixBonus).toFixed(1)}g/hr (${terrMult}x ${terrainLabel} · mine #${idx + 1})`;
   }
+  // Append fortification status
+  if (wall) effectText += ' · 🧱 Tile is fortified (+50% defense)';
   document.getElementById('manageBuildingEffect').textContent = effectText;
-  document.getElementById('manageBuildingDelete').onclick = async () => {
+
+  const deleteBtn = document.getElementById('manageBuildingDelete');
+  deleteBtn.textContent = 'Delete Building';
+  deleteBtn.onclick = async () => {
     closeManageBuildingModal();
     await deleteBuilding(infra.id, infra.type, x, y);
   };
+
+  // Show/hide fortification button
+  let fortBtn = document.getElementById('manageBuildingFortify');
+  if (!fortBtn) {
+    fortBtn = document.createElement('button');
+    fortBtn.id = 'manageBuildingFortify';
+    fortBtn.className = 'btn';
+    fortBtn.style.cssText = 'margin-top:0.5rem;width:100%';
+    deleteBtn.parentNode.insertBefore(fortBtn, deleteBtn.nextSibling);
+  }
+  if (wall) {
+    fortBtn.textContent = 'Remove Fortification';
+    fortBtn.style.background = 'var(--red)';
+    fortBtn.onclick = async () => { closeManageBuildingModal(); await deleteBuilding(wall.id, 'wall', x, y); };
+    fortBtn.style.display = 'block';
+  } else {
+    const fortCost = CONFIG.INFRA_COSTS.wall.gold;
+    const canAffordFort = (engine.country?.gold || 0) >= fortCost;
+    fortBtn.textContent = canAffordFort ? `Fortify Tile (${fortCost}g)` : `Fortify (need ${fortCost}g)`;
+    fortBtn.style.background = canAffordFort ? 'var(--green)' : '#374151';
+    fortBtn.style.color = canAffordFort ? '#000' : 'var(--muted)';
+    fortBtn.style.cursor = canAffordFort ? 'pointer' : 'not-allowed';
+    fortBtn.onclick = async () => {
+      if (!canAffordFort) { showToast(`Need ${fortCost} gold`, 'error'); return; }
+      closeManageBuildingModal();
+      const res = await engine.buildInfra('wall', x, y);
+      showToast(res.msg, res.ok ? 'ok' : 'error');
+      if (res.ok) { renderMap(); renderRightPanel(); }
+    };
+    fortBtn.style.display = 'block';
+  }
   document.getElementById('manageBuildingModal').style.display = 'flex';
 }
 function closeManageBuildingModal() { document.getElementById('manageBuildingModal').style.display = 'none'; }
@@ -1674,6 +1745,7 @@ async function renderMyCountry(body) {
   const upkeep = (pixelUpkeep + armyUnitUpkeep + border.cost).toFixed(1);
   const buildingCap = Math.floor(pixelCount / 2);
   const buildingsAtCap = myInfra.length >= buildingCap;
+  const myForts = Object.values(engine.wallData || {}).filter(i => i.country_id === c.id).length;
 
   body.innerHTML = `
     <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
@@ -1703,7 +1775,7 @@ async function renderMyCountry(body) {
       ${statCard('🍞 Food', (Number.isFinite(c.food) ? c.food : 0).toFixed(1), foodBal >= 0 ? 'green' : 'red')}
       ${statCard('🏗️ Buildings', `${myInfra.length}/${buildingCap}`, buildingsAtCap ? 'red' : 'gold')}
     </div>
-    ${buildingsAtCap ? `<div style="font-size:0.75rem;color:var(--red);margin-bottom:0.5rem;padding:0.4rem 0.6rem;background:rgba(239,68,68,0.08);border-radius:6px;border:1px solid rgba(239,68,68,0.2)">🚧 Building cap reached — expand your territory to build more (1 building per 2 pixels)</div>` : `<div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem">🏗️ ${myInfra.length}/${buildingCap} buildings used · ${buildingCap - myInfra.length} slot${buildingCap - myInfra.length !== 1 ? 's' : ''} remaining</div>`}
+    ${buildingsAtCap ? `<div style="font-size:0.75rem;color:var(--red);margin-bottom:0.5rem;padding:0.4rem 0.6rem;background:rgba(239,68,68,0.08);border-radius:6px;border:1px solid rgba(239,68,68,0.2)">🚧 Building cap reached — expand your territory to build more (1 building per 2 pixels)</div>` : `<div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem">🏗️ ${myInfra.length}/${buildingCap} buildings used · ${buildingCap - myInfra.length} slot${buildingCap - myInfra.length !== 1 ? 's' : ''} remaining${myForts > 0 ? ` · 🧱 ${myForts} fortification${myForts !== 1 ? 's' : ''}` : ''}</div>`}
 
     <div class="section-label">👥 Population</div>
     <div style="font-size:0.8rem;line-height:1.9;margin-bottom:0.75rem">
@@ -1959,7 +2031,8 @@ async function deleteBuilding(infraId, type, x, y) {
   const { error } = await sb.from('infrastructure').delete().eq('id', infraId);
   if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
 
-  delete engine.infraData[`${x},${y}`];
+  if (type === 'wall') delete engine.wallData[`${x},${y}`];
+  else delete engine.infraData[`${x},${y}`];
 
   const c = engine.country;
   const updates = { gold: Math.round((c.gold + refund) * 10000) / 10000 };
