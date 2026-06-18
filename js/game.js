@@ -266,10 +266,10 @@ class GameEngine {
     await sb.from('countries').update({ army_size: newDefenderArmy })
       .eq('id', defender.id);
 
-    // Every attack (win or lose) raises the per-pixel food rate by 0.05
+    // Every attack (win or lose) raises the per-army food rate by 0.05, capped at +2.0 (army × 2.1 max)
     const aggressionGained = CONFIG.FOOD_AGGRESSION_PER_ATTACK;
-    const curAggression = Number.isFinite(this.country.food_aggression) ? this.country.food_aggression : 0;
-    const newAggression = Math.round((curAggression + aggressionGained) * 10000) / 10000;
+    const curAggression = Number.isFinite(this.country.food_aggression) && this.country.food_aggression <= 2 ? this.country.food_aggression : 0;
+    const newAggression = Math.min(2, Math.round((curAggression + aggressionGained) * 10000) / 10000);
     await sb.from('countries').update({ food_aggression: newAggression }).eq('id', this.country.id);
     this.country.food_aggression = newAggression;
 
