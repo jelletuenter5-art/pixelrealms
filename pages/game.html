@@ -857,13 +857,21 @@ function initCanvas() {
 
   // Touch zoom
   let lastDist = 0;
+  let wasPinch = false;
   canvas.addEventListener('touchstart', e => {
-    if (e.touches.length === 2) lastDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-    else dragStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, ox: offsetX, oy: offsetY };
+    if (e.touches.length === 2) {
+      lastDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      wasPinch = true;
+      dragStart = null;
+    } else {
+      wasPinch = false;
+      dragStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, ox: offsetX, oy: offsetY };
+    }
   });
   canvas.addEventListener('touchmove', e => {
     e.preventDefault();
     if (e.touches.length === 2) {
+      wasPinch = true;
       const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
       const factor = dist / lastDist;
       const newScale = Math.max(0.3, Math.min(6, scale * factor));
@@ -884,10 +892,11 @@ function initCanvas() {
     }
   }, { passive: false });
   canvas.addEventListener('touchend', e => {
-    if (!isDragging && dragStart && e.changedTouches.length === 1) {
+    if (!wasPinch && !isDragging && dragStart && e.changedTouches.length === 1) {
       e.preventDefault(); // stop browser generating a synthetic click that would hit modal backdrops
       handleClick({ clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY });
     }
+    if (e.touches.length === 0) wasPinch = false; // all fingers lifted, reset for next gesture
     dragStart = null;
     isDragging = false;
   });
