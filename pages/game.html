@@ -391,9 +391,9 @@
 
     <div class="section-label">🗺️ Terrain Overlay</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Tap the <strong>🗺️ button</strong> (bottom-left, below the zoom buttons) to reveal terrain on all owned tiles.
-      Mountains appear brightest, hills medium, grass stays dark, desert gets a gold tint, and water turns blue.
-      Borders always remain visible. Tap again to switch back to normal view.
+      Tap the <strong>🗺️ button</strong> (bottom-left, below the zoom buttons) to switch to terrain view.
+      Owned tiles show their underlying terrain color (green = grass, grey = mountain, brown = hill, yellow = desert, blue = water) blended with a hint of the nation's color so you can still tell countries apart.
+      Nation borders stay visible. Tap again to switch back to normal view.
     </p>
 
     <div class="section-label">⚔️ Attack</div>
@@ -416,12 +416,12 @@
     </p>
     <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.25rem">
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
-        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🌾 Farm <span style="color:var(--gold);font-weight:400">80g</span></div>
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🌾 Farm <span style="color:var(--gold);font-weight:400">100g</span></div>
         <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+0.04 💰/px/hr nation-wide · +5 food/hr</div>
         <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Terrain: grass 1.5× · hill 1.0× · mountain 0.5× · desert 0.3×</div>
       </div>
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
-        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">⛏️ Mine <span style="color:var(--gold);font-weight:400">80g</span></div>
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">⛏️ Mine <span style="color:var(--gold);font-weight:400">120g</span></div>
         <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+12 💰/hr flat + 0.02 💰/px/hr · each extra mine slightly reduces the flat rate</div>
         <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Terrain: mountain 1.8× · hill 1.3× · grass 0.9× · desert 0.5×</div>
       </div>
@@ -950,10 +950,10 @@ function renderMap() {
       if (ownerId) {
         const country = engine.countries[ownerId];
         if (terrainOverlay) {
-          // Draw terrain first, then country color at 5% so terrain dominates
+          // Draw terrain first, then country color at 30% so both are visible
           ctx.fillStyle = getTerrainColor(tile.terrain, x, y, tile.elevation);
           ctx.fillRect(px, py, pw, pw);
-          ctx.fillStyle = country ? hexToRgba(country.color, 0.05) : 'rgba(0,0,0,0.05)';
+          ctx.fillStyle = country ? hexToRgba(country.color, 0.30) : 'rgba(0,0,0,0.15)';
           ctx.fillRect(px, py, pw, pw);
         } else {
           ctx.fillStyle = country ? country.color : '#888';
@@ -969,8 +969,8 @@ function renderMap() {
 
         // Border between this nation and neighboring tiles it doesn't own
         // Thicker + darker when terrain overlay is active so borders stay readable
-        ctx.strokeStyle = terrainOverlay ? 'rgba(0,0,0,0.75)' : 'rgba(148,163,184,0.85)';
-        ctx.lineWidth = terrainOverlay ? Math.max(1.5, ps * 0.13) : Math.max(1, ps * 0.08);
+        ctx.strokeStyle = terrainOverlay ? 'rgba(0,0,0,0.55)' : 'rgba(148,163,184,0.85)';
+        ctx.lineWidth = terrainOverlay ? Math.max(1, ps * 0.09) : Math.max(1, ps * 0.08);
         const edges = [
           [0, -1, px, py, px + pw, py],             // top
           [0, 1, px, py + pw, px + pw, py + pw],    // bottom
