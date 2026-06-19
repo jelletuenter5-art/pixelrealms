@@ -1025,20 +1025,27 @@ function renderMap() {
       const fort = engine.wallData?.[`${x},${y}`];
       if (fort && ownerId) {
         const inset = Math.max(1, ps * 0.1);
-        const fw = Math.max(1.5, ps * 0.15);
-        // Gold in terrain mode (white would blend with border lines); white in normal mode
-        ctx.strokeStyle = terrainOverlay ? 'rgba(245,158,11,0.95)' : 'rgba(255,255,255,0.92)';
-        ctx.lineWidth = fw;
-        ctx.lineCap = 'round';
         const fortEdges = [
           [0, -1, px + inset, py + inset, px + pw - inset, py + inset],
           [0,  1, px + inset, py + pw - inset, px + pw - inset, py + pw - inset],
           [-1, 0, px + inset, py + inset, px + inset, py + pw - inset],
           [ 1, 0, px + pw - inset, py + inset, px + pw - inset, py + pw - inset],
-        ];
-        for (const [dx, dy, x1f, y1f, x2f, y2f] of fortEdges) {
+        ].filter(([dx, dy]) => {
           const nb = engine.pixelData[`${x + dx},${y + dy}`];
-          if (!nb || nb.country_id !== ownerId) {
+          return !nb || nb.country_id !== ownerId;
+        });
+        if (fortEdges.length) {
+          ctx.lineCap = 'round';
+          // Dark shadow outline
+          ctx.lineWidth = Math.max(2.5, ps * 0.20);
+          ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+          for (const [,, x1f, y1f, x2f, y2f] of fortEdges) {
+            ctx.beginPath(); ctx.moveTo(x1f, y1f); ctx.lineTo(x2f, y2f); ctx.stroke();
+          }
+          // Gold line on top — visible in both normal and terrain modes
+          ctx.lineWidth = Math.max(1.5, ps * 0.12);
+          ctx.strokeStyle = 'rgba(251,191,36,0.97)';
+          for (const [,, x1f, y1f, x2f, y2f] of fortEdges) {
             ctx.beginPath(); ctx.moveTo(x1f, y1f); ctx.lineTo(x2f, y2f); ctx.stroke();
           }
         }
