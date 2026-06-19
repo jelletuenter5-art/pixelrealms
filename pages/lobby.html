@@ -64,10 +64,12 @@
 
   .main { max-width: 1200px; margin: 0 auto; padding: 1rem 1rem 2rem; padding-top: calc(3.5rem + env(safe-area-inset-top, 0px)); }
 
-  .page-tabs { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0; }
-  .page-tab { padding: 0.55rem 0.8rem; cursor: pointer; font-size: 0.78rem; font-weight: 500;
+  .page-tabs { display: flex; gap: 0; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border);
+    overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .page-tabs::-webkit-scrollbar { display: none; }
+  .page-tab { padding: 0.6rem 1rem; cursor: pointer; font-size: 0.82rem; font-weight: 500;
     color: var(--muted); border: none; background: transparent; border-bottom: 2px solid transparent;
-    margin-bottom: -1px; transition: all 0.2s; white-space: nowrap; }
+    margin-bottom: -1px; transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
   .page-tab.active { color: var(--green); border-bottom-color: var(--green); }
 
   .section { display: none; }
