@@ -11,7 +11,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // GAME CONSTANTS
 // ============================================================
 const CONFIG = {
-  BASE_INCOME_PER_PIXEL: 2,          // base gold per pixel per hour
+  BASE_INCOME_PER_PIXEL: 1,          // base gold per pixel per hour
   STARTING_ARMY: 5,                  // army units at nation creation
   BORDER_UPKEEP_PER_NATION: 10,      // gold/hr upkeep per border pixel (pixel of yours touching an enemy pixel)
   POPULATION_PER_PIXEL: 20,          // people per pixel owned
@@ -39,11 +39,11 @@ const CONFIG = {
   ARMY_UPKEEP_PER_UNIT: 0.5,       // gold/hr per army unit (scales with barracks)
   BARRACKS_REGEN_PER_HOUR: 0.5,    // army units regenerated per hour per barracks built
   INFRA_COSTS: {
-    farm:     { gold: 80,  effect: '+0.04 💰/px/hr income, nation-wide',           incomeBonus: 0.04 },
-    mine:     { gold: 80,  effect: '+12 💰/hr flat + 0.02 💰/px/hr hybrid income', flatIncome: 12, pixelBonus: 0.02 },
+    farm:     { gold: 100, effect: '+0.04 💰/px/hr income, nation-wide',           incomeBonus: 0.04 },
+    mine:     { gold: 120, effect: '+12 💰/hr flat + 0.02 💰/px/hr hybrid income', flatIncome: 12, pixelBonus: 0.02 },
     market:   { gold: 250, effect: '−0.03 💰/px/hr upkeep · +0.001 war decay/hr (max 10)', upkeepReduction: 0.03, maxCount: 10, decayBonus: 0.001 },
     barracks: { gold: 150, effect: '+20 army instantly · regenerates 0.5 army/hr per barracks up to cap', armyBonus: 20 },
-    wall:     { gold: 60,  effect: '+50% defense when this tile is attacked',      defenseBonus: 0.5 },
+    wall:     { gold: 80,  effect: '+50% defense when this tile is attacked',      defenseBonus: 0.5 },
     trading_post: { gold: 160, effect: '+1💰/hr flat + 2💰/hr per neighboring nation (terrain-adjusted)', flatIncome: 1, incomePerNation: 2 },
   },
   TRADING_POST_TERRAIN_MULT: { desert: 1.5, hill: 1.1, grass: 0.9, mountain: 0.5, water: 0 },
