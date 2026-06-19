@@ -443,7 +443,7 @@
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
       Each pixel earns <strong>2 gold/hr</strong> base. Mines and farms add income on top. Your army costs
       <strong>0.25 gold/hr per unit</strong>, and territory costs <strong>0.3 gold/pixel/hr</strong> (each market reduces this by 0.03, max 10 markets).
-      You also pay <strong>2 gold/hr per border pixel</strong> — each of your pixels touching an enemy tile adds upkeep, so compact empires are cheaper to defend than sprawling ones.
+      You also pay <strong>5 gold/hr per border pixel</strong> — each of your pixels touching an enemy tile adds upkeep, so compact empires are cheaper to defend than sprawling ones.
       Watch <strong>Net gold/hr</strong> in <strong>My Realm</strong> — if it's negative your gold drains, but it will never go below 0.
     </p>
 
@@ -1910,7 +1910,7 @@ async function renderMyCountry(body) {
 
     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.75rem;margin-bottom:1rem">
       <span style="font-weight:700;font-size:0.85rem">💹 Net gold/hr</span>
-      <span style="font-weight:800;font-size:1.1rem;color:${parseFloat(incomePerHr) - parseFloat(upkeep) >= 0 ? 'var(--green)' : 'var(--red)'}">${parseFloat(incomePerHr) - parseFloat(upkeep) >= 0 ? '+' : ''}${(parseFloat(incomePerHr) - parseFloat(upkeep)).toFixed(1)}</span>
+      <span style="font-weight:800;font-size:1.1rem;color:${parseFloat(incomePerHr) - parseFloat(upkeep) >= 0 ? 'var(--green)' : 'var(--red)'}">💰 ${parseFloat(incomePerHr) - parseFloat(upkeep) >= 0 ? '+' : ''}${(parseFloat(incomePerHr) - parseFloat(upkeep)).toFixed(1)} g/hr</span>
     </div>
 
     ${(() => {
@@ -2243,6 +2243,7 @@ function showAttackPreview(tx, ty) {
 
   const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === engine.country?.id);
   const myFarms = myInfra.filter(i => i.type === 'farm').length;
+  const myMarkets = myInfra.filter(i => i.type === 'market').length;
   const myPixels = engine.country?.pixel_count || 0;
   const myArmySize = engine.country?.army_size || 0;
   const curAggression = Number.isFinite(engine.country?.food_aggression) ? engine.country.food_aggression : 0;
@@ -2263,7 +2264,7 @@ function showAttackPreview(tx, ty) {
       <div style="font-weight:600;color:var(--text);margin-bottom:0.2rem">🍞 Food impact (win or lose)</div>
       <div>Army rate: ${curArmyRate} → <span style="color:var(--red)">${newArmyRate}/unit</span> (+${CONFIG.FOOD_AGGRESSION_PER_ATTACK.toFixed(2)})</div>
       <div>New food balance: <span style="color:${foodBalAfter >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBalAfter >= 0 ? '+' : ''}${foodBalAfter.toFixed(1)}/hr</span></div>
-      <div style="color:var(--muted);font-size:0.7rem">Decays −${(CONFIG.FOOD_AGGRESSION_DECAY + markets * CONFIG.MARKET_DECAY_BONUS).toFixed(3)}/unit/hr back to 0.10${markets > 0 ? ` (base 0.03 + ${markets} market${markets>1?'s':''})` : ''}</div>
+      <div style="color:var(--muted);font-size:0.7rem">Decays −${(CONFIG.FOOD_AGGRESSION_DECAY + myMarkets * CONFIG.MARKET_DECAY_BONUS).toFixed(3)}/hr${myMarkets > 0 ? ` (base 0.03 + ${myMarkets} mkt)` : ''}</div>
     </div>
   `;
 
