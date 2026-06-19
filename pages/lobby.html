@@ -63,7 +63,7 @@
     cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; transition: all 0.2s; }
   .btn-archive:hover { border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,0.08); }
 
-  .main { max-width: 1200px; margin: 0 auto; padding: 1rem 1rem 2rem; padding-top: calc(3.5rem + env(safe-area-inset-top, 0px)); }
+  .main { max-width: 1200px; margin: 0 auto; padding: 1rem 1rem 2rem; }
 
   .page-tabs { display: flex; gap: 0; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border);
     overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
@@ -167,7 +167,7 @@
 
   /* MOBILE RESPONSIVE */
   @media (max-width: 700px) {
-    .main { padding: 1rem 0.75rem; }
+    .main { padding: 0.75rem; }
     .topbar { padding: 0.75rem 1rem; }
     .topbar-logo { font-size: 1.05rem; }
     .username-badge { display: none; }
@@ -370,6 +370,14 @@ const AVATAR_EMOJIS = ['🙂','😎','🤖','👑','🐉','🦁','🦅','🐺','
 const ADMIN_AVATAR_EMOJIS = ['🔱','⚡','🌟','🎖️','👁️','🔮','🦾','💎','🧬','☄️'];
 
 window.scrollTo(0, 0);
+// Set main padding-top to exactly match topbar height so banner always clears it
+function adjustMainPadding() {
+  const tb = document.querySelector('.topbar');
+  const main = document.querySelector('.main');
+  if (tb && main) main.style.paddingTop = tb.offsetHeight + 'px';
+}
+adjustMainPadding();
+window.addEventListener('resize', adjustMainPadding);
 
 (async () => {
   const { data: { session } } = await sb.auth.getSession();
