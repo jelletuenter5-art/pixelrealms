@@ -1847,7 +1847,7 @@ async function renderMyCountry(body) {
         <span style="color:var(--muted)">Consumption</span>
         <span style="color:var(--red)">−${(pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + armyFoodCost).toFixed(1)}/hr</span>
       </div>
-      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${CONFIG.FOOD_CONSUMPTION_PER_PIXEL} + ${displayArmy} army × ${armyFoodRate.toFixed(2)}${aggression > 0 ? ` <span style="color:var(--red)">(war: +${aggression.toFixed(2)}/unit, decaying)</span>` : ''}</div>
+      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${CONFIG.FOOD_CONSUMPTION_PER_PIXEL} + ${displayArmy} army × ${armyFoodRate.toFixed(2)}${aggression > 0 ? ` <span style="color:var(--red)">(war: +${aggression.toFixed(2)}/unit, −${(CONFIG.FOOD_AGGRESSION_DECAY + markets * CONFIG.MARKET_DECAY_BONUS).toFixed(3)}/hr${markets > 0 ? ` · ${markets}mkt` : ''})</span>` : ''}</div>
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
         <span style="font-weight:600">Balance</span>
         <span style="font-weight:700;color:${foodBal >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBal >= 0 ? '+' : ''}${foodBal.toFixed(1)}/hr ${foodBal >= 0 ? '✓' : '⚠'}</span>
