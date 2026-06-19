@@ -174,8 +174,9 @@ class GameEngine {
     const currentGold = Number.isFinite(this.country.gold) ? this.country.gold : 0;
     const newGold = Math.max(0, Math.round((currentGold + (hourlyIncome - pixelUpkeep - armyUpkeep - border.cost) * hoursOffline) * 10000) / 10000);
 
-    // Food offline
-    const newFood = Math.max(0, Math.round((currentFood + foodBalance * hoursOffline) * 100) / 100);
+    // Food offline — capped at 2× population + farms×20
+    const foodCap = 2 * this.country.pixel_count * CONFIG.POPULATION_PER_PIXEL + farmInfra.length * 20;
+    const newFood = Math.min(foodCap, Math.max(0, Math.round((currentFood + foodBalance * hoursOffline) * 100) / 100));
 
     // Army regen offline — barracks regenerate up to their cap
     const armyCap = barracksCount * CONFIG.INFRA_COSTS.barracks.armyBonus;
@@ -803,7 +804,8 @@ async function tickIncome(engine) {
 
   // Food storage — separate update so food column issues never affect gold
   const safeFood = Number.isFinite(c.food) ? c.food : 0;
-  const newFood = Math.max(0, Math.round((safeFood + foodBalance * tickHours) * 100) / 100);
+  const foodCap = 2 * c.pixel_count * CONFIG.POPULATION_PER_PIXEL + farmInfra.length * 20;
+  const newFood = Math.min(foodCap, Math.max(0, Math.round((safeFood + foodBalance * tickHours) * 100) / 100));
   if (newFood !== safeFood) {
     const { error } = await sb.from('countries').update({ food: newFood }).eq('id', c.id);
     if (!error) engine.country.food = newFood;

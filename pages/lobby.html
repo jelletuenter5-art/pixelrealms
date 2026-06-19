@@ -52,7 +52,8 @@
   .username-badge strong { color: var(--text); }
 
   .beta-banner { background: rgba(245,158,11,0.12); border-bottom: 1px solid rgba(245,158,11,0.3);
-    color: var(--gold); font-size: 0.8rem; text-align: center; padding: 0.6rem 1rem; }
+    color: var(--gold); font-size: 0.8rem; text-align: center; padding: 0.6rem 1rem;
+    position: fixed; top: calc(3rem + env(safe-area-inset-top, 0px)); left: 0; right: 0; z-index: 99; }
   .btn-sm { padding: 0.45rem 1rem; border-radius: 6px; border: 1px solid var(--border);
     background: transparent; color: var(--muted); cursor: pointer; font-size: 0.8rem;
     font-family: 'Inter', sans-serif; transition: all 0.2s; }
@@ -62,7 +63,7 @@
     cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; transition: all 0.2s; }
   .btn-archive:hover { border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,0.08); }
 
-  .main { max-width: 1200px; margin: 0 auto; padding: 1rem 1rem 2rem; padding-top: calc(3.5rem + env(safe-area-inset-top, 0px)); }
+  .main { max-width: 1200px; margin: 0 auto; padding: 1rem 1rem 2rem; padding-top: calc(6.5rem + env(safe-area-inset-top, 0px)); }
 
   .page-tabs { display: flex; gap: 0; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border);
     overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
