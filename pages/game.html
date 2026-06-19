@@ -979,21 +979,22 @@ function renderMap() {
           return !nb || nb.country_id !== ownerId;
         });
         if (borderEdges.length) {
-          if (terrainOverlay) {
-            // Double-stroke: dark outline first, then bright white on top — visible on any terrain
-            ctx.lineWidth = Math.max(2, ps * 0.13);
-            ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+          if (terrainOverlay && ps >= 6) {
+            // Double-stroke only when zoomed in enough: dark outline + white line on top
+            ctx.lineWidth = Math.min(2, ps * 0.10);
+            ctx.strokeStyle = 'rgba(0,0,0,0.65)';
             for (const [,, x1, y1, x2, y2] of borderEdges) {
               ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
             }
-            ctx.lineWidth = Math.max(1, ps * 0.06);
-            ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+            ctx.lineWidth = Math.max(0.5, ps * 0.04);
+            ctx.strokeStyle = 'rgba(255,255,255,0.85)';
             for (const [,, x1, y1, x2, y2] of borderEdges) {
               ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
             }
           } else {
-            ctx.strokeStyle = 'rgba(148,163,184,0.85)';
-            ctx.lineWidth = Math.max(1, ps * 0.08);
+            // Single clean 1px border at all zoom levels (normal mode, or terrain mode zoomed out)
+            ctx.strokeStyle = terrainOverlay ? 'rgba(0,0,0,0.6)' : 'rgba(148,163,184,0.85)';
+            ctx.lineWidth = 1;
             for (const [,, x1, y1, x2, y2] of borderEdges) {
               ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
             }
@@ -1034,16 +1035,16 @@ function renderMap() {
           const nb = engine.pixelData[`${x + dx},${y + dy}`];
           return !nb || nb.country_id !== ownerId;
         });
-        if (fortEdges.length) {
+        if (fortEdges.length && ps >= 4) {
           ctx.lineCap = 'round';
-          // Dark shadow outline
-          ctx.lineWidth = Math.max(2.5, ps * 0.20);
+          // Dark shadow outline — capped so it stays tidy when zoomed out
+          ctx.lineWidth = Math.min(3, Math.max(1.5, ps * 0.18));
           ctx.strokeStyle = 'rgba(0,0,0,0.6)';
           for (const [,, x1f, y1f, x2f, y2f] of fortEdges) {
             ctx.beginPath(); ctx.moveTo(x1f, y1f); ctx.lineTo(x2f, y2f); ctx.stroke();
           }
-          // Gold line on top — visible in both normal and terrain modes
-          ctx.lineWidth = Math.max(1.5, ps * 0.12);
+          // Gold line on top
+          ctx.lineWidth = Math.min(2, Math.max(1, ps * 0.10));
           ctx.strokeStyle = 'rgba(251,191,36,0.97)';
           for (const [,, x1f, y1f, x2f, y2f] of fortEdges) {
             ctx.beginPath(); ctx.moveTo(x1f, y1f); ctx.lineTo(x2f, y2f); ctx.stroke();
