@@ -1026,7 +1026,8 @@ function renderMap() {
       if (fort && ownerId) {
         const inset = Math.max(1, ps * 0.1);
         const fw = Math.max(1.5, ps * 0.15);
-        ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+        // Gold in terrain mode (white would blend with border lines); white in normal mode
+        ctx.strokeStyle = terrainOverlay ? 'rgba(245,158,11,0.95)' : 'rgba(255,255,255,0.92)';
         ctx.lineWidth = fw;
         ctx.lineCap = 'round';
         const fortEdges = [
