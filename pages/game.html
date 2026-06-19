@@ -429,7 +429,7 @@
         <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Requires 100 population per barracks · no terrain effect</div>
       </div>
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
-        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🧱 Fortification <span style="color:var(--gold);font-weight:400">60g</span></div>
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🧱 Fortification <span style="color:var(--gold);font-weight:400">${CONFIG.INFRA_COSTS.wall.gold}g</span></div>
         <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+50% defense on that tile when attacked · visible as white border lines on the map</div>
         <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">No building cap · stacks with other buildings · destroyed if the tile is captured</div>
       </div>
@@ -1020,9 +1020,10 @@ function renderMap() {
         ctx.strokeStyle = 'rgba(0,0,0,0.6)';
         ctx.stroke();
 
-        ctx.font = `${Math.max(9, ps * 0.8)}px sans-serif`;
+        ctx.font = `${Math.max(8, ps * 0.55)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(0,0,0,0.85)';
         ctx.fillText(INFRA_ICONS[infra.type] || '🏗️', cx, cy);
       }
     }
