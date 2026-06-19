@@ -979,25 +979,18 @@ function renderMap() {
           return !nb || nb.country_id !== ownerId;
         });
         if (borderEdges.length) {
-          if (terrainOverlay && ps >= 6) {
-            // Double-stroke only when zoomed in enough: dark outline + white line on top
-            ctx.lineWidth = Math.min(2, ps * 0.10);
-            ctx.strokeStyle = 'rgba(0,0,0,0.65)';
-            for (const [,, x1, y1, x2, y2] of borderEdges) {
-              ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-            }
-            ctx.lineWidth = Math.max(0.5, ps * 0.04);
-            ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-            for (const [,, x1, y1, x2, y2] of borderEdges) {
-              ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-            }
-          } else {
-            // Single clean 1px border at all zoom levels (normal mode, or terrain mode zoomed out)
-            ctx.strokeStyle = terrainOverlay ? 'rgba(0,0,0,0.6)' : 'rgba(148,163,184,0.85)';
-            ctx.lineWidth = 1;
-            for (const [,, x1, y1, x2, y2] of borderEdges) {
-              ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-            }
+          ctx.lineCap = 'square';
+          // Dark shadow outline
+          ctx.lineWidth = Math.min(3, Math.max(1.5, ps * 0.18));
+          ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+          for (const [,, x1, y1, x2, y2] of borderEdges) {
+            ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+          }
+          // Dark grey line on top
+          ctx.lineWidth = Math.min(2, Math.max(1, ps * 0.10));
+          ctx.strokeStyle = 'rgba(55,65,81,0.90)';
+          for (const [,, x1, y1, x2, y2] of borderEdges) {
+            ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
           }
         }
       } else {
