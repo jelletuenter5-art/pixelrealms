@@ -36,7 +36,7 @@ const CONFIG = {
   STARTING_EXPANSION_TOKENS: 3,   // expansion tokens available immediately
   ARMY_PER_PIXEL: 2,              // army units per pixel at start
   ATTACK_GOLD_COST: 0,
-  ARMY_UPKEEP_PER_UNIT: 0.25,      // gold/hr per army unit (scales with barracks)
+  ARMY_UPKEEP_PER_UNIT: 0.5,       // gold/hr per army unit (scales with barracks)
   BARRACKS_REGEN_PER_HOUR: 0.5,    // army units regenerated per hour per barracks built
   INFRA_COSTS: {
     farm:     { gold: 80,  effect: '+0.04 💰/px/hr income, nation-wide',           incomeBonus: 0.04 },

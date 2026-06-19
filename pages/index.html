@@ -48,12 +48,13 @@
 
   .page {
     position: relative; z-index: 1;
-    min-height: 100vh;
+    min-height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 2rem;
+    justify-content: flex-start;
+    padding: max(2rem, env(safe-area-inset-top, 2rem)) 1.5rem 2rem;
+    gap: 0;
   }
 
   .logo {
@@ -149,6 +150,27 @@
   input:focus { border-color: var(--green); }
   input::placeholder { color: var(--muted); }
 
+  .pw-wrap {
+    position: relative;
+  }
+  .pw-wrap input {
+    padding-right: 2.8rem;
+  }
+  .pw-eye {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0;
+  }
+  .pw-eye:hover { color: var(--text); }
+
   .btn {
     width: 100%;
     padding: 0.85rem;
@@ -206,11 +228,20 @@
   }
 
   .stats-strip {
-    display: flex; gap: 2rem; justify-content: center;
-    margin-top: 3rem;
+    display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap;
+    margin-top: 2rem;
     color: var(--muted); font-size: 0.8rem;
+    padding: 0.75rem 1rem;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    width: 100%; max-width: 420px;
   }
   .stats-strip span strong { color: var(--green); font-family: 'Cinzel', serif; }
+
+  .logo { margin-bottom: 1.5rem; }
+  .beta-notice { margin-top: 0; margin-bottom: 1.5rem; }
+  .auth-card { margin-bottom: 0; }
 
   .spinner {
     display: inline-block; width: 14px; height: 14px;
@@ -252,7 +283,10 @@
       </div>
       <div class="form-group">
         <label>Password</label>
-        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+        <div class="pw-wrap">
+          <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+          <button class="pw-eye" type="button" onclick="togglePw('loginPassword',this)" aria-label="Show password">👁</button>
+        </div>
       </div>
       <button class="btn btn-primary" id="loginBtn" onclick="doLogin()">Enter the Realm</button>
       <div class="error-msg" id="loginError"></div>
@@ -266,7 +300,10 @@
       </div>
       <div class="form-group">
         <label>Password</label>
-        <input type="password" id="regPassword" placeholder="Min. 8 characters" autocomplete="new-password">
+        <div class="pw-wrap">
+          <input type="password" id="regPassword" placeholder="Min. 8 characters" autocomplete="new-password">
+          <button class="pw-eye" type="button" onclick="togglePw('regPassword',this)" aria-label="Show password">👁</button>
+        </div>
       </div>
       <button class="btn btn-primary" id="registerBtn" onclick="doRegister()">Forge My Legacy</button>
       <div class="error-msg" id="registerError"></div>
@@ -396,6 +433,13 @@ async function doRegister() {
 function showError(el, msg) {
   el.style.display = 'block';
   el.textContent = msg;
+}
+
+function togglePw(inputId, btn) {
+  const input = document.getElementById(inputId);
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  btn.textContent = show ? '🙈' : '👁';
 }
 
 // Animated pixel background

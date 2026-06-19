@@ -442,7 +442,7 @@
     <div class="section-label">💰 Economy</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
       Each pixel earns <strong>2 💰/hr</strong> base. Mines and farms add income on top. Your army costs
-      <strong>0.25 💰/hr per unit</strong>, and territory costs <strong>0.3 💰/px/hr</strong> (each market reduces this by 0.03, max 10 markets).
+      <strong>0.5 💰/hr per unit</strong>, and territory costs <strong>0.3 💰/px/hr</strong> (each market reduces this by 0.03, max 10 markets).
       You also pay <strong>10 💰/hr per border pixel</strong> — each of your pixels touching an enemy tile adds upkeep, so compact empires are cheaper to defend than sprawling ones.
       Watch <strong>Net gold/hr</strong> in <strong>My Realm</strong> — if it's negative your gold drains, but it will never go below 0.
     </p>
@@ -1909,7 +1909,7 @@ async function renderMyCountry(body) {
     </div>
 
     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.75rem;margin-bottom:1rem">
-      <span style="font-weight:700;font-size:0.85rem">💹 Net 💰/hr</span>
+      <span style="font-weight:700;font-size:0.85rem">⚖️ Net 💰/hr</span>
       <span style="font-weight:800;font-size:1.1rem;color:${parseFloat(incomePerHr) - parseFloat(upkeep) >= 0 ? 'var(--green)' : 'var(--red)'}">${parseFloat(incomePerHr) - parseFloat(upkeep) >= 0 ? '+' : ''}${(parseFloat(incomePerHr) - parseFloat(upkeep)).toFixed(1)} 💰/hr</span>
     </div>
 
