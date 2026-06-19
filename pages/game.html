@@ -953,7 +953,7 @@ function renderMap() {
           // Draw terrain first, then country color at 30% so both are visible
           ctx.fillStyle = getTerrainColor(tile.terrain, x, y, tile.elevation);
           ctx.fillRect(px, py, pw, pw);
-          ctx.fillStyle = country ? hexToRgba(country.color, 0.20) : 'rgba(0,0,0,0.10)';
+          ctx.fillStyle = country ? hexToRgba(country.color, 0.15) : 'rgba(0,0,0,0.08)';
           ctx.fillRect(px, py, pw, pw);
         } else {
           ctx.fillStyle = country ? country.color : '#888';
@@ -968,22 +968,35 @@ function renderMap() {
         }
 
         // Border between this nation and neighboring tiles it doesn't own
-        // Thicker + darker when terrain overlay is active so borders stay readable
-        ctx.strokeStyle = terrainOverlay ? 'rgba(0,0,0,0.55)' : 'rgba(148,163,184,0.85)';
-        ctx.lineWidth = terrainOverlay ? Math.max(1, ps * 0.09) : Math.max(1, ps * 0.08);
         const edges = [
-          [0, -1, px, py, px + pw, py],             // top
-          [0, 1, px, py + pw, px + pw, py + pw],    // bottom
-          [-1, 0, px, py, px, py + pw],             // left
-          [1, 0, px + pw, py, px + pw, py + pw],    // right
+          [0, -1, px, py, px + pw, py],
+          [0, 1, px, py + pw, px + pw, py + pw],
+          [-1, 0, px, py, px, py + pw],
+          [1, 0, px + pw, py, px + pw, py + pw],
         ];
-        for (const [dx, dy, x1, y1, x2, y2] of edges) {
-          const neighbor = engine.pixelData[`${x + dx},${y + dy}`];
-          if (!neighbor || neighbor.country_id !== ownerId) {
-            ctx.beginPath();
-            ctx.moveTo(x1, y1);
-            ctx.lineTo(x2, y2);
-            ctx.stroke();
+        const borderEdges = edges.filter(([dx, dy]) => {
+          const nb = engine.pixelData[`${x + dx},${y + dy}`];
+          return !nb || nb.country_id !== ownerId;
+        });
+        if (borderEdges.length) {
+          if (terrainOverlay) {
+            // Double-stroke: dark outline first, then bright white on top — visible on any terrain
+            ctx.lineWidth = Math.max(2, ps * 0.13);
+            ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+            for (const [,, x1, y1, x2, y2] of borderEdges) {
+              ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+            }
+            ctx.lineWidth = Math.max(1, ps * 0.06);
+            ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+            for (const [,, x1, y1, x2, y2] of borderEdges) {
+              ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+            }
+          } else {
+            ctx.strokeStyle = 'rgba(148,163,184,0.85)';
+            ctx.lineWidth = Math.max(1, ps * 0.08);
+            for (const [,, x1, y1, x2, y2] of borderEdges) {
+              ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+            }
           }
         }
       } else {
