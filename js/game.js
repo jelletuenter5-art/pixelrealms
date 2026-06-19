@@ -67,6 +67,7 @@ class GameEngine {
     if (this.country) {
       await this.accruePendingPixels();
       await this._reconcileCountryStats();
+      await this._enforceMarketCap();
     }
 
     return this;
@@ -101,6 +102,27 @@ class GameEngine {
       const { data } = await sb.from('countries').update(updates).eq('id', this.country.id).select().single();
       if (data) this.country = data;
     }
+  }
+
+  // ── Market Cap Enforcement ────────────────────────────────
+  async _enforceMarketCap() {
+    const max = CONFIG.INFRA_COSTS.market.maxCount;
+    const myMarkets = Object.values(this.infraData)
+      .filter(i => i.country_id === this.country.id && i.type === 'market');
+    if (myMarkets.length <= max) return;
+
+    // Shuffle and delete the excess randomly
+    const shuffled = myMarkets.sort(() => Math.random() - 0.5);
+    const toDelete = shuffled.slice(max);
+    for (const m of toDelete) {
+      await sb.from('infrastructure').delete().eq('id', m.id);
+      delete this.infraData[`${m.pixel_x},${m.pixel_y}`];
+    }
+    // Recompute upkeep based on remaining markets
+    const remaining = myMarkets.length - toDelete.length;
+    const newUpkeep = Math.max(0.02, 0.3 - remaining * CONFIG.INFRA_COSTS.market.upkeepReduction);
+    await sb.from('countries').update({ army_upkeep_per_pixel: newUpkeep }).eq('id', this.country.id);
+    this.country.army_upkeep_per_pixel = newUpkeep;
   }
 
   // ── Pixel Accrual (offline expansion tokens) ─────────────
