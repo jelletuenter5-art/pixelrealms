@@ -65,13 +65,11 @@
 
   .main { max-width: 1200px; margin: 0 auto; padding: 1rem 1rem 2rem; }
 
-  .page-tabs { display: flex; gap: 0; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border);
-    overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-  .page-tabs::-webkit-scrollbar { display: none; }
-  .page-tab { padding: 0.6rem 1rem; cursor: pointer; font-size: 0.82rem; font-weight: 500;
-    color: var(--muted); border: none; background: transparent; border-bottom: 2px solid transparent;
-    margin-bottom: -1px; transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
-  .page-tab.active { color: var(--green); border-bottom-color: var(--green); }
+  .page-tabs { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .page-tab { padding: 0.5rem 0.9rem; cursor: pointer; font-size: 0.82rem; font-weight: 500;
+    color: var(--muted); border: 1px solid var(--border); border-radius: 8px; background: transparent;
+    transition: all 0.2s; white-space: nowrap; }
+  .page-tab.active { color: var(--green); border-color: var(--green); background: rgba(74,222,128,0.08); }
 
   .section { display: none; }
   .section.active { display: block; }
@@ -171,8 +169,7 @@
     .topbar { padding: 0.75rem 1rem; }
     .topbar-logo { font-size: 1.05rem; }
     .username-badge { display: none; }
-    .page-tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; }
-    .page-tab { padding: 0.55rem 0.9rem; font-size: 0.78rem; flex-shrink: 0; }
+    .page-tab { padding: 0.45rem 0.7rem; font-size: 0.75rem; }
     .game-grid { grid-template-columns: 1fr; }
     .lb-header { display: none; }
     .lb-row {

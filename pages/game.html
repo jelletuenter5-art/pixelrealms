@@ -100,17 +100,7 @@
   .mode-btn.expand-mode.active { color: var(--green); }
   .mode-btn.attack-mode.active { color: var(--red); }
   .mode-btn.build-mode.active { color: var(--gold); }
-  .mode-btn.terrain-mode.active { color: #a78bfa; }
-  .terrain-legend {
-    position: absolute; bottom: 0.6rem; left: 50%; transform: translateX(-50%);
-    display: none; flex-direction: row; gap: 0.5rem; background: rgba(17,24,39,0.88);
-    border: 1px solid var(--border); border-radius: 10px; padding: 0.35rem 0.6rem;
-    font-size: 0.65rem; color: var(--text); pointer-events: none; white-space: nowrap;
-    backdrop-filter: blur(4px);
-  }
-  .terrain-legend.show { display: flex; }
-  .terrain-legend-item { display: flex; align-items: center; gap: 0.25rem; }
-  .terrain-legend-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .map-btn.terrain-mode.active { background: rgba(167,139,250,0.25); color: #a78bfa; border-color: #a78bfa; }
   .pixel-tooltip {
     position: absolute; background: var(--panel2); border: 1px solid var(--border);
     border-radius: 8px; padding: 0.6rem 0.9rem; font-size: 0.78rem; pointer-events: none;
@@ -310,20 +300,13 @@
       <button class="mode-btn expand-mode active" onclick="setMode('expand')" id="modeExpand">🌱 Expand</button>
       <button class="mode-btn attack-mode" onclick="setMode('attack')" id="modeAttack">⚔️ Attack</button>
       <button class="mode-btn build-mode" onclick="setMode('build')" id="modeBuild">🏗️ Build</button>
-      <button class="mode-btn terrain-mode" onclick="toggleTerrain()" id="modeTerrain">🗺️ Terrain</button>
-    </div>
-    <div class="terrain-legend" id="terrainLegend">
-      <div class="terrain-legend-item"><div class="terrain-legend-swatch" style="background:#4ade80"></div>Grass ×1.0</div>
-      <div class="terrain-legend-item"><div class="terrain-legend-swatch" style="background:#a3a3a3"></div>Hill ×1.3</div>
-      <div class="terrain-legend-item"><div class="terrain-legend-swatch" style="background:#94a3b8"></div>Mountain ×1.6</div>
-      <div class="terrain-legend-item"><div class="terrain-legend-swatch" style="background:#fbbf24"></div>Desert ×0.8</div>
-      <div class="terrain-legend-item"><div class="terrain-legend-swatch" style="background:#38bdf8"></div>Water</div>
     </div>
 
     <div class="map-overlay">
       <div class="map-btn" onclick="zoom(1.2)" title="Zoom in">+</div>
       <div class="map-btn" onclick="zoom(0.8)" title="Zoom out">−</div>
       <div class="map-btn" onclick="resetView()" title="Reset view">⌂</div>
+      <div class="map-btn terrain-mode" id="modeTerrain" onclick="toggleTerrain()" title="Toggle terrain overlay">🗺️</div>
     </div>
 
     <div class="pixel-tooltip" id="pixelTooltip"></div>
@@ -404,6 +387,13 @@
       You earn <strong>1 expansion token per hour</strong> (max 24 stacked) — shown as 🎯 in the top bar.
       Switch to <strong>Expand</strong> mode and click an unclaimed tile next to your territory to
       claim it for 1 token. Water tiles can't be claimed. You can also <strong>buy tokens</strong> for 1000 gold each.
+    </p>
+
+    <div class="section-label">🗺️ Terrain Overlay</div>
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
+      Tap the <strong>🗺️ button</strong> (bottom-left, below the zoom buttons) to reveal terrain on all owned tiles.
+      Mountains appear brightest, hills medium, grass stays dark, desert gets a gold tint, and water turns blue.
+      Borders always remain visible. Tap again to switch back to normal view.
     </p>
 
     <div class="section-label">⚔️ Attack</div>
@@ -608,12 +598,13 @@ let mapData = null;
 let mapGen = null;
 let currentMode = 'expand';
 let terrainOverlay = false;
+// White overlay with varying opacity to show terrain brightness over any country color
 const TERRAIN_OVERLAY_COLORS = {
-  grass:    'rgba(74,222,128,0.30)',
-  hill:     'rgba(163,163,163,0.35)',
-  mountain: 'rgba(148,163,184,0.40)',
-  desert:   'rgba(251,191,36,0.35)',
-  water:    'rgba(56,189,248,0.30)',
+  grass:    'rgba(255,255,255,0.10)',
+  hill:     'rgba(255,255,255,0.25)',
+  mountain: 'rgba(255,255,255,0.45)',
+  desert:   'rgba(255,220,100,0.30)',
+  water:    'rgba(56,189,248,0.45)',
 };
 let selectedBuildTile = null;
 let selectedBuildType = null;
@@ -1386,7 +1377,6 @@ function closeTutorial() {
 function toggleTerrain() {
   terrainOverlay = !terrainOverlay;
   document.getElementById('modeTerrain').classList.toggle('active', terrainOverlay);
-  document.getElementById('terrainLegend').classList.toggle('show', terrainOverlay);
   renderMap();
 }
 
