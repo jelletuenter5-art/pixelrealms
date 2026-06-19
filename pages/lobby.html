@@ -4,6 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>PixelRealms — Lobby</title>
+<script>
+(function() {
+  var vp = document.querySelector('meta[name="viewport"]') || document.createElement('meta');
+  vp.name = 'viewport';
+  vp.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+  if (!vp.parentNode) document.head.appendChild(vp);
+  setTimeout(function() { vp.content = vp.content; }, 1);
+  document.addEventListener('gesturestart', function(e) { e.preventDefault(); }, { passive: false });
+  document.addEventListener('gesturechange', function(e) { e.preventDefault(); }, { passive: false });
+  document.addEventListener('gestureend', function(e) { e.preventDefault(); }, { passive: false });
+  document.addEventListener('touchmove', function(e) { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+})();
+</script>
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png">
 <link rel="apple-touch-icon" sizes="192x192" href="../favicon-192.png">
@@ -25,8 +38,9 @@
     background: var(--panel);
     border-bottom: 1px solid var(--border);
     padding: 0.65rem 1.25rem;
+    padding-top: max(0.65rem, env(safe-area-inset-top));
     display: flex; align-items: center; justify-content: space-between;
-    position: sticky; top: 0; z-index: 100; gap: 0.75rem;
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100; gap: 0.75rem;
   }
   .topbar-logo { font-family: 'Cinzel', serif; font-size: 1.2rem; font-weight: 900;
     background: linear-gradient(135deg, var(--green), var(--gold));
@@ -61,7 +75,7 @@
     cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; transition: all 0.2s; }
   .btn-archive:hover { border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,0.08); }
 
-  .main { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .main { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; padding-top: calc(4rem + env(safe-area-inset-top, 0px)); }
 
   .page-tabs { display: flex; gap: 0.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 0; }
   .page-tab { padding: 0.75rem 1.5rem; cursor: pointer; font-size: 0.9rem; font-weight: 500;
@@ -366,6 +380,8 @@ const CATEGORY_CONFIG = {
 
 const AVATAR_EMOJIS = ['🙂','😎','🤖','👑','🐉','🦁','🦅','🐺','🦊','🧙','💀','👽','🥷','🎯','⚔️','🛡️','🏴','🌍'];
 const ADMIN_AVATAR_EMOJIS = ['🔱','⚡','🌟','🎖️','👁️','🔮','🦾','💎','🧬','☄️'];
+
+window.scrollTo(0, 0);
 
 (async () => {
   const { data: { session } } = await sb.auth.getSession();
