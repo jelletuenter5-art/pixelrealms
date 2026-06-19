@@ -935,6 +935,10 @@ function renderMap() {
   const x1 = Math.min(W, Math.ceil((canvas.width - offsetX) / ps));
   const y1 = Math.min(H, Math.ceil((canvas.height - offsetY) / ps));
 
+  // Collect border and fort edges in first pass, draw after all fills to avoid overdraw
+  const allBorderEdges = [];
+  const allFortEdges = [];
+
   for (let y = y0; y < y1; y++) {
     for (let x = x0; x < x1; x++) {
       const tile = mapData[y]?.[x];
@@ -950,7 +954,6 @@ function renderMap() {
       if (ownerId) {
         const country = engine.countries[ownerId];
         if (terrainOverlay) {
-          // Draw terrain first, then country color at 30% so both are visible
           ctx.fillStyle = getTerrainColor(tile.terrain, x, y, tile.elevation);
           ctx.fillRect(px, py, pw, pw);
           ctx.fillStyle = country ? hexToRgba(country.color, 0.15) : 'rgba(0,0,0,0.08)';
@@ -967,30 +970,35 @@ function renderMap() {
           ctx.strokeRect(px, py, pw, pw);
         }
 
-        // Border between this nation and neighboring tiles it doesn't own
+        // Collect border edges for second-pass drawing
         const edges = [
           [0, -1, px, py, px + pw, py],
           [0, 1, px, py + pw, px + pw, py + pw],
           [-1, 0, px, py, px, py + pw],
           [1, 0, px + pw, py, px + pw, py + pw],
         ];
-        const borderEdges = edges.filter(([dx, dy]) => {
+        for (const [dx, dy, x1, y1, x2, y2] of edges) {
           const nb = engine.pixelData[`${x + dx},${y + dy}`];
-          return !nb || nb.country_id !== ownerId;
-        });
-        if (borderEdges.length) {
-          ctx.lineCap = 'square';
-          // Dark shadow outline
-          ctx.lineWidth = Math.min(3, Math.max(1.5, ps * 0.18));
-          ctx.strokeStyle = 'rgba(0,0,0,0.55)';
-          for (const [,, x1, y1, x2, y2] of borderEdges) {
-            ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+          if (!nb || nb.country_id !== ownerId) {
+            allBorderEdges.push([x1, y1, x2, y2]);
           }
-          // Dark grey line on top
-          ctx.lineWidth = Math.min(2, Math.max(1, ps * 0.10));
-          ctx.strokeStyle = 'rgba(55,65,81,0.90)';
-          for (const [,, x1, y1, x2, y2] of borderEdges) {
-            ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        }
+
+        // Collect fort edges
+        const fort = engine.wallData?.[`${x},${y}`];
+        if (fort && ps >= 4) {
+          const inset = Math.max(1, ps * 0.1);
+          const fortCandidates = [
+            [0, -1, px + inset, py + inset, px + pw - inset, py + inset],
+            [0,  1, px + inset, py + pw - inset, px + pw - inset, py + pw - inset],
+            [-1, 0, px + inset, py + inset, px + inset, py + pw - inset],
+            [ 1, 0, px + pw - inset, py + inset, px + pw - inset, py + pw - inset],
+          ];
+          for (const [dx, dy, x1f, y1f, x2f, y2f] of fortCandidates) {
+            const nb = engine.pixelData[`${x + dx},${y + dy}`];
+            if (!nb || nb.country_id !== ownerId) {
+              allFortEdges.push([x1f, y1f, x2f, y2f]);
+            }
           }
         }
       } else {
@@ -1013,36 +1021,6 @@ function renderMap() {
         ctx.fillStyle = 'rgba(0,0,0,0.12)';
         ctx.fillRect(px, py, pw, 0.5);
         ctx.fillRect(px, py, 0.5, pw);
-      }
-
-      // Fortification — thick bright lines on exposed border edges
-      const fort = engine.wallData?.[`${x},${y}`];
-      if (fort && ownerId) {
-        const inset = Math.max(1, ps * 0.1);
-        const fortEdges = [
-          [0, -1, px + inset, py + inset, px + pw - inset, py + inset],
-          [0,  1, px + inset, py + pw - inset, px + pw - inset, py + pw - inset],
-          [-1, 0, px + inset, py + inset, px + inset, py + pw - inset],
-          [ 1, 0, px + pw - inset, py + inset, px + pw - inset, py + pw - inset],
-        ].filter(([dx, dy]) => {
-          const nb = engine.pixelData[`${x + dx},${y + dy}`];
-          return !nb || nb.country_id !== ownerId;
-        });
-        if (fortEdges.length && ps >= 4) {
-          ctx.lineCap = 'round';
-          // Dark shadow outline — capped so it stays tidy when zoomed out
-          ctx.lineWidth = Math.min(3, Math.max(1.5, ps * 0.18));
-          ctx.strokeStyle = 'rgba(0,0,0,0.6)';
-          for (const [,, x1f, y1f, x2f, y2f] of fortEdges) {
-            ctx.beginPath(); ctx.moveTo(x1f, y1f); ctx.lineTo(x2f, y2f); ctx.stroke();
-          }
-          // Gold line on top
-          ctx.lineWidth = Math.min(2, Math.max(1, ps * 0.10));
-          ctx.strokeStyle = 'rgba(251,191,36,0.97)';
-          for (const [,, x1f, y1f, x2f, y2f] of fortEdges) {
-            ctx.beginPath(); ctx.moveTo(x1f, y1f); ctx.lineTo(x2f, y2f); ctx.stroke();
-          }
-        }
       }
 
       // Infrastructure icon
@@ -1070,6 +1048,44 @@ function renderMap() {
         ctx.fillText(INFRA_ICONS[infra.type] || '🏗️', cx, cy + fontSize * 0.35);
       }
     }
+  }
+
+  // Second pass: draw all borders on top of fills so right/bottom edges aren't overwritten
+  if (allBorderEdges.length) {
+    ctx.lineCap = 'square';
+    ctx.lineWidth = Math.min(3, Math.max(1.5, ps * 0.18));
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath();
+    for (const [x1, y1, x2, y2] of allBorderEdges) {
+      ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+    }
+    ctx.stroke();
+    ctx.lineWidth = Math.min(2, Math.max(1, ps * 0.10));
+    ctx.strokeStyle = 'rgba(55,65,81,0.90)';
+    ctx.beginPath();
+    for (const [x1, y1, x2, y2] of allBorderEdges) {
+      ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+    }
+    ctx.stroke();
+  }
+
+  // Second pass: fortifications on top of borders
+  if (allFortEdges.length) {
+    ctx.lineCap = 'round';
+    ctx.lineWidth = Math.min(3, Math.max(1.5, ps * 0.18));
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+    ctx.beginPath();
+    for (const [x1f, y1f, x2f, y2f] of allFortEdges) {
+      ctx.moveTo(x1f, y1f); ctx.lineTo(x2f, y2f);
+    }
+    ctx.stroke();
+    ctx.lineWidth = Math.min(2, Math.max(1, ps * 0.10));
+    ctx.strokeStyle = 'rgba(251,191,36,0.97)';
+    ctx.beginPath();
+    for (const [x1f, y1f, x2f, y2f] of allFortEdges) {
+      ctx.moveTo(x1f, y1f); ctx.lineTo(x2f, y2f);
+    }
+    ctx.stroke();
   }
 
   renderCountryLabels(x0, y0, x1, y1, ps);
