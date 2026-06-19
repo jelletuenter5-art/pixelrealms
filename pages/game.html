@@ -597,6 +597,14 @@ let _spawning = false;
 
 const INFRA_ICONS = { farm: '🌾', barracks: '⚔️', market: '🏪', wall: '🧱', mine: '⛏️', trading_post: '🏛️' };
 
+// Prevent iOS Safari from zooming the page (it ignores user-scalable=no)
+document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
+document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
+document.addEventListener('gestureend', e => e.preventDefault(), { passive: false });
+document.addEventListener('touchmove', e => {
+  if (e.touches.length > 1) e.preventDefault();
+}, { passive: false });
+
 // Canvas & viewport
 let canvas, ctx;
 let scale = 1;
@@ -1689,7 +1697,7 @@ async function spectateCountry(id, fromClick = false) {
     </div>
     <div class="section-label">📈 Income</div>
     <div style="font-size:0.78rem;line-height:1.9;margin-bottom:0.5rem">
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🗺️ Base ${CONFIG.BASE_INCOME_PER_PIXEL}/px × ${c.pixel_count} px</span><span style="color:var(--gold)">+${baseIncomeSp.toFixed(1)} 💰/hr</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🗺️ Base ${CONFIG.BASE_INCOME_PER_PIXEL}💰/px × ${c.pixel_count} px</span><span style="color:var(--gold)">+${baseIncomeSp.toFixed(1)} 💰/hr</span></div>
       ${farmInfra.length > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🌾 ${farmInfra.length} farm${farmInfra.length>1?'s':''} (terrain-adjusted)</span><span style="color:var(--gold)">+${farmIncomeSp.toFixed(1)} 💰/hr</span></div>` : ''}
       ${mineInfra.length > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⛏️ ${mineInfra.length} mine${mineInfra.length>1?'s':''} (terrain-adjusted)</span><span style="color:var(--gold)">+${mineIncomeSp.toFixed(1)} 💰/hr</span></div>` : ''}
       ${foodMultSp < 1 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--red)">🍞 Low food reserves (−${((1-foodMultSp)*100).toFixed(0)}%)</span><span style="color:var(--red)">${((grossIncomeSp / foodMultSp * (foodMultSp-1))).toFixed(1)} 💰/hr</span></div>` : ''}
@@ -1859,7 +1867,7 @@ async function renderMyCountry(body) {
     <div class="section-label">📈 Income</div>
     <div style="font-size:0.8rem;line-height:2;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">🗺️ Base ${CONFIG.BASE_INCOME_PER_PIXEL}/px × ${pixelCount} px</span>
+        <span style="color:var(--muted)">🗺️ Base ${CONFIG.BASE_INCOME_PER_PIXEL}💰/px × ${pixelCount} px</span>
         <span style="color:var(--gold)">+${baseIncome.toFixed(1)} 💰/hr</span>
       </div>
       ${farms > 0 ? `<div style="display:flex;justify-content:space-between">
@@ -1909,7 +1917,7 @@ async function renderMyCountry(body) {
     </div>
 
     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.75rem;margin-bottom:1rem">
-      <span style="font-weight:700;font-size:0.85rem">⚖️ Net 💰/hr</span>
+      <span style="font-weight:700;font-size:0.85rem">⚖️ NET</span>
       <span style="font-weight:800;font-size:1.1rem;color:${parseFloat(incomePerHr) - parseFloat(upkeep) >= 0 ? 'var(--green)' : 'var(--red)'}">${parseFloat(incomePerHr) - parseFloat(upkeep) >= 0 ? '+' : ''}${(parseFloat(incomePerHr) - parseFloat(upkeep)).toFixed(1)} 💰/hr</span>
     </div>
 
