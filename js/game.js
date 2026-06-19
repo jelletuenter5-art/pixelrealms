@@ -412,6 +412,7 @@ class GameEngine {
       }
     }
     if (type === 'barracks') {
+      const myInfra = Object.values(this.infraData).filter(i => i.country_id === this.country.id);
       const existingBarracks = myInfra.filter(i => i.type === 'barracks').length;
       const population = this.country.pixel_count * CONFIG.POPULATION_PER_PIXEL;
       const requiredPop = (existingBarracks + 1) * CONFIG.BARRACKS_POPULATION_COST;
