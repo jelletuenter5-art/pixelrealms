@@ -1093,6 +1093,7 @@ function renderMap() {
 
 // ── COUNTRY NAME LABELS ─────────────────────────────────
 function renderCountryLabels(x0, y0, x1, y1, ps) {
+  if (ps < 3) return;
   const centroids = {};
   for (const p of Object.values(engine.pixelData)) {
     if (!p.country_id) continue;
