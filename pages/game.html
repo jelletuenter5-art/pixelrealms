@@ -598,14 +598,6 @@ let mapData = null;
 let mapGen = null;
 let currentMode = 'expand';
 let terrainOverlay = false;
-// White overlay with varying opacity to show terrain brightness over any country color
-const TERRAIN_OVERLAY_COLORS = {
-  grass:    'rgba(255,255,255,0.10)',
-  hill:     'rgba(255,255,255,0.25)',
-  mountain: 'rgba(255,255,255,0.45)',
-  desert:   'rgba(255,220,100,0.30)',
-  water:    'rgba(56,189,248,0.45)',
-};
 let selectedBuildTile = null;
 let selectedBuildType = null;
 let leftTab = 'nations';
@@ -955,22 +947,23 @@ function renderMap() {
         ctx.fillStyle = country ? country.color : '#888';
         ctx.fillRect(px, py, pw, pw);
 
-        // Terrain overlay — drawn over country color when toggle is on
+        // Terrain overlay — near-white wash, only 5% country color bleeds through
         if (terrainOverlay) {
-          ctx.fillStyle = TERRAIN_OVERLAY_COLORS[tile.terrain] || 'rgba(255,255,255,0.15)';
+          ctx.fillStyle = 'rgba(255,255,255,0.93)';
           ctx.fillRect(px, py, pw, pw);
         }
 
         // Border highlight for own country
-        if (ownerId === engine.country?.id) {
+        if (ownerId === engine.country?.id && !terrainOverlay) {
           ctx.strokeStyle = 'rgba(255,255,255,0.4)';
           ctx.lineWidth = 0.5;
           ctx.strokeRect(px, py, pw, pw);
         }
 
-        // Grey border between this nation and neighboring tiles it doesn't own
-        ctx.strokeStyle = 'rgba(148,163,184,0.85)';
-        ctx.lineWidth = Math.max(1, ps * 0.08);
+        // Border between this nation and neighboring tiles it doesn't own
+        // Thicker + darker when terrain overlay is active so borders stay readable
+        ctx.strokeStyle = terrainOverlay ? 'rgba(0,0,0,0.75)' : 'rgba(148,163,184,0.85)';
+        ctx.lineWidth = terrainOverlay ? Math.max(1.5, ps * 0.13) : Math.max(1, ps * 0.08);
         const edges = [
           [0, -1, px, py, px + pw, py],             // top
           [0, 1, px, py + pw, px + pw, py + pw],    // bottom
