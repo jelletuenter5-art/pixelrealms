@@ -392,7 +392,7 @@
     <div class="section-label">🗺️ Terrain Overlay</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
       Tap the <strong>🗺️ button</strong> (bottom-left, below the zoom buttons) to switch to terrain view.
-      Owned tiles show their underlying terrain color (green = grass, grey = mountain, brown = hill, yellow = desert, blue = water) blended with a hint of the nation's color so you can still tell countries apart.
+      Owned tiles show their underlying terrain color (green = grass, light grey = mountain, brown = hill, yellow/orange = desert, blue = water) blended with a hint of the nation's color so you can still tell countries apart.
       Nation borders stay visible. Tap again to switch back to normal view.
     </p>
 
@@ -953,7 +953,7 @@ function renderMap() {
           // Draw terrain first, then country color at 30% so both are visible
           ctx.fillStyle = getTerrainColor(tile.terrain, x, y, tile.elevation);
           ctx.fillRect(px, py, pw, pw);
-          ctx.fillStyle = country ? hexToRgba(country.color, 0.30) : 'rgba(0,0,0,0.15)';
+          ctx.fillStyle = country ? hexToRgba(country.color, 0.20) : 'rgba(0,0,0,0.10)';
           ctx.fillRect(px, py, pw, pw);
         } else {
           ctx.fillStyle = country ? country.color : '#888';

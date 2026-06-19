@@ -168,7 +168,7 @@ const TERRAIN_COLORS = {
   water:    { base: '#1e40af', shade: '#1d4ed8', deep: '#1e3a8a' },
   grass:    { base: '#16a34a', shade: '#15803d', light: '#22c55e' },
   hill:     { base: '#854d0e', shade: '#92400e', light: '#a16207' },
-  mountain: { base: '#6b7280', shade: '#4b5563', light: '#9ca3af' },
+  mountain: { base: '#b0b8c1', shade: '#8a9099', light: '#d1d5db' },
   desert:   { base: '#d97706', shade: '#b45309', light: '#fbbf24' },
 };
 
