@@ -2,21 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>PixelRealms — Lobby</title>
-<script>
-(function() {
-  var vp = document.querySelector('meta[name="viewport"]') || document.createElement('meta');
-  vp.name = 'viewport';
-  vp.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
-  if (!vp.parentNode) document.head.appendChild(vp);
-  setTimeout(function() { vp.content = vp.content; }, 1);
-  document.addEventListener('gesturestart', function(e) { e.preventDefault(); }, { passive: false });
-  document.addEventListener('gesturechange', function(e) { e.preventDefault(); }, { passive: false });
-  document.addEventListener('gestureend', function(e) { e.preventDefault(); }, { passive: false });
-  document.addEventListener('touchmove', function(e) { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
-})();
-</script>
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png">
 <link rel="apple-touch-icon" sizes="192x192" href="../favicon-192.png">
