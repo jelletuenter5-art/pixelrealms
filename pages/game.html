@@ -2232,12 +2232,13 @@ function showAttackPreview(tx, ty) {
   const tile = mapData[ty]?.[tx];
   if (!defender || !tile) return;
 
-  const wall = engine.infraData?.[`${tx},${ty}`];
-  const wallBonus = wall?.type === 'wall' ? CONFIG.INFRA_COSTS.wall.defenseBonus : 0;
-  const terrainDef = (CONFIG.TERRAIN_DEFENSE[tile.terrain] || 1) * (1 + wallBonus);
+  const wall = engine.wallData?.[`${tx},${ty}`];
+  const wallBonus = wall ? CONFIG.INFRA_COSTS.wall.defenseBonus : 0;
+  const terrainDef = CONFIG.TERRAIN_DEFENSE[tile.terrain] || 1;
+  const totalDef = terrainDef * (1 + wallBonus);
   const myArmy = engine.country.army_size;
   const theirArmy = defender.army_size;
-  const effectiveDef = theirArmy * terrainDef;
+  const effectiveDef = theirArmy * totalDef;
   const ratio = myArmy / effectiveDef;
   const outcome = ratio > 1.5 ? '<span style="color:var(--green)">✅ Likely Victory</span>'
     : ratio > 0.8 ? '<span style="color:var(--gold)">⚠️ Risky Battle</span>'
@@ -2256,10 +2257,10 @@ function showAttackPreview(tx, ty) {
 
   document.getElementById('attackPreviewBody').innerHTML = `
     <div>Target: <strong style="color:${defender.color}">${defender.flag_emoji || ''} ${defender.name}</strong></div>
-    <div>Tile: <strong>${tile.terrain}</strong> · 🛡️ Defense ×${terrainDef.toFixed(2)}</div>
-    ${wall?.type === 'wall' ? `<div>🧱 Wall bonus: +${(wallBonus * 100).toFixed(0)}% defense</div>` : ''}
+    <div>Tile: <strong>${tile.terrain}</strong> · 🛡️ Terrain ×${terrainDef.toFixed(2)}${wall ? ` · 🧱 Fortified ×${(1 + wallBonus).toFixed(2)}` : ''}</div>
+    ${wall ? `<div style="font-size:0.78rem;color:var(--muted)">🧱 Wall adds +${(wallBonus*100).toFixed(0)}% defense → total ×${totalDef.toFixed(2)} (effective army: ${effectiveDef.toFixed(0)})</div>` : ''}
     <div style="margin-top:0.5rem">Your army: <strong style="color:var(--red)">${myArmy}</strong></div>
-    <div>Their army: <strong>${theirArmy}</strong> (effective: ${effectiveDef.toFixed(0)})</div>
+    <div>Their army: <strong>${theirArmy}</strong>${wall ? '' : ` (effective: ${effectiveDef.toFixed(0)})`}</div>
     <div style="margin-top:0.75rem;font-size:0.95rem">${outcome}</div>
     <div style="font-size:0.75rem;color:var(--muted);margin-top:0.25rem">Both sides lose troops regardless of outcome.</div>
     <div style="margin-top:0.6rem;padding:0.4rem 0.6rem;background:rgba(239,68,68,0.08);border-radius:6px;border:1px solid rgba(239,68,68,0.2);font-size:0.75rem;line-height:1.8">
