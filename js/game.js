@@ -162,8 +162,10 @@ class GameEngine {
       ? Math.min(armyCap, Math.floor(currentArmy + barracksCount * CONFIG.BARRACKS_REGEN_PER_HOUR * hoursOffline))
       : currentArmy;
 
-    // Food aggression decays offline
-    const newAggression = Math.max(0, Math.round((currentAggression - CONFIG.FOOD_AGGRESSION_DECAY * hoursOffline) * 100000) / 100000);
+    // Food aggression decays offline — boosted by markets
+    const marketsCount = myInfra.filter(i => i.type === 'market').length;
+    const effectiveDecay = CONFIG.FOOD_AGGRESSION_DECAY + marketsCount * CONFIG.MARKET_DECAY_BONUS;
+    const newAggression = Math.max(0, Math.round((currentAggression - effectiveDecay * hoursOffline) * 100000) / 100000);
 
     const updates = {
       pending_pixels: newTokens,
@@ -305,10 +307,11 @@ class GameEngine {
     if (success) {
       await sb.from('pixels').update({ country_id: this.country.id, captured_at: new Date().toISOString() })
         .eq('game_id', this.gameId).eq('x', x).eq('y', y);
-      await sb.from('countries').update({ pixel_count: this.country.pixel_count + 1 })
+      await sb.from('countries').update({ pixel_count: this.country.pixel_count + 1, pixels_captured: (this.country.pixels_captured || 0) + 1 })
         .eq('id', this.country.id);
-      await sb.from('countries').update({ pixel_count: Math.max(0, defender.pixel_count - 1) })
+      await sb.from('countries').update({ pixel_count: Math.max(0, defender.pixel_count - 1), pixels_lost: (defender.pixels_lost || 0) + 1 })
         .eq('id', defender.id);
+      this.country.pixels_captured = (this.country.pixels_captured || 0) + 1;
 
       this.pixelData[key] = { ...pixel, country_id: this.country.id };
       this.country.pixel_count++;
@@ -409,6 +412,12 @@ class GameEngine {
       const buildingCap = Math.floor(this.country.pixel_count / 2);
       if (myBuildings.length >= buildingCap) {
         return { ok: false, msg: `Building cap reached (${myBuildings.length}/${buildingCap}). You need ${(myBuildings.length + 1) * 2} pixels to build more.` };
+      }
+    }
+    if (type === 'market') {
+      const myMarkets = Object.values(this.infraData).filter(i => i.country_id === this.country.id && i.type === 'market').length;
+      if (myMarkets >= CONFIG.INFRA_COSTS.market.maxCount) {
+        return { ok: false, msg: `Market cap reached (${myMarkets}/${CONFIG.INFRA_COSTS.market.maxCount}).` };
       }
     }
     if (type === 'barracks') {
@@ -778,8 +787,10 @@ async function tickIncome(engine) {
     if (!error) engine.country.food = newFood;
   }
 
-  // War aggression decays at 0.01/hr — separate update so missing food column can't block it
-  const newAggression = Math.max(0, Math.round((aggression - CONFIG.FOOD_AGGRESSION_DECAY * tickHours) * 100000) / 100000);
+  // War aggression decays — base rate boosted by markets owned
+  const marketCount = myInfra.filter(i => i.type === 'market').length;
+  const effectiveDecay = CONFIG.FOOD_AGGRESSION_DECAY + marketCount * CONFIG.MARKET_DECAY_BONUS;
+  const newAggression = Math.max(0, Math.round((aggression - effectiveDecay * tickHours) * 100000) / 100000);
   if (newAggression !== aggression) {
     const { error } = await sb.from('countries').update({ food_aggression: newAggression }).eq('id', c.id);
     if (!error) engine.country.food_aggression = newAggression;
