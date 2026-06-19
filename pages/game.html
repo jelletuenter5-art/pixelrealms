@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>PixelRealms</title>
+<script>
+// Force iOS Safari to reset page zoom on every load
+(function() {
+  var vp = document.querySelector('meta[name="viewport"]') || document.createElement('meta');
+  vp.name = 'viewport';
+  vp.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+  if (!vp.parentNode) document.head.appendChild(vp);
+  // Toggle trick forces Safari to apply initial-scale=1.0 even if previously zoomed
+  setTimeout(function() { vp.content = vp.content; }, 1);
+})();
+</script>
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png">
 <link rel="apple-touch-icon" sizes="192x192" href="../favicon-192.png">
@@ -20,7 +31,7 @@
     --red: #ef4444; --blue: #38bdf8; --text: #e2e8f0; --muted: #64748b;
   }
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overscroll-behavior: none; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overscroll-behavior: none; touch-action: none; }
   button, a, input, select, textarea { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
   /* LAYOUT */
