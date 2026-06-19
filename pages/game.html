@@ -1010,19 +1010,22 @@ function renderMap() {
       const infra = engine.infraData?.[`${x},${y}`];
       if (infra && ps > 6) {
         const cx = px + pw / 2, cy = py + pw / 2;
-        const r = pw * 0.42;
+        const r = pw * 0.36;
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
         ctx.fill();
-        ctx.lineWidth = Math.max(1, ps * 0.06);
-        ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+        ctx.lineWidth = Math.max(1, ps * 0.07);
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
         ctx.stroke();
 
-        ctx.font = `${Math.max(8, ps * 0.55)}px sans-serif`;
+        // Wide emojis (buildings/structures) need a smaller font than simple icons
+        const wideTypes = { barracks: 0.38, trading_post: 0.38, market: 0.42 };
+        const sizeMult = wideTypes[infra.type] ?? 0.46;
+        ctx.font = `${Math.max(7, ps * sizeMult)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillStyle = 'rgba(0,0,0,0.85)';
+        ctx.fillStyle = 'black';
         ctx.fillText(INFRA_ICONS[infra.type] || '🏗️', cx, cy);
       }
     }
