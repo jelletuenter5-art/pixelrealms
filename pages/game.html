@@ -427,7 +427,7 @@
         <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Requires 100 population per barracks · no terrain effect</div>
       </div>
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
-        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🧱 Fortification <span style="color:var(--gold);font-weight:400">${CONFIG.INFRA_COSTS.wall.gold}g</span></div>
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🧱 Fortification <span style="color:var(--gold);font-weight:400" id="htpWallCost">80g</span></div>
         <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+50% defense on that tile when attacked · visible as white border lines on the map</div>
         <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">No building cap · stacks with other buildings · destroyed if the tile is captured</div>
       </div>
@@ -462,6 +462,7 @@
       Your army consumes <strong>0.1 food/hr per unit</strong> at peace — this rises with war aggression (see above).
       Build farms to cover deficits: each farm produces <strong>5 food/hr</strong>, boosted by terrain.
       If your stored food drops below <strong>25% of your population</strong>, your gold income is reduced by up to <strong>−80%</strong> — so stockpile food before long campaigns.
+      Food is capped at <strong>2× your total population + 20 per farm built</strong>. Expand your territory or build farms to raise the cap.
     </p>
 
     <div class="section-label">🤝 Trade</div>
@@ -1336,7 +1337,10 @@ function openManageBuilding(x, y) {
 function closeManageBuildingModal() { document.getElementById('manageBuildingModal').style.display = 'none'; }
 
 // ── TUTORIAL ──────────────────────────────────────────
-function openTutorial() { document.getElementById('tutorialModal').style.display = 'flex'; }
+function openTutorial() {
+  document.getElementById('tutorialModal').style.display = 'flex';
+  document.getElementById('htpWallCost').textContent = CONFIG.INFRA_COSTS.wall.gold + 'g';
+}
 function closeTutorial() {
   document.getElementById('tutorialModal').style.display = 'none';
   localStorage.setItem('pr_tutorial_seen', '1');
