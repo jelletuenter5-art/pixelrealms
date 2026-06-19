@@ -1384,7 +1384,10 @@ function updateTopBar() {
   if (!c) return;
   document.getElementById('myCountryFlag').textContent = c.flag_emoji || '🏳️';
   document.getElementById('myCountryName').textContent = c.name;
-  document.getElementById('myGold').textContent = (Number.isFinite(c.gold) ? c.gold : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const goldVal = Number.isFinite(c.gold) ? c.gold : 0;
+  document.getElementById('myGold').textContent = goldVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const tradeDisp = document.getElementById('tradeGoldDisplay');
+  if (tradeDisp) tradeDisp.textContent = `You have 💰 ${Math.floor(goldVal)} gold`;
   document.getElementById('myPixels').textContent = c.pixel_count ?? 0;
   document.getElementById('myArmy').textContent = Math.floor((c.army_size ?? 0) + (engine._armyRegenAccum || 0));
   document.getElementById('myTokens').textContent = engine.getLiveTokens();
@@ -1575,7 +1578,7 @@ async function renderTrade(body) {
       </select>
       <input type="number" id="tradeAmount" placeholder="Amount of gold to send" min="1" max="${engine.country.gold}" style="width:100%;font-size:0.85rem;margin-bottom:0.5rem">
       <button onclick="sendTrade()" style="width:100%;padding:0.55rem;border-radius:7px;border:none;background:linear-gradient(135deg,#92400e,#b45309);color:#fff;font-weight:700;cursor:pointer;font-size:0.85rem">Send Offer</button>
-      <div style="font-size:0.72rem;color:var(--muted);margin-top:0.4rem">You have 💰 ${Math.floor(engine.country.gold)} gold</div>
+      <div id="tradeGoldDisplay" style="font-size:0.72rem;color:var(--muted);margin-top:0.4rem">You have 💰 ${Math.floor(engine.country.gold)} gold</div>
     </div>
 
     ${sent?.length ? `<div class="section-label">⏳ Your Pending Offers (${sent.length})</div>${sentHtml}` : ''}
