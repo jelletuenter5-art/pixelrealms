@@ -1312,7 +1312,8 @@ function openBuildModal(type) {
   selectedBuildType = type;
   closePanels();
   document.getElementById('buildModal').style.display = 'flex';
-  document.getElementById('buildModalTitle').textContent = `Build ${type.charAt(0).toUpperCase() + type.slice(1)}`;
+  const buildLabel = type === 'wall' ? 'Fortification' : type === 'trading_post' ? 'Trading Post' : type.charAt(0).toUpperCase() + type.slice(1);
+  document.getElementById('buildModalTitle').textContent = `Build ${buildLabel}`;
   document.getElementById('buildModalDesc').textContent = cost.effect;
   document.getElementById('buildModalCost').textContent = `Cost: ${cost.gold} gold (you have ${engine.country?.gold || 0})`;
   document.getElementById('buildModalConfirm').onclick = async () => {
@@ -2061,6 +2062,12 @@ function renderAdmin(body) {
       <button class="btn" onclick="adminGiveTokens()">🎯 Give</button>
     </div>
 
+    <label style="font-size:0.78rem;color:var(--muted)">Army units</label>
+    <div style="display:flex;gap:0.4rem;margin:0.3rem 0 0.75rem">
+      <input id="adminArmyAmount" type="number" value="20" style="flex:1;padding:0.4rem;background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--text)">
+      <button class="btn" onclick="adminGiveArmy()">⚔️ Give</button>
+    </div>
+
     <div id="adminMsg" style="font-size:0.78rem;color:var(--green)"></div>
   `;
 }
@@ -2094,6 +2101,22 @@ async function adminGiveTokens() {
   if (engine.country?.id === targetId) engine.country = data;
   msg.style.color = 'var(--green)';
   msg.textContent = `✅ Gave ${amount} expansion tokens to ${target.name}.`;
+  updateTopBar(); renderRightPanel();
+}
+
+async function adminGiveArmy() {
+  const targetId = document.getElementById('adminTarget').value;
+  const amount = parseFloat(document.getElementById('adminArmyAmount').value);
+  if (!targetId || !amount) return;
+  const target = engine.countries[targetId] || allCountriesCache[targetId];
+  const newArmy = (target.army_size || 0) + amount;
+  const { data, error } = await sb.from('countries').update({ army_size: newArmy }).eq('id', targetId).select().single();
+  const msg = document.getElementById('adminMsg');
+  if (error) { msg.style.color = 'var(--red)'; msg.textContent = 'Error: ' + error.message; return; }
+  engine.countries[targetId] = data;
+  if (engine.country?.id === targetId) engine.country = data;
+  msg.style.color = 'var(--green)';
+  msg.textContent = `✅ Gave ${amount} army to ${target.name}.`;
   updateTopBar(); renderRightPanel();
 }
 

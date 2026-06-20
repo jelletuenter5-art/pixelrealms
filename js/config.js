@@ -14,7 +14,7 @@ const CONFIG = {
   BASE_INCOME_PER_PIXEL: 1,          // base gold per pixel per hour
   STARTING_ARMY: 5,                  // army units at nation creation
   BORDER_UPKEEP_PER_NATION: 10,      // gold/hr upkeep per border pixel (pixel of yours touching an enemy pixel)
-  POPULATION_PER_PIXEL: 20,          // people per pixel owned
+  POPULATION_PER_PIXEL: 15,          // people per pixel owned
   BARRACKS_POPULATION_COST: 100,     // population required per barracks
   FOOD_PRODUCTION_PER_PIXEL: 0.5,    // base food/hr per pixel (foraging)
   FOOD_PRODUCTION_PER_FARM: 5,       // food/hr per farm building
