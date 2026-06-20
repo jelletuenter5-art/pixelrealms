@@ -1600,7 +1600,7 @@ function renderBoatPanel() {
   const boatsHtml = myBoats.length
     ? myBoats.map(b => {
         const eta = Math.max(0, Math.round((new Date(b.arrives_at) - now) / 60000));
-        return `<span style="background:var(--panel2);border-radius:6px;padding:0.2rem 0.5rem;font-size:0.75rem;white-space:nowrap">${b.mode === 'expand' ? '🏝️' : '⚔️'}(${b.to_x},${b.to_y}) <span style="color:var(--blue)">~${eta}m</span></span>`;
+        return `<span style="background:var(--panel2);border-radius:6px;padding:0.2rem 0.5rem;font-size:0.75rem;white-space:nowrap;display:inline-flex;align-items:center;gap:0.3rem">${b.mode === 'expand' ? '🏝️' : '⚔️'} (${b.to_x},${b.to_y}) <span style="color:var(--blue)">~${eta}m</span><button onclick="cancelBoat('${b.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.8rem;padding:0;line-height:1" title="Cancel boat">✕</button></span>`;
       }).join('')
     : '';
 
@@ -2458,6 +2458,12 @@ function chatMsgHtml(m) {
 
 function escapeHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function cancelBoat(boatId) {
+  const res = await engine.cancelBoat(boatId);
+  showToast(res.msg, res.ok ? 'ok' : 'error');
+  if (res.ok) { renderMap(); updateTopBar(); renderBoatPanel(); }
 }
 
 async function sendChat() {
