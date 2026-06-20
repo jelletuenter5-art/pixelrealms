@@ -1312,9 +1312,17 @@ async function handleClick(e) {
     }
     showAttackPreview(tx, ty);
   } else if (currentMode === 'boat') {
-    const res = await engine.sendBoat(tx, ty, boatMode);
-    showToast(res.msg, res.ok ? 'ok' : 'error');
-    if (res.ok) { renderMap(); updateTopBar(); renderLeftPanel(); }
+    const myHarbors = Object.values(engine.infraData || {}).filter(i => i.country_id === engine.country?.id && i.type === 'harbor');
+    if (!myHarbors.length) { showToast('Build a harbor first (⚓ 180g on a land tile bordering water).', 'error'); return; }
+    const pData = engine.pixelData[`${tx},${ty}`];
+    const isEnemy = pData?.country_id && pData.country_id !== engine.country.id;
+    if (isEnemy) {
+      showBoatAttackPreview(tx, ty);
+    } else {
+      const res = await engine.sendBoat(tx, ty, 'expand');
+      showToast(res.msg, res.ok ? 'ok' : 'error');
+      if (res.ok) { renderMap(); updateTopBar(); renderBoatPanel(); }
+    }
     return;
   } else if (currentMode === 'build') {
     const pData = engine.pixelData[`${tx},${ty}`];
@@ -1582,13 +1590,9 @@ function renderBoatPanel() {
     </div>
     <div style="padding:0.75rem;flex:1;overflow-y:auto">
       ${myHarbors.length === 0 ? `<div style="color:var(--red);font-size:0.8rem;padding:0.5rem;background:rgba(239,68,68,0.1);border-radius:6px;border:1px solid rgba(239,68,68,0.3)">⚠️ Build a harbor first (⚓ 180g on a land tile bordering water)</div>` : `
-      <div class="section-label" style="margin-top:0">Mode</div>
-      <div style="display:flex;gap:0.4rem;margin-bottom:0.75rem">
-        <button onclick="boatMode='expand';this.parentElement.querySelectorAll('button').forEach(b=>b.style.background='var(--panel2)');this.style.background='rgba(34,197,94,0.2)';this.style.borderColor='var(--green)'" style="flex:1;padding:0.4rem;border-radius:8px;border:1px solid ${boatMode==='expand'?'var(--green)':'var(--border)'};background:${boatMode==='expand'?'rgba(34,197,94,0.2)':'var(--panel2)'};color:var(--text);cursor:pointer;font-size:0.78rem">🏝️ Expand</button>
-        <button onclick="boatMode='attack';this.parentElement.querySelectorAll('button').forEach(b=>{b.style.background='var(--panel2)';b.style.borderColor='var(--border)'});this.style.background='rgba(239,68,68,0.2)';this.style.borderColor='var(--red)'" style="flex:1;padding:0.4rem;border-radius:8px;border:1px solid ${boatMode==='attack'?'var(--red)':'var(--border)'};background:${boatMode==='attack'?'rgba(239,68,68,0.2)':'var(--panel2)'};color:var(--text);cursor:pointer;font-size:0.78rem">⚔️ Attack</button>
-      </div>
-      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.75rem;padding:0.4rem 0.5rem;background:var(--panel2);border-radius:6px">
-        Click any ${boatMode === 'expand' ? 'unclaimed' : 'enemy'} tile that borders water to send a boat
+      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.75rem;padding:0.4rem 0.5rem;background:var(--panel2);border-radius:6px;line-height:1.5">
+        Click a <span style="color:var(--green)">free tile</span> to expand · click an <span style="color:var(--red)">enemy tile</span> to attack<br>
+        <span style="font-size:0.72rem">Target must border water</span>
       </div>
       <div class="section-label">Your Harbors (${myHarbors.length})</div>
       ${myHarbors.map(h => `<div style="font-size:0.78rem;color:var(--muted);padding:0.2rem 0">⚓ (${h.pixel_x},${h.pixel_y})</div>`).join('')}
@@ -2569,6 +2573,65 @@ function showAttackPreview(tx, ty) {
     const res = await engine.attack(tx, ty);
     showToast(res.msg, res.ok && res.success ? 'ok' : 'error');
     if (res.ok) { renderMap(); updateTopBar(); if (rightTab === 'country') renderRightPanel(); }
+  };
+}
+
+// ── BOAT ATTACK PREVIEW ───────────────────────────────
+function showBoatAttackPreview(tx, ty) {
+  const pData = engine.pixelData[`${tx},${ty}`];
+  const defender = engine.countries[pData?.country_id];
+  const tile = mapData[ty]?.[tx];
+  if (!defender || !tile) return;
+
+  const wall = engine.wallData?.[`${tx},${ty}`];
+  const wallBonus = wall ? CONFIG.INFRA_COSTS.wall.defenseBonus : 0;
+  const terrainDef = CONFIG.TERRAIN_DEFENSE[tile.terrain] || 1;
+  const totalDef = terrainDef * (1 + wallBonus);
+  const myArmy = engine.country.army_size;
+  const theirArmy = defender.army_size;
+  const effectiveDef = theirArmy * totalDef;
+  const ratio = myArmy / effectiveDef;
+  const outcome = ratio > 1.5 ? '<span style="color:var(--green)">✅ Likely Victory</span>'
+    : ratio > 0.8 ? '<span style="color:var(--gold)">⚠️ Risky Battle</span>'
+    : '<span style="color:var(--red)">❌ Likely Defeat</span>';
+
+  // Estimate ETA
+  const myHarbors = Object.values(engine.infraData || {}).filter(i => i.country_id === engine.country?.id && i.type === 'harbor');
+  let minEta = null;
+  for (const h of myHarbors) {
+    const path = engine._findWaterPath(h.pixel_x, h.pixel_y, tx, ty);
+    if (path && (minEta === null || path.length < minEta)) minEta = path.length;
+  }
+  const etaStr = minEta !== null ? `~${minEta * CONFIG.BOAT_MINUTES_PER_TILE} min` : 'unknown';
+
+  document.getElementById('attackPreviewBody').innerHTML = `
+    <div style="font-size:0.78rem;color:var(--blue);margin-bottom:0.5rem">⛵ Boat Attack — resolves on arrival</div>
+    <div>Target: <strong style="color:${defender.color}">${defender.flag_emoji || ''} ${defender.name}</strong></div>
+    <div>Tile: <strong>${tile.terrain}</strong> · 🛡️ Terrain ×${terrainDef.toFixed(2)}${wall ? ` · 🧱 Fortified ×${(1 + wallBonus).toFixed(2)}` : ''}</div>
+    <div style="margin-top:0.5rem">Your army: <strong style="color:var(--red)">${myArmy}</strong></div>
+    <div>Their army: <strong>${theirArmy}</strong> (effective: ${effectiveDef.toFixed(0)})</div>
+    <div style="margin-top:0.75rem;font-size:0.95rem">${outcome}</div>
+    <div style="font-size:0.75rem;color:var(--muted);margin-top:0.25rem;line-height:1.7">
+      If you <strong style="color:var(--green)">win</strong>: you lose ~${Math.ceil(effectiveDef * 0.25)} troops · they lose ~${Math.ceil(effectiveDef * 0.20)} troops<br>
+      If you <strong style="color:var(--red)">lose</strong>: you lose ~${Math.ceil(myArmy * 0.35)} troops · they lose ~${Math.ceil(myArmy * 0.12)} troops
+    </div>
+    <div style="margin-top:0.5rem;font-size:0.78rem;color:var(--muted)">⏱️ ETA: <strong style="color:var(--blue)">${etaStr}</strong> · Stats resolve on arrival</div>
+  `;
+
+  const modal = document.getElementById('attackPreviewModal');
+  modal.style.display = 'flex';
+  document.getElementById('confirmAttackBtn').textContent = '⛵ Send Boat!';
+  document.getElementById('confirmAttackBtn').onclick = async () => {
+    modal.style.display = 'none';
+    document.getElementById('confirmAttackBtn').textContent = '⚔️ Attack!';
+    const res = await engine.sendBoat(tx, ty, 'attack');
+    showToast(res.msg, res.ok ? 'ok' : 'error');
+    if (res.ok) { renderMap(); renderBoatPanel(); }
+  };
+  // Reset button text on cancel
+  document.querySelector('#attackPreviewModal .btn-xs').onclick = () => {
+    modal.style.display = 'none';
+    document.getElementById('confirmAttackBtn').textContent = '⚔️ Attack!';
   };
 }
 
