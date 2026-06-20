@@ -1204,25 +1204,27 @@ function renderBoats(ps) {
 
     ctx.restore();
 
-    // Route line — owner only, follows actual path tiles
+    // Route line — owner only, follows actual path tiles then enters destination pixel
     if (boat.country_id === engine.country?.id) {
+      // Final destination center (the land/target tile, not the last water tile)
+      const ex = offsetX + (boat.to_x + 0.5) * ps;
+      const ey = offsetY + (boat.to_y + 0.5) * ps;
       ctx.save();
       ctx.setLineDash([4, 4]);
       ctx.strokeStyle = 'rgba(56,189,248,0.6)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(bx, by);
+      // Follow remaining water path tiles
       for (let si = stepI + 1; si < path.length; si++) {
-        const px2 = offsetX + (path[si].x + 0.5) * ps;
-        const py2 = offsetY + (path[si].y + 0.5) * ps;
-        ctx.lineTo(px2, py2);
+        ctx.lineTo(offsetX + (path[si].x + 0.5) * ps, offsetY + (path[si].y + 0.5) * ps);
       }
+      // Extend perpendicularly into the destination tile (last water tile is
+      // axis-aligned adjacent to to_x,to_y so this segment is always perpendicular)
+      ctx.lineTo(ex, ey);
       ctx.stroke();
       ctx.setLineDash([]);
-      // Destination marker
-      const dest = path[path.length - 1];
-      const ex = offsetX + (dest.x + 0.5) * ps;
-      const ey = offsetY + (dest.y + 0.5) * ps;
+      // Destination marker on the target pixel
       ctx.beginPath(); ctx.arc(ex, ey, 3, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(56,189,248,0.8)'; ctx.fill();
       ctx.restore();
