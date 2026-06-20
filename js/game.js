@@ -86,10 +86,14 @@ class GameEngine {
     const correctUpkeep = Math.max(0.02, 0.3 - markets * CONFIG.INFRA_COSTS.market.upkeepReduction);
 
     const updates = {};
-    // Only correct pixel_count if the player actually has pixels — skip for brand-new players
-    // who haven't chosen their spawn yet (their pixels live in DB but may not be seeded).
-    const pixelCountWasWrong = myPixels.length > 0 && this.country.pixel_count === 0;
-    if (myPixels.length > 0 && correctPixelCount !== this.country.pixel_count) updates.pixel_count = correctPixelCount;
+    // Correct pixel_count if actual pixels differ — also handles the case where
+    // a player lost all pixels but pixel_count was never zeroed (e.g. water-spawn edge case)
+    if (correctPixelCount !== this.country.pixel_count) updates.pixel_count = correctPixelCount;
+    // If pixel_count is now 0 and they're still marked alive, eliminate them
+    if (correctPixelCount === 0 && this.country.is_alive) {
+      updates.is_alive = false;
+      updates.surrendered_at = new Date().toISOString();
+    }
     if (Math.abs(correctIncome - this.country.income_per_pixel) > 1e-6) updates.income_per_pixel = correctIncome;
     if (Math.abs(correctUpkeep - this.country.army_upkeep_per_pixel) > 1e-6) updates.army_upkeep_per_pixel = correctUpkeep;
     // Repair gold if it's null, NaN, or zero — could happen from a bad offline accrual
@@ -397,9 +401,9 @@ class GameEngine {
       : `❌ Failed attack on (${x},${y}). Lost ${attackerLoss} troops. 🍞 Food rate +${aggressionGained.toFixed(2)}/px`;
     await this._logEvent('attack', `${this.country.name} attacked ${defender.name} at (${x},${y}) — ${success ? 'SUCCESS' : 'FAILED'}`);
 
-    // Check if defender is eliminated
+    // Check if defender is eliminated (0 pixels = eliminated, regardless of army)
     const defenderPixelsLeft = Math.max(0, defender.pixel_count - (success ? 1 : 0));
-    if (newDefenderArmy <= 1 && defenderPixelsLeft <= 0) {
+    if (defenderPixelsLeft <= 0) {
       await sb.from('countries').update({ is_alive: false, surrendered_at: new Date().toISOString(), pixel_count: defenderPixelsLeft })
         .eq('id', defender.id);
       this.countries[defender.id] = { ...defender, is_alive: false, pixel_count: defenderPixelsLeft, army_size: newDefenderArmy };
