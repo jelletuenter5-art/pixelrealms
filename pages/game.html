@@ -1025,7 +1025,7 @@ function renderMap() {
 
       // Infrastructure icon
       const infra = engine.infraData?.[`${x},${y}`];
-      if (infra && ps > 14) {
+      if (infra && ps > 11) {
         const cx = px + pw / 2, cy = py + pw / 2;
         const r = pw * 0.36;
         ctx.beginPath();
@@ -1093,7 +1093,7 @@ function renderMap() {
 
 // ── COUNTRY NAME LABELS ─────────────────────────────────
 function renderCountryLabels(x0, y0, x1, y1, ps) {
-  if (ps < 8) return;
+  if (ps < 5) return;
   const centroids = {};
   for (const p of Object.values(engine.pixelData)) {
     if (!p.country_id) continue;
