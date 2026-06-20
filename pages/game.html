@@ -340,8 +340,8 @@
   </div>
 </div>
 
-<!-- Boat panel (slides in from left over map) -->
-<div id="boatPanel" style="display:none;position:absolute;top:0;left:0;bottom:0;width:240px;z-index:200;background:var(--panel);border-right:1px solid var(--border);flex-direction:column;pointer-events:auto"></div>
+<!-- Boat panel (small popup at bottom of map area) -->
+<div id="boatPanel" style="display:none;position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:200;background:var(--panel);border:1px solid var(--border);border-radius:12px;flex-direction:column;pointer-events:auto;min-width:280px;max-width:90vw;box-shadow:0 4px 24px rgba(0,0,0,0.5)"></div>
 
 <!-- Infra build modal -->
 <!-- Quick build selector -->
@@ -1148,9 +1148,10 @@ function renderBoats(ps) {
     const bx = offsetX + (cur.x + frac * (nxt.x - cur.x) + 0.5) * ps;
     const by = offsetY + (cur.y + frac * (nxt.y - cur.y) + 0.5) * ps;
 
-    // Direction angle
+    // Direction angle — use movement vector; fall back to last known if stationary
     const dx = nxt.x - cur.x, dy = nxt.y - cur.y;
-    const angle = (dx === 0 && dy === 0) ? 0 : Math.atan2(dy, dx) + Math.PI / 2;
+    if (dx !== 0 || dy !== 0) boat._lastAngle = Math.atan2(dy, dx) + Math.PI / 2;
+    const angle = boat._lastAngle ?? 0;
 
     // Draw boat (Option A wooden hull, top-down)
     const s = Math.max(4, ps * 0.7);
@@ -1203,18 +1204,25 @@ function renderBoats(ps) {
 
     ctx.restore();
 
-    // Route line — owner only
+    // Route line — owner only, follows actual path tiles
     if (boat.country_id === engine.country?.id) {
-      const dest = path[path.length - 1];
-      const ex = offsetX + (dest.x + 0.5) * ps;
-      const ey = offsetY + (dest.y + 0.5) * ps;
       ctx.save();
       ctx.setLineDash([4, 4]);
       ctx.strokeStyle = 'rgba(56,189,248,0.6)';
       ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      for (let si = stepI + 1; si < path.length; si++) {
+        const px2 = offsetX + (path[si].x + 0.5) * ps;
+        const py2 = offsetY + (path[si].y + 0.5) * ps;
+        ctx.lineTo(px2, py2);
+      }
+      ctx.stroke();
       ctx.setLineDash([]);
       // Destination marker
+      const dest = path[path.length - 1];
+      const ex = offsetX + (dest.x + 0.5) * ps;
+      const ey = offsetY + (dest.y + 0.5) * ps;
       ctx.beginPath(); ctx.arc(ex, ey, 3, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(56,189,248,0.8)'; ctx.fill();
       ctx.restore();
@@ -1583,28 +1591,23 @@ function renderBoatPanel() {
   if (!panel) return;
   panel.style.display = 'flex';
 
-  panel.innerHTML = `
-    <div style="padding:0.75rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-      <span style="font-weight:700;font-size:0.9rem">⛵ Boat</span>
-      <button onclick="setMode('expand')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem">✕</button>
-    </div>
-    <div style="padding:0.75rem;flex:1;overflow-y:auto">
-      ${myHarbors.length === 0 ? `<div style="color:var(--red);font-size:0.8rem;padding:0.5rem;background:rgba(239,68,68,0.1);border-radius:6px;border:1px solid rgba(239,68,68,0.3)">⚠️ Build a harbor first (⚓ 180g on a land tile bordering water)</div>` : `
-      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.75rem;padding:0.4rem 0.5rem;background:var(--panel2);border-radius:6px;line-height:1.5">
-        Click a <span style="color:var(--green)">free tile</span> to expand · click an <span style="color:var(--red)">enemy tile</span> to attack<br>
-        <span style="font-size:0.72rem">Target must border water</span>
-      </div>
-      <div class="section-label">Your Harbors (${myHarbors.length})</div>
-      ${myHarbors.map(h => `<div style="font-size:0.78rem;color:var(--muted);padding:0.2rem 0">⚓ (${h.pixel_x},${h.pixel_y})</div>`).join('')}
-      `}
-      ${myBoats.length ? `
-      <div class="section-label" style="margin-top:0.75rem">Active Boats (${myBoats.length})</div>
-      ${myBoats.map(b => {
+  const harborHtml = myHarbors.length === 0
+    ? `<span style="color:var(--red);font-size:0.78rem">⚠️ No harbor — build ⚓ on a tile bordering water</span>`
+    : `<span style="color:var(--muted);font-size:0.78rem">⚓ ${myHarbors.length} harbor${myHarbors.length > 1 ? 's' : ''} · Click <span style="color:var(--green)">free</span> or <span style="color:var(--red)">enemy</span> water-border tile</span>`;
+
+  const boatsHtml = myBoats.length
+    ? myBoats.map(b => {
         const eta = Math.max(0, Math.round((new Date(b.arrives_at) - now) / 60000));
-        return `<div style="background:var(--panel2);border-radius:6px;padding:0.4rem 0.6rem;margin-bottom:0.3rem;font-size:0.75rem">
-          ${b.mode === 'expand' ? '🏝️' : '⚔️'} → (${b.to_x},${b.to_y}) · <span style="color:var(--blue)">~${eta} min</span>
-        </div>`;
-      }).join('')}` : ''}
+        return `<span style="background:var(--panel2);border-radius:6px;padding:0.2rem 0.5rem;font-size:0.75rem;white-space:nowrap">${b.mode === 'expand' ? '🏝️' : '⚔️'}(${b.to_x},${b.to_y}) <span style="color:var(--blue)">~${eta}m</span></span>`;
+      }).join('')
+    : '';
+
+  panel.innerHTML = `
+    <div style="padding:0.5rem 0.75rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
+      <span style="font-weight:700;font-size:0.85rem;white-space:nowrap">⛵ Boat Mode</span>
+      <span style="flex:1;min-width:0">${harborHtml}</span>
+      ${boatsHtml}
+      <button onclick="setMode('expand')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;line-height:1;flex-shrink:0">✕</button>
     </div>
   `;
 }
@@ -2446,15 +2449,29 @@ async function sendChat() {
   const input = document.getElementById('chatInput');
   const content = input.value.trim();
   if (!content || !engine.country) return;
+  input.value = '';
 
   const { data: profile } = await sb.from('profiles').select('username').eq('id', currentUser.id).single();
+
+  // Optimistic append so sender sees message immediately
+  const optimistic = {
+    country_id: engine.country.id,
+    player_name: profile.username,
+    content,
+    created_at: new Date().toISOString(),
+  };
+  const chatDiv = document.getElementById('chatMsgs');
+  if (chatDiv && rightTab === 'chat') {
+    chatDiv.insertAdjacentHTML('beforeend', chatMsgHtml(optimistic));
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+  }
+
   await sb.from('messages').insert({
     game_id: GAME_ID,
     country_id: engine.country.id,
     player_name: profile.username,
     content,
   });
-  input.value = '';
 }
 
 // ── REALTIME ──────────────────────────────────────────
@@ -2484,6 +2501,9 @@ function setupRealtime() {
     renderMap();
   });
   engine.subscribeToMessages(m => {
+    const isOwn = engine.country && m.country_id === engine.country.id;
+    // Own messages are shown optimistically in sendChat — skip realtime echo
+    if (isOwn) return;
     const panelOpen = document.querySelector('.right-panel')?.classList.contains('open');
     if (rightTab === 'chat' && panelOpen) {
       const chatDiv = document.getElementById('chatMsgs');
