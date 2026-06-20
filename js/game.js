@@ -70,6 +70,28 @@ class GameEngine {
       await this._enforceMarketCap();
     }
 
+    await this.loadBoats();
+
+    console.log('%c⛵ PixelRealms — Run this SQL in Supabase if boats table is missing:', 'color:#f59e0b;font-weight:bold');
+    console.log(`create table if not exists boats (
+  id uuid primary key default gen_random_uuid(),
+  game_id uuid references games(id) on delete cascade,
+  country_id uuid references countries(id) on delete cascade,
+  from_harbor_id uuid references infrastructure(id) on delete set null,
+  to_x integer not null,
+  to_y integer not null,
+  mode text not null check (mode in ('expand','attack')),
+  path jsonb not null default '[]',
+  current_step integer default 0,
+  status text not null default 'sailing' check (status in ('sailing','arrived','failed','cancelled')),
+  created_at timestamptz default now(),
+  arrives_at timestamptz
+);
+alter table boats enable row level security;
+create policy "read boats" on boats for select using (true);
+create policy "insert boats" on boats for insert with check (true);
+create policy "update boats" on boats for update using (true);`);
+
     return this;
   }
 
@@ -175,8 +197,10 @@ class GameEngine {
     const hourlyIncome = (baseIncome + mineIncome + farmIncome + tradingPostIncome) * foodMult;
     const pixelUpkeep = Math.max(0, upkeepPerPx * this.country.pixel_count);
     const armyUpkeep = this.country.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
+    const harborCount = myInfra.filter(i => i.type === 'harbor').length;
+    const harborUpkeep = harborCount * CONFIG.INFRA_COSTS.harbor.upkeepPerHour;
     const currentGold = Number.isFinite(this.country.gold) ? this.country.gold : 0;
-    const newGold = Math.max(0, Math.round((currentGold + (hourlyIncome - pixelUpkeep - armyUpkeep - border.cost) * hoursOffline) * 10000) / 10000);
+    const newGold = Math.max(0, Math.round((currentGold + (hourlyIncome - pixelUpkeep - armyUpkeep - border.cost - harborUpkeep) * hoursOffline) * 10000) / 10000);
 
     // Food offline — capped at 2× population + farms×20
     const foodCap = this.country.pixel_count * CONFIG.POPULATION_PER_PIXEL + farmInfra.length * 20;
@@ -456,6 +480,16 @@ class GameEngine {
         return { ok: false, msg: `Need population of ${requiredPop} for barracks #${existingBarracks + 1}. You have ${population} — expand to ${Math.ceil(requiredPop / CONFIG.POPULATION_PER_PIXEL)} pixels.` };
       }
     }
+    if (type === 'harbor') {
+      const tile = this.mapData?.[y]?.[x];
+      if (!tile || tile.terrain === 'water') return { ok: false, msg: 'Harbors must be built on land.' };
+      const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+      const bordersWater = dirs.some(([dx, dy]) => {
+        const t = this.mapData?.[y + dy]?.[x + dx];
+        return t && t.terrain === 'water';
+      });
+      if (!bordersWater) return { ok: false, msg: 'Harbors must be built on a land tile bordering water.' };
+    }
 
     const { data: infra, error } = await sb.from('infrastructure').insert({
       country_id: this.country.id,
@@ -479,6 +513,205 @@ class GameEngine {
 
     await this._logEvent('build', `${this.country.name} built a ${type} at (${x},${y})`);
     return { ok: true, msg: `Built ${type}! (${cost.effect})` };
+  }
+
+  // ── Boats ─────────────────────────────────────────────────
+  _findWaterPath(fromX, fromY, toX, toY) {
+    const W = this.game.map_width, H = this.game.map_height;
+    const isWater = (x, y) => {
+      if (x < 0 || y < 0 || x >= W || y >= H) return false;
+      return this.mapData?.[y]?.[x]?.terrain === 'water';
+    };
+    // Start tiles: water tiles adjacent to fromX,fromY
+    const starts = [[1,0],[-1,0],[0,1],[0,-1]]
+      .map(([dx,dy]) => [fromX+dx, fromY+dy])
+      .filter(([x,y]) => isWater(x,y));
+    // End tiles: water tiles adjacent to toX,toY
+    const endSet = new Set(
+      [[1,0],[-1,0],[0,1],[0,-1]]
+        .map(([dx,dy]) => [toX+dx, toY+dy])
+        .filter(([x,y]) => isWater(x,y))
+        .map(([x,y]) => `${x},${y}`)
+    );
+    if (!starts.length || !endSet.size) return null;
+
+    const visited = new Set();
+    const queue = starts.map(s => ({ x: s[0], y: s[1], path: [{ x: s[0], y: s[1] }] }));
+    queue.forEach(q => visited.add(`${q.x},${q.y}`));
+
+    while (queue.length) {
+      const { x, y, path } = queue.shift();
+      if (endSet.has(`${x},${y}`)) return path;
+      for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+        const nx = x+dx, ny = y+dy;
+        const key = `${nx},${ny}`;
+        if (!visited.has(key) && isWater(nx, ny)) {
+          visited.add(key);
+          queue.push({ x: nx, y: ny, path: [...path, { x: nx, y: ny }] });
+        }
+      }
+    }
+    return null;
+  }
+
+  async loadBoats() {
+    this.boatData = {};
+    const { data } = await sb.from('boats').select('*')
+      .eq('game_id', this.gameId).eq('status', 'sailing');
+    (data || []).forEach(b => { this.boatData[b.id] = b; });
+
+    const sub = sb.channel(`boats:${this.gameId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'boats', filter: `game_id=eq.${this.gameId}` }, payload => {
+        const b = payload.new || payload.old;
+        if (!b) return;
+        if (b.status === 'sailing') this.boatData[b.id] = b;
+        else delete this.boatData[b.id];
+      }).subscribe();
+    this.realtimeSubs.push(sub);
+  }
+
+  async sendBoat(toX, toY, mode) {
+    if (!this.country) return { ok: false, msg: 'No country.' };
+    const myHarbors = Object.values(this.infraData).filter(i => i.country_id === this.country.id && i.type === 'harbor');
+    if (!myHarbors.length) return { ok: false, msg: 'Build a harbor first (⚓ 180g).' };
+
+    // Target must border water
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    const toTile = this.mapData?.[toY]?.[toX];
+    if (!toTile || toTile.terrain === 'water') return { ok: false, msg: 'Target must be a land tile.' };
+    const toBordersWater = dirs.some(([dx,dy]) => this.mapData?.[toY+dy]?.[toX+dx]?.terrain === 'water');
+    if (!toBordersWater) return { ok: false, msg: 'Target tile must border water to receive a boat.' };
+
+    // Attack validation
+    const targetPixel = this.pixelData[`${toX},${toY}`];
+    if (mode === 'attack') {
+      if (!targetPixel?.country_id || targetPixel.country_id === this.country.id) {
+        return { ok: false, msg: 'Choose an enemy tile to attack by boat.' };
+      }
+    }
+
+    // Find shortest path from any harbor
+    let bestPath = null, bestHarbor = null;
+    for (const h of myHarbors) {
+      const path = this._findWaterPath(h.pixel_x, h.pixel_y, toX, toY);
+      if (path && (!bestPath || path.length < bestPath.length)) {
+        bestPath = path;
+        bestHarbor = h;
+      }
+    }
+    if (!bestPath) return { ok: false, msg: 'No water route found to that tile from any of your harbors.' };
+
+    // For expand: deduct 1 token
+    if (mode === 'expand') {
+      if (this.getLiveTokens() < 1) return { ok: false, msg: 'No expansion tokens available.' };
+      if (targetPixel?.country_id === this.country.id) return { ok: false, msg: 'You already own that tile.' };
+    }
+
+    const now = new Date();
+    const arrivesAt = new Date(now.getTime() + bestPath.length * CONFIG.BOAT_MINUTES_PER_TILE * 60000);
+
+    const { data, error } = await sb.from('boats').insert({
+      game_id: this.gameId,
+      country_id: this.country.id,
+      from_harbor_id: bestHarbor.id,
+      to_x: toX, to_y: toY,
+      mode,
+      path: bestPath,
+      status: 'sailing',
+      created_at: now.toISOString(),
+      arrives_at: arrivesAt.toISOString(),
+    }).select().single();
+
+    if (error) return { ok: false, msg: error.message };
+
+    if (mode === 'expand') {
+      const newPending = this.getLivePending() - 1;
+      await sb.from('countries').update({ pending_pixels: newPending, last_active: now.toISOString() }).eq('id', this.country.id);
+      this.country.pending_pixels = newPending;
+    }
+
+    this.boatData[data.id] = data;
+    const eta = Math.round(bestPath.length * CONFIG.BOAT_MINUTES_PER_TILE);
+    await this._logEvent('build', `${this.country.name} deployed a boat towards (${toX},${toY}) — ETA ${eta} min`);
+    return { ok: true, msg: `⛵ Boat deployed! Arrives in ~${eta} minutes.` };
+  }
+
+  async tickBoats() {
+    if (!this.boatData || !this.country) return;
+    const now = new Date();
+    for (const boat of Object.values(this.boatData)) {
+      if (boat.country_id !== this.country.id) continue;
+      if (new Date(boat.arrives_at) > now) continue;
+
+      const { to_x: x, to_y: y, mode, id } = boat;
+      const key = `${x},${y}`;
+      const targetPixel = this.pixelData[key];
+
+      if (mode === 'expand') {
+        if (!targetPixel?.country_id) {
+          // Claim it
+          await sb.from('pixels').update({ country_id: this.country.id, captured_at: now.toISOString() }).eq('game_id', this.gameId).eq('x', x).eq('y', y);
+          this.pixelData[key] = { ...targetPixel, country_id: this.country.id };
+          await sb.from('countries').update({ pixel_count: this.country.pixel_count + 1 }).eq('id', this.country.id);
+          this.country.pixel_count++;
+          await sb.from('boats').update({ status: 'arrived' }).eq('id', id);
+          await this._logEvent('expand', `${this.country.name}'s boat landed and claimed (${x},${y})!`);
+          showToast(`⛵ Boat landed! Claimed (${x},${y}).`, 'ok');
+        } else {
+          // Tile taken — refund token
+          const newPending = Math.min(CONFIG.MAX_STACK, (this.country.pending_pixels || 0) + 1);
+          await sb.from('countries').update({ pending_pixels: newPending }).eq('id', this.country.id);
+          this.country.pending_pixels = newPending;
+          await sb.from('boats').update({ status: 'failed' }).eq('id', id);
+          await this._logEvent('expand', `${this.country.name}'s boat arrived but (${x},${y}) was already taken. Token refunded.`);
+          showToast(`⛵ Boat failed — tile was taken. Token refunded.`, 'error');
+        }
+      } else if (mode === 'attack') {
+        if (targetPixel?.country_id && targetPixel.country_id !== this.country.id) {
+          // Run combat (same formula, no adjacency needed)
+          const defender = this.countries[targetPixel.country_id];
+          if (defender) {
+            const wall = this.wallData[key];
+            const wallBonus = wall ? CONFIG.INFRA_COSTS.wall.defenseBonus : 0;
+            const terrainDef = (CONFIG.TERRAIN_DEFENSE[targetPixel.terrain] || 1) * (1 + wallBonus);
+            const attackPower = this.country.army_size * (Math.random() * 0.4 + 0.8);
+            const defensePower = defender.army_size * terrainDef * (Math.random() * 0.4 + 0.8);
+            const success = attackPower > defensePower;
+            const attackerLoss = success ? Math.ceil(defensePower * 0.25) : Math.ceil(attackPower * 0.35);
+            const defenderLoss = success ? Math.ceil(defensePower * 0.20) : Math.ceil(attackPower * 0.12);
+            const newAttackerArmy = Math.max(1, this.country.army_size - attackerLoss);
+            const newDefenderArmy = Math.max(1, defender.army_size - defenderLoss);
+            await sb.from('countries').update({ army_size: newAttackerArmy }).eq('id', this.country.id);
+            await sb.from('countries').update({ army_size: newDefenderArmy }).eq('id', defender.id);
+            this.country.army_size = newAttackerArmy;
+            if (success) {
+              await sb.from('pixels').update({ country_id: this.country.id, captured_at: now.toISOString() }).eq('game_id', this.gameId).eq('x', x).eq('y', y);
+              this.pixelData[key] = { ...targetPixel, country_id: this.country.id };
+              await sb.from('countries').update({ pixel_count: this.country.pixel_count + 1 }).eq('id', this.country.id);
+              await sb.from('countries').update({ pixel_count: Math.max(0, defender.pixel_count - 1) }).eq('id', defender.id);
+              this.country.pixel_count++;
+              showToast(`⛵ Boat attack succeeded! Captured (${x},${y}). Lost ${attackerLoss} troops.`, 'ok');
+            } else {
+              showToast(`⛵ Boat attack failed on (${x},${y}). Lost ${attackerLoss} troops.`, 'error');
+            }
+            await sb.from('boats').update({ status: 'arrived' }).eq('id', id);
+            await this._logEvent('attack', `${this.country.name}'s boat attacked ${defender.name} at (${x},${y}) — ${success ? 'SUCCESS' : 'FAILED'}`);
+            const defenderPixelsLeft = Math.max(0, defender.pixel_count - (success ? 1 : 0));
+            if (defenderPixelsLeft <= 0) {
+              await sb.from('countries').update({ is_alive: false, surrendered_at: now.toISOString() }).eq('id', defender.id);
+              this.countries[defender.id] = { ...defender, is_alive: false };
+              await this._checkWinCondition();
+            }
+          } else {
+            await sb.from('boats').update({ status: 'failed' }).eq('id', id);
+          }
+        } else {
+          await sb.from('boats').update({ status: 'failed' }).eq('id', id);
+          showToast(`⛵ Boat arrived but no enemy at (${x},${y}).`, 'error');
+        }
+      }
+      delete this.boatData[id];
+    }
   }
 
   // ── Trade ─────────────────────────────────────────────────
@@ -793,7 +1026,9 @@ async function tickIncome(engine) {
   const hourlyIncome = (baseIncome + farmIncome + mineIncome + tradingPostIncome) * foodMult;
   const pixelUpkeep = Math.max(0, upkeepPerPx * c.pixel_count);
   const armyUpkeep = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
-  const netHourly = hourlyIncome - pixelUpkeep - armyUpkeep - border.cost;
+  const harborCount = myInfra.filter(i => i.type === 'harbor').length;
+  const harborUpkeep = harborCount * CONFIG.INFRA_COSTS.harbor.upkeepPerHour;
+  const netHourly = hourlyIncome - pixelUpkeep - armyUpkeep - border.cost - harborUpkeep;
 
   const tickHours = CONFIG.INCOME_TICK_SECONDS / 3600;
   const tick = netHourly * tickHours;
@@ -823,6 +1058,9 @@ async function tickIncome(engine) {
     const { error } = await sb.from('countries').update({ food_aggression: newAggression }).eq('id', c.id);
     if (!error) engine.country.food_aggression = newAggression;
   }
+
+  // Boat arrivals
+  await engine.tickBoats();
 
   // Army regeneration — barracks refill army up to their cap (barracks × 20) at 0.5/hr per barracks
   // Uses actual wall-clock elapsed time so browser tab throttling doesn't starve regen
