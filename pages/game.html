@@ -1611,10 +1611,7 @@ function renderBoatPanel() {
     </div>
     <div style="padding:0 0.75rem 0.5rem;font-size:0.78rem;text-align:center">${harborHtml}</div>
     ${myBoats.length ? `<div style="padding:0 0.75rem 0.6rem;display:flex;gap:0.4rem;flex-wrap:wrap;justify-content:center">
-      ${myBoats.map(b => {
-        const eta = Math.max(0, Math.round((new Date(b.arrives_at) - now) / 60000));
-        return `<span style="background:var(--panel2);border-radius:6px;padding:0.2rem 0.5rem;font-size:0.75rem;white-space:nowrap">${b.mode === 'expand' ? '🏝️' : '⚔️'} (${b.to_x},${b.to_y}) <span style="color:var(--blue)">~${eta}m</span></span>`;
-      }).join('')}
+      ${boatsHtml}
     </div>` : ''}
   `;
 }
