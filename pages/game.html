@@ -2365,7 +2365,10 @@ function showAttackPreview(tx, ty) {
     <div style="margin-top:0.5rem">Your army: <strong style="color:var(--red)">${myArmy}</strong></div>
     <div>Their army: <strong>${theirArmy}</strong>${wall ? '' : ` (effective: ${effectiveDef.toFixed(0)})`}</div>
     <div style="margin-top:0.75rem;font-size:0.95rem">${outcome}</div>
-    <div style="font-size:0.75rem;color:var(--muted);margin-top:0.25rem">Both sides lose troops regardless of outcome.</div>
+    <div style="font-size:0.75rem;color:var(--muted);margin-top:0.25rem;line-height:1.7">
+      If you <strong style="color:var(--green)">win</strong>: you lose ~${Math.ceil(effectiveDef * 0.25)} troops · they lose ~${Math.ceil(effectiveDef * 0.20)} troops<br>
+      If you <strong style="color:var(--red)">lose</strong>: you lose ~${Math.ceil(myArmy * 0.35)} troops · they lose ~${Math.ceil(myArmy * 0.12)} troops
+    </div>
     <div style="margin-top:0.6rem;padding:0.4rem 0.6rem;background:rgba(239,68,68,0.08);border-radius:6px;border:1px solid rgba(239,68,68,0.2);font-size:0.75rem;line-height:1.8">
       <div style="font-weight:600;color:var(--text);margin-bottom:0.2rem">🍞 Food impact (win or lose)</div>
       <div>Army rate: ${curArmyRate} → <span style="color:var(--red)">${newArmyRate}/unit</span> (+${CONFIG.FOOD_AGGRESSION_PER_ATTACK.toFixed(2)})</div>

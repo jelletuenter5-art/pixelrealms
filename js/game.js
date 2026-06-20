@@ -305,11 +305,11 @@ class GameEngine {
 
     const success = attackPower > defensePower;
     const attackerLoss = success
-      ? Math.ceil(defensePower * 0.3)
-      : Math.ceil(attackPower * 0.5);
+      ? Math.ceil(defensePower * 0.25)
+      : Math.ceil(attackPower * 0.35);
     const defenderLoss = success
-      ? Math.ceil(defensePower * 0.5)
-      : Math.ceil(attackPower * 0.2);
+      ? Math.ceil(defensePower * 0.20)
+      : Math.ceil(attackPower * 0.12);
 
     // Apply losses
     const newAttackerArmy = Math.max(1, this.country.army_size - attackerLoss);
