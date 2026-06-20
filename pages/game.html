@@ -1334,7 +1334,8 @@ function openManageBuilding(x, y) {
   const wall = engine.wallData?.[`${x},${y}`];
   if (!infra) return;
   const cost = CONFIG.INFRA_COSTS[infra.type];
-  document.getElementById('manageBuildingTitle').textContent = `${INFRA_ICONS[infra.type] || '🏗️'} ${infra.type === 'trading_post' ? 'Trading Post' : infra.type.charAt(0).toUpperCase() + infra.type.slice(1)}${wall ? ' · 🧱 Fortified' : ''}`;
+  const typeLabel = infra.type === 'trading_post' ? 'Trading Post' : infra.type === 'wall' ? 'Fortification' : infra.type.charAt(0).toUpperCase() + infra.type.slice(1);
+  document.getElementById('manageBuildingTitle').textContent = `${INFRA_ICONS[infra.type] || '🏗️'} ${typeLabel}${wall ? ' · 🧱 Fortified' : ''}`;
   const tile = mapData?.[y]?.[x];
   const terrain = tile?.terrain || 'grass';
   const terrainLabel = terrain.charAt(0).toUpperCase() + terrain.slice(1);
@@ -2157,7 +2158,8 @@ function renderInfra(body) {
 
 async function deleteBuilding(infraId, type, x, y) {
   const refund = Math.floor(CONFIG.INFRA_COSTS[type].gold * 0.25);
-  if (!confirm(`Permanently delete ${type} at (${x},${y})? You'll get ${refund}g back (25% refund).`)) return;
+  const deleteLabel = type === 'trading_post' ? 'Trading Post' : type === 'wall' ? 'Fortification' : type.charAt(0).toUpperCase() + type.slice(1);
+  if (!confirm(`Permanently delete ${deleteLabel} at (${x},${y})? You'll get ${refund}g back (25% refund).`)) return;
   const { error } = await sb.from('infrastructure').delete().eq('id', infraId);
   if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
 
@@ -2336,7 +2338,7 @@ function showAttackPreview(tx, ty) {
   document.getElementById('attackPreviewBody').innerHTML = `
     <div>Target: <strong style="color:${defender.color}">${defender.flag_emoji || ''} ${defender.name}</strong></div>
     <div>Tile: <strong>${tile.terrain}</strong> · 🛡️ Terrain ×${terrainDef.toFixed(2)}${wall ? ` · 🧱 Fortified ×${(1 + wallBonus).toFixed(2)}` : ''}</div>
-    ${wall ? `<div style="font-size:0.78rem;color:var(--muted)">🧱 Wall adds +${(wallBonus*100).toFixed(0)}% defense → total ×${totalDef.toFixed(2)} (effective army: ${effectiveDef.toFixed(0)})</div>` : ''}
+    ${wall ? `<div style="font-size:0.78rem;color:var(--muted)">🧱 Fortification adds +${(wallBonus*100).toFixed(0)}% defense → total ×${totalDef.toFixed(2)} (effective army: ${effectiveDef.toFixed(0)})</div>` : ''}
     <div style="margin-top:0.5rem">Your army: <strong style="color:var(--red)">${myArmy}</strong></div>
     <div>Their army: <strong>${theirArmy}</strong>${wall ? '' : ` (effective: ${effectiveDef.toFixed(0)})`}</div>
     <div style="margin-top:0.75rem;font-size:0.95rem">${outcome}</div>
