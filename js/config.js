@@ -47,7 +47,7 @@ const CONFIG = {
     harbor:   { gold: 180, effect: 'Deploy boats to unclaimed or enemy tiles across water · 10💰/hr upkeep', upkeepPerHour: 10 },
     trading_post: { gold: 160, effect: '+1💰/hr flat + 2💰/hr per neighboring nation (terrain-adjusted)', flatIncome: 1, incomePerNation: 2 },
   },
-  BOAT_MINUTES_PER_TILE: 2,
+  BOAT_MINUTES_PER_TILE: 4,
   TRADING_POST_TERRAIN_MULT: { desert: 1.5, hill: 1.1, grass: 0.9, mountain: 0.5, water: 0 },
   TOKEN_BUY_COST: 1000,            // gold cost to buy 1 expansion token
   TERRAIN_DEFENSE: {
