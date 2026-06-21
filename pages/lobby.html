@@ -546,6 +546,7 @@ async function loadMyGames() {
         <span>🗺️ ${c.pixel_count} pixels</span>
         <span>💰 ${Math.floor(c.gold)} gold</span>
         <span>👥 ${g.current_players || 0}/${g.max_players} players</span>
+        <span>📅 Day ${Math.floor((Date.now() - new Date(g.created_at).getTime()) / 86400000)}</span>
       </div>
       ${deleteWarning}
       <div style="margin-top:0.75rem; display:flex; justify-content:space-between; align-items:center">
