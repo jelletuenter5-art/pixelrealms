@@ -1990,7 +1990,7 @@ async function spectateCountry(id, fromClick = false) {
       ${markets > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🏪 ${markets} market${markets>1?'s':''} savings</span><span style="color:var(--green)">+${(Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, 0.3) * c.pixel_count).toFixed(1)} 💰/hr</span></div>` : ''}
       <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚔️ Army (${CONFIG.ARMY_UPKEEP_PER_UNIT}💰 × ${c.army_size} units)</span><span style="color:var(--red)">−${armyUpkeep.toFixed(1)} 💰/hr</span></div>
       ${borderSp.nations > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🚧 Border pixels (${borderSp.borderPixels} × ${CONFIG.BORDER_UPKEEP_PER_NATION}💰/hr)</span><span style="color:var(--red)">−${borderSp.cost.toFixed(1)} 💰/hr</span></div>` : ''}
-      ${harborsSp > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚓ ${harborsSp} harbor${harborsSp>1?'s':''} (${CONFIG.INFRA_COSTS.harbor.upkeepPerHour}💰/hr each)</span><span style="color:var(--red)">−${harborUpkeepSp.toFixed(1)} 💰/hr</span></div>` : ''}
+      ${harborsSp > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚓ ${harborsSp} harbor${harborsSp>1?'s':''} (${CONFIG.INFRA_COSTS.harbor.upkeepPerHour}💰/hr each)</span><span style="color:var(--red)">−${harborUpkeepSp.toFixed(1)} 💰/hr</span></div>` : `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚓ Harbors (none built)</span><span style="color:var(--muted)">−0 💰/hr</span></div>`}
     </div>
     <div class="section-label">🍞 Food & Population</div>
     <div style="font-size:0.78rem;line-height:1.9;margin-bottom:0.75rem">
@@ -2202,10 +2202,10 @@ async function renderMyCountry(body) {
         <span style="color:var(--muted)">🚧 Border pixels (${border.borderPixels} × ${CONFIG.BORDER_UPKEEP_PER_NATION}💰/hr each)</span>
         <span style="${border.cost > 0 ? 'color:var(--red)' : 'color:var(--muted)'}">−${border.cost.toFixed(1)} 💰/hr</span>
       </div>
-      ${harborsCount > 0 ? `<div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">⚓ Harbors (${harborsCount} × ${CONFIG.INFRA_COSTS.harbor.upkeepPerHour}💰/hr)</span>
-        <span style="color:var(--red)">−${harborUpkeep.toFixed(1)} 💰/hr</span>
-      </div>` : ''}
+      <div style="display:flex;justify-content:space-between">
+        <span style="color:var(--muted)">${harborsCount > 0 ? `⚓ Harbors (${harborsCount} × ${CONFIG.INFRA_COSTS.harbor.upkeepPerHour}💰/hr)` : '⚓ Harbors (none built)'}</span>
+        <span style="${harborsCount > 0 ? 'color:var(--red)' : 'color:var(--muted)'}">−${harborUpkeep.toFixed(1)} 💰/hr</span>
+      </div>
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
         <span style="color:var(--text);font-weight:600">Total upkeep</span>
         <span style="color:var(--red);font-weight:700">−${upkeep} 💰/hr</span>
