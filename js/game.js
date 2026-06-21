@@ -111,9 +111,6 @@ create policy "update boats" on boats for update using (true);`);
     // Correct pixel_count if actual pixels differ — also handles the case where
     // a player lost all pixels but pixel_count was never zeroed (e.g. water-spawn edge case)
     if (correctPixelCount !== this.country.pixel_count) updates.pixel_count = correctPixelCount;
-    // Bootstrap pixels_captured for countries created before this stat was tracked —
-    // ensures it's always >= pixel_count so the leaderboard never decreases on pixel loss
-    if ((this.country.pixels_captured || 0) < correctPixelCount) updates.pixels_captured = correctPixelCount;
     // If pixel_count is now 0 and they're still marked alive, eliminate them
     if (correctPixelCount === 0 && this.country.is_alive) {
       updates.is_alive = false;
@@ -301,7 +298,7 @@ create policy "update boats" on boats for update using (true);`);
     const newPending = this.getLivePending() - 1;
     const newCount = this.country.pixel_count + 1;
     const { data: updatedCountry } = await sb.from('countries')
-      .update({ pending_pixels: newPending, pixel_count: newCount, pixels_captured: (this.country.pixels_captured || 0) + 1, last_active: new Date().toISOString() })
+      .update({ pending_pixels: newPending, pixel_count: newCount, last_active: new Date().toISOString() })
       .eq('id', this.country.id).select().single();
 
     if (updatedCountry) this.country = updatedCountry;
@@ -669,9 +666,8 @@ create policy "update boats" on boats for update using (true);`);
           // Claim it
           await sb.from('pixels').update({ country_id: this.country.id, captured_at: now.toISOString() }).eq('game_id', this.gameId).eq('x', x).eq('y', y);
           this.pixelData[key] = { ...targetPixel, country_id: this.country.id };
-          await sb.from('countries').update({ pixel_count: this.country.pixel_count + 1, pixels_captured: (this.country.pixels_captured || 0) + 1 }).eq('id', this.country.id);
+          await sb.from('countries').update({ pixel_count: this.country.pixel_count + 1 }).eq('id', this.country.id);
           this.country.pixel_count++;
-          this.country.pixels_captured = (this.country.pixels_captured || 0) + 1;
           await sb.from('boats').update({ status: 'arrived' }).eq('id', id);
           await this._logEvent('expand', `${this.country.name}'s boat landed and claimed (${x},${y})!`);
           showToast(`⛵ Boat landed! Claimed (${x},${y}).`, 'ok');

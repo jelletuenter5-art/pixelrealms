@@ -824,7 +824,7 @@ async function createWorld(category) {
 async function loadLeaderboard() {
   const [{ data: profiles }, { data: countries }] = await Promise.all([
     sb.from('profiles').select('*'),
-    sb.from('countries').select('player_id, pixels_captured, is_alive'),
+    sb.from('countries').select('player_id, pixel_count, pixels_lost, is_alive'),
   ]);
 
   if (!profiles || profiles.length === 0) {
@@ -832,11 +832,12 @@ async function loadLeaderboard() {
     return;
   }
 
-  // pixels_captured is bootstrapped on login to be >= pixel_count, and only ever goes up
+  // pixel_count + pixels_lost = total pixels ever held (never decreases when you lose pixels)
+  // Works for all players including offline ones and unopened games — no bootstrap needed
   const livePixels = {};
   const liveGames = {};
   (countries || []).forEach(c => {
-    livePixels[c.player_id] = (livePixels[c.player_id] || 0) + (c.pixels_captured || 0);
+    livePixels[c.player_id] = (livePixels[c.player_id] || 0) + (c.pixel_count || 0) + (c.pixels_lost || 0);
     if (c.is_alive) liveGames[c.player_id] = (liveGames[c.player_id] || 0) + 1;
   });
 
@@ -1083,14 +1084,14 @@ function spectateEventRealm(gameId) {
   window.location.href = `game.html?game=${gameId}&spectate=1`;
 }
 
-// Before deleting a game, save each country's pixels_captured into profiles.total_pixels_ever
+// Before deleting a game, save each country's total-ever pixels into profiles.total_pixels_ever
 async function archiveGamePixels(gameId) {
-  const { data: countries } = await sb.from('countries').select('player_id, pixels_captured').eq('game_id', gameId);
+  const { data: countries } = await sb.from('countries').select('player_id, pixel_count, pixels_lost').eq('game_id', gameId);
   if (!countries?.length) return;
-  // Group by player_id
+  // pixel_count + pixels_lost = total pixels ever held in this game
   const byPlayer = {};
   for (const c of countries) {
-    byPlayer[c.player_id] = (byPlayer[c.player_id] || 0) + (c.pixels_captured || 0);
+    byPlayer[c.player_id] = (byPlayer[c.player_id] || 0) + (c.pixel_count || 0) + (c.pixels_lost || 0);
   }
   for (const [playerId, captured] of Object.entries(byPlayer)) {
     if (!captured) continue;
