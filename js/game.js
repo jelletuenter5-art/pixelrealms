@@ -123,10 +123,9 @@ create policy "update boats" on boats for update using (true);`);
     }
     if (Math.abs(correctIncome - this.country.income_per_pixel) > 1e-6) updates.income_per_pixel = correctIncome;
     if (Math.abs(correctUpkeep - this.country.army_upkeep_per_pixel) > 1e-6) updates.army_upkeep_per_pixel = correctUpkeep;
-    // Repair gold if it's null, NaN, or zero — could happen from a bad offline accrual
-    // (income_per_pixel was null for a new player, draining gold to 0 over a long offline period)
-    if (this.country.gold == null || isNaN(this.country.gold) || this.country.gold <= 0) {
-      updates.gold = CONFIG.STARTING_GOLD;
+    // Repair gold only if it's null or NaN — never reset negative gold
+    if (this.country.gold == null || isNaN(this.country.gold)) {
+      updates.gold = 0;
     }
 
     if (Object.keys(updates).length > 0) {
