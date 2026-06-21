@@ -761,14 +761,16 @@ create policy "update boats" on boats for update using (true);`);
   }
 
   // ── Trade ─────────────────────────────────────────────────
-  async offerTrade(toCountryId, goldAmount) {
+  async offerTrade(toCountryId, goldAmount, message) {
     if (this.country.gold < goldAmount) return { ok: false, msg: 'Not enough gold.' };
-    const { error } = await sb.from('trades').insert({
+    const row = {
       game_id: this.gameId,
       from_country_id: this.country.id,
       to_country_id: toCountryId,
       gold_offered: goldAmount,
-    });
+    };
+    if (message) row.message = message.slice(0, 200);
+    const { error } = await sb.from('trades').insert(row);
     if (error) return { ok: false, msg: error.message };
     return { ok: true, msg: 'Trade offer sent!' };
   }

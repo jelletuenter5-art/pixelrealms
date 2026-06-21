@@ -1804,7 +1804,8 @@ async function renderTrade(body) {
         <span style="font-weight:600;font-size:0.88rem">${t.from_country?.name}</span>
         <span style="color:var(--muted);font-size:0.75rem;margin-left:auto">wants to send you</span>
       </div>
-      <div style="font-size:1.3rem;font-weight:800;color:var(--gold);margin-bottom:0.6rem">💰 ${t.gold_offered} gold</div>
+      <div style="font-size:1.3rem;font-weight:800;color:var(--gold);margin-bottom:${t.message ? '0.35rem' : '0.6rem'}">💰 ${t.gold_offered} gold</div>
+      ${t.message ? `<div style="font-size:0.8rem;color:var(--text);background:var(--panel);border-radius:6px;padding:0.35rem 0.5rem;margin-bottom:0.6rem;border-left:2px solid var(--gold);font-style:italic">"${escapeHtml(t.message)}"</div>` : ''}
       <div style="display:flex;gap:0.5rem">
         <button onclick="acceptTrade('${t.id}')" style="flex:1;padding:0.45rem;border-radius:7px;border:none;background:linear-gradient(135deg,#166534,#15803d);color:#fff;font-weight:700;cursor:pointer;font-size:0.82rem">✓ Accept</button>
         <button onclick="rejectTrade('${t.id}')" style="padding:0.45rem 0.75rem;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:0.82rem">✕ Decline</button>
@@ -1819,6 +1820,7 @@ async function renderTrade(body) {
       </div>
       <div style="text-align:right">
         <div style="color:var(--gold);font-weight:700">💰 ${t.gold_offered}g</div>
+        ${t.message ? `<div style="font-size:0.7rem;color:var(--muted);font-style:italic;margin-top:0.15rem;max-width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">"${escapeHtml(t.message)}"</div>` : ''}
         <button onclick="cancelTrade('${t.id}')" style="font-size:0.72rem;padding:0.2rem 0.5rem;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;margin-top:0.25rem">Cancel</button>
       </div>
     </div>`).join('') || '<div style="color:var(--muted);font-size:0.82rem;padding:0.25rem 0">No outgoing offers</div>';
@@ -1850,6 +1852,7 @@ async function renderTrade(body) {
         ${countries.map(c => `<option value="${c.id}">${c.flag_emoji || ''} ${c.name}</option>`).join('')}
       </select>
       <input type="number" id="tradeAmount" placeholder="Amount of gold to send" min="1" max="${engine.country.gold}" style="width:100%;font-size:0.85rem;margin-bottom:0.5rem">
+      <input type="text" id="tradeMessage" placeholder="Message (optional)" maxlength="200" style="width:100%;font-size:0.82rem;margin-bottom:0.5rem;background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:0.45rem 0.6rem;color:var(--text)">
       <button onclick="sendTrade()" style="width:100%;padding:0.55rem;border-radius:7px;border:none;background:linear-gradient(135deg,#92400e,#b45309);color:#fff;font-weight:700;cursor:pointer;font-size:0.85rem">Send Offer</button>
       <div id="tradeGoldDisplay" style="font-size:0.72rem;color:var(--muted);margin-top:0.4rem">You have 💰 ${Math.floor(engine.country.gold)} gold</div>
     </div>
@@ -1885,8 +1888,9 @@ async function cancelTrade(id) {
 async function sendTrade() {
   const toId = document.getElementById('tradeTarget').value;
   const amount = parseInt(document.getElementById('tradeAmount').value);
+  const message = document.getElementById('tradeMessage')?.value.trim();
   if (!toId || !amount || amount < 1) { showToast('Fill in both fields.', 'error'); return; }
-  const res = await engine.offerTrade(toId, amount);
+  const res = await engine.offerTrade(toId, amount, message);
   showToast(res.msg, res.ok ? 'ok' : 'error');
   renderLeftPanel();
 }
