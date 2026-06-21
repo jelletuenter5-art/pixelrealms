@@ -388,121 +388,106 @@
     <button onclick="closeTutorial()" style="position:sticky;top:0;float:right;background:rgba(17,24,39,0.85);border:1px solid var(--border);border-radius:50%;width:28px;height:28px;color:var(--muted);font-size:1rem;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;z-index:10;backdrop-filter:blur(4px)">✕</button>
     <h3 style="font-family:'Cinzel',serif;margin-bottom:1rem">How to Play PixelRealms</h3>
 
-    <div class="section-label" style="margin-top:0">🌱 Expand</div>
+    <div class="section-label" style="margin-top:0">🗺️ The Map</div>
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
+      PixelRealms is a real-time multiplayer strategy game. Every player controls a nation on a shared map.
+      Scroll to zoom, drag to pan. Tap the <strong>🗺️ terrain button</strong> (bottom-left) to reveal the underlying landscape — grass, hills, mountains, desert, and water all affect income and combat.
+      Click any nation in the <strong>Nations</strong> tab to jump to it on the map.
+    </p>
+
+    <div class="section-label">🌱 Expanding Your Territory</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
       You earn <strong>1 expansion token per hour</strong> (max 24 stacked) — shown as 🎯 in the top bar.
-      Switch to <strong>Expand</strong> mode and click an unclaimed tile next to your territory to
-      claim it for 1 token. Water tiles can't be claimed. You can also <strong>buy tokens</strong> for 1000 gold each.
+      Switch to <strong>Expand</strong> mode and click any unclaimed tile directly next to your territory to claim it for 1 token.
+      Water tiles cannot be claimed on foot. You can also <strong>buy tokens</strong> for 1,000 💰 each when you need to expand faster.
     </p>
 
-    <div class="section-label">🗺️ Terrain Overlay</div>
+    <div class="section-label">🏗️ Buildings</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Tap the <strong>🗺️ button</strong> (bottom-left, below the zoom buttons) to switch to terrain view.
-      Owned tiles show their underlying terrain color blended with a hint of the nation's color so you can still tell countries apart.
-      Nation borders stay visible. Tap again to switch back to normal view.
-    </p>
-
-    <div class="section-label">⚔️ Attack</div>
-    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Switch to <strong>Attack</strong> mode and click an enemy tile next to your territory.
-      Your army size vs. their army size (modified by terrain defense —
-      hills and mountains defend better) decides the outcome. Winning captures the tile and
-      damages both armies; losing still costs you troops. Eliminate a nation by taking all their pixels.
-      If the captured tile has a building, there's a <strong>50% chance</strong> it transfers to you and a 50% chance it's destroyed.
-    </p>
-
-    <div class="section-label">🏗️ Build</div>
-    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Switch to <strong>Build</strong> mode and click one of <strong>your own tiles</strong> to open a building menu.
-      Clicking a tile with an existing building shows a popup where you can <strong>delete it</strong> (no refund).
+      Switch to <strong>Build</strong> mode and click one of your own tiles to open the building menu.
+      Clicking a tile that already has a building lets you <strong>delete it</strong> for a 25% gold refund.
     </p>
     <p style="font-size:0.85rem;color:var(--accent);line-height:1.6;margin-bottom:0.4rem">
-      ⚠️ <strong>Building cap: 1 building per 2 pixels.</strong> With 10 pixels you can have at most 5 buildings.
-      Expand your territory to unlock more slots — your current usage is shown in My Realm.
+      ⚠️ <strong>Building cap: 1 building per 2 pixels.</strong> A 10-pixel nation can have at most 5 buildings. Expand to unlock more slots.
     </p>
     <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.25rem">
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
         <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🌾 Farm <span style="color:var(--gold);font-weight:400">100g</span></div>
-        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+0.04 💰/px/hr nation-wide · +5 food/hr</div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+0.04 💰/px/hr income nation-wide · +5 food/hr</div>
         <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Terrain: grass 1.5× · hill 1.0× · mountain 0.5× · desert 0.3×</div>
       </div>
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
         <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">⛏️ Mine <span style="color:var(--gold);font-weight:400">120g</span></div>
-        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+12 💰/hr flat + 0.02 💰/px/hr · each extra mine slightly reduces the flat rate</div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+12 💰/hr flat + 0.02 💰/px/hr hybrid income · each extra mine slightly reduces the flat rate</div>
         <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Terrain: mountain 1.8× · hill 1.3× · grass 0.9× · desert 0.5×</div>
       </div>
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🏛️ Trading Post <span style="color:var(--gold);font-weight:400">160g</span></div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+1 💰/hr flat + 5 💰/hr per unique neighbouring nation · rewards you for bordering many players</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Terrain: desert 1.5× · hill 1.1× · grass 0.9× · mountain 0.5×</div>
+      </div>
+      <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
         <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🏪 Market <span style="color:var(--gold);font-weight:400">250g</span></div>
-        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">−0.015 💰/px/hr territory upkeep · +0.001 war decay/hr per market · max 20</div>
-        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">20 markets cancels territory upkeep · 10 mkt → 0.04 decay/hr · 20 mkt → 0.05 decay/hr</div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">−0.015 💰/px/hr territory upkeep (max 20) · +0.001 war aggression decay/hr per market</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">20 markets fully cancels territory upkeep · also speeds up recovery from war</div>
       </div>
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
         <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">⚔️ Barracks <span style="color:var(--gold);font-weight:400">150g</span></div>
-        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+20 army instantly · regenerates 0.5 army/hr per barracks up to 20/barracks cap</div>
-        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Requires 100 population per barracks · no terrain effect</div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+20 army instantly · regenerates 0.5 army/hr per barracks (cap: 20 army per barracks)</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Requires 100 population per barracks — roughly 1 per 7 pixels</div>
       </div>
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
         <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🧱 Fortification <span style="color:var(--gold);font-weight:400" id="htpWallCost">80g</span></div>
-        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+50% defense on that tile when attacked · visible as gold border lines on the map</div>
-        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">No building cap · stacks with other buildings · destroyed if the tile is captured</div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+50% defense on that tile when attacked · shown as gold border lines on the map</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Does not count toward building cap · stacks with other buildings · lost if the tile is captured</div>
       </div>
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
-        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🏛️ Trading Post <span style="color:var(--gold);font-weight:400">160g</span></div>
-        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+1 💰/hr flat + 2 💰/hr per unique neighboring nation · scales with how many nations you border</div>
-        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Terrain: desert 1.5× · hill 1.1× · grass 0.9× · mountain 0.5×</div>
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">⚓ Harbour <span style="color:var(--gold);font-weight:400">180g</span></div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">Unlocks boats — must be built on a land tile that borders water · 10 💰/hr upkeep</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Place strategically — each harbour costs upkeep whether or not you're using it</div>
       </div>
     </div>
 
     <div class="section-label">💰 Economy</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Each pixel earns <strong>1 💰/hr</strong> base. Mines and farms add income on top. Your army costs
-      <strong>0.5 💰/hr per unit</strong>, and territory costs <strong>0.3 💰/px/hr</strong> (each market reduces this by 0.015, max 20 markets — at cap your territory upkeep is fully cancelled).
-      You also pay <strong>10 💰/hr per border pixel</strong> — each of your pixels touching an enemy tile adds upkeep, so compact empires are cheaper to defend than sprawling ones.
-      Watch <strong>Net gold/hr</strong> in <strong>My Realm</strong> — if it's negative your gold drains, but it will never go below 0.
-    </p>
-
-    <div class="section-label">⚔️ Attacking &amp; War Aggression</div>
-    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Attacking costs your troops no matter the outcome. Each attack (win or lose) raises your army's
-      <strong>food consumption rate by +0.05/unit</strong> — so a 100-army nation goes from 10 food/hr to 15 food/hr after one attack.
-      This <strong>war aggression decays at −0.03/hr</strong> base rate (boosted by Markets up to −0.05/hr with 20 markets), so your supply lines recover if you stop fighting.
-      Stocking up food reserves before a war is key — if your stored food drops below <strong>50% of your population</strong>, your gold income is penalised by up to <strong>−80%</strong>.
-      The attack preview shows exactly how your food balance will change before you confirm.
+      Each pixel earns <strong>1 💰/hr</strong> base income. Buildings like mines, farms, and trading posts add to this.
+      Your costs are: <strong>0.3 💰/px/hr</strong> territory upkeep (reduced by markets), <strong>0.5 💰/hr per army unit</strong>, and <strong>10 💰/hr per border pixel</strong> — each of your tiles touching an enemy tile adds upkeep, so compact empires cost less to defend than sprawling ones.
+      Border upkeep is capped at your gross income, so being surrounded can never trap you in an inescapable spiral.
+      Check <strong>My Realm → Balance</strong> to see your live net gold/hr. Gold never drops below 0.
     </p>
 
     <div class="section-label">👥 Population &amp; 🌽 Food</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Your nation has <strong>15 population per pixel</strong>. Population unlocks barracks (100 pop per barracks, so roughly 1 per 7 pixels).
-      Each pixel produces <strong>0.5 food/hr</strong> (foraging) and consumes <strong>0.2 food/hr</strong>.
-      Your army consumes <strong>0.1 food/hr per unit</strong> at peace — this rises with war aggression (see above).
-      Build farms to cover deficits: each farm produces <strong>5 food/hr</strong>, boosted by terrain.
-      If your stored food drops below <strong>50% of your population</strong>, your gold income is reduced by up to <strong>−80%</strong> — so stockpile food before long campaigns.
-      Food is capped at <strong>your total population + 20 per farm built</strong>. Expand your territory or build farms to raise the cap.
+      Each pixel gives you <strong>15 population</strong>, which unlocks barracks (100 pop each).
+      Your land produces <strong>0.5 food/hr per pixel</strong> (foraging) and consumes <strong>0.2 food/hr per pixel</strong>.
+      Your army eats <strong>0.1 food/hr per unit</strong> at peace — this rises during war.
+      Build farms to keep your food in surplus. Food is capped at <strong>total population + 20 per farm</strong>.
+      If your stored food drops below <strong>50% of your population</strong>, your gold income is penalised by up to <strong>−80%</strong> — always stockpile food before going to war.
     </p>
 
-    <div class="section-label">⚓ Harbors &amp; Boats</div>
+    <div class="section-label">⚓ Harbours &amp; Boats</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Build a <strong>Harbor (⚓ 180g)</strong> on a land tile that borders water to unlock boats. Each harbor costs <strong>10💰/hr upkeep</strong> — place them strategically.
-      Switch to <strong>Boat</strong> mode, choose <em>Expand</em> or <em>Attack</em>, then click any reachable tile across water.
-      The boat departs from your nearest harbor and sails the fastest water route at <strong>1 tile per 2 minutes</strong>.
+      Build a <strong>Harbour (⚓ 180g)</strong> on any land tile bordering water. Then switch to <strong>Boat</strong> mode and click any reachable tile across water — the game auto-detects whether to expand or attack.
+      The boat departs from your nearest harbour, follows the fastest water route, and arrives at <strong>4 minutes per tile</strong>.
     </p>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      <strong>Expand by boat:</strong> costs 1 expansion token. Claims the tile on arrival if it's still unclaimed — if it's been taken, your token is refunded.<br>
-      <strong>Attack by boat:</strong> resolves combat using current armies when the boat arrives. The tile must still be enemy-owned on arrival.<br>
-      All boats are visible to all players. Only you see the dashed route line to your destination.
+      <strong>Expand by boat:</strong> costs 1 expansion token. If the tile is taken before arrival, your token is refunded.<br>
+      <strong>Attack by boat:</strong> combat resolves on arrival using current army sizes. The tile must still be enemy-owned.<br>
+      All boats are visible to everyone. Only you see the dashed route line to your destination. You can cancel a boat at any time from the bottom panel.
+    </p>
+
+    <div class="section-label">⚔️ Attack &amp; War</div>
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
+      Switch to <strong>Attack</strong> mode and click an enemy tile bordering your territory. Your army vs. their army (modified by terrain — hills and mountains defend better) decides the outcome. Both sides lose troops whether you win or lose. Capture all of an enemy's pixels to eliminate them.
+      If a captured tile has a building, there's a <strong>50% chance</strong> it transfers to you and a 50% chance it's destroyed.
+    </p>
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
+      Each attack raises your <strong>war aggression</strong>, which increases your army's food consumption. Aggression decays over time (faster with markets). Keep an eye on the <strong>War Aggression</strong> section in My Realm — it shows your current status, the progress bar, and your estimated time to peace. Sustained wars without enough food can cripple your economy, so plan your campaigns carefully.
     </p>
 
     <div class="section-label">🤝 Trade</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Send gold to other nations from the <strong>Trade</strong> tab — useful for alliances
-      or buying peace.
-    </p>
-
-    <div class="section-label">🗺️ Map</div>
-    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Each nation's territory is outlined with dark borders and its name shown over its land.
-      Scroll to zoom, drag to pan, and click a nation in the <strong>Nations</strong> tab
-      to jump to it.
+      Open the <strong>Trade</strong> tab to send gold to another nation. You can attach a message to your offer — useful for proposing alliances, buying peace, or coordinating with allies. The recipient can accept or decline.
     </p>
 
     <button class="btn btn-primary btn-full" onclick="closeTutorial()">Got it!</button>
@@ -1325,7 +1310,7 @@ async function handleClick(e) {
     showAttackPreview(tx, ty);
   } else if (currentMode === 'boat') {
     const myHarbors = Object.values(engine.infraData || {}).filter(i => i.country_id === engine.country?.id && i.type === 'harbor');
-    if (!myHarbors.length) { showToast('Build a harbor first (⚓ 180g on a land tile bordering water).', 'error'); return; }
+    if (!myHarbors.length) { showToast('Build a harbour first (⚓ 180g on a land tile bordering water).', 'error'); return; }
     const pData = engine.pixelData[`${tx},${ty}`];
     const isEnemy = pData?.country_id && pData.country_id !== engine.country.id;
     if (isEnemy) {
@@ -1596,8 +1581,8 @@ function renderBoatPanel() {
   panel.style.display = 'flex';
 
   const harborHtml = myHarbors.length === 0
-    ? `<span style="color:var(--red);font-size:0.78rem">⚠️ No harbor — build ⚓ on a tile bordering water</span>`
-    : `<span style="color:var(--muted);font-size:0.78rem">⚓ ${myHarbors.length} harbor${myHarbors.length > 1 ? 's' : ''} · Click <span style="color:var(--green)">free</span> or <span style="color:var(--red)">enemy</span> water-border tile</span>`;
+    ? `<span style="color:var(--red);font-size:0.78rem">⚠️ No harbour — build ⚓ on a tile bordering water</span>`
+    : `<span style="color:var(--muted);font-size:0.78rem">⚓ ${myHarbors.length} harbour${myHarbors.length > 1 ? 's' : ''} · Click <span style="color:var(--green)">free</span> or <span style="color:var(--red)">enemy</span> water-border tile</span>`;
 
   const boatsHtml = myBoats.length
     ? myBoats.map(b => {
@@ -1990,7 +1975,7 @@ async function spectateCountry(id, fromClick = false) {
       ${markets > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🏪 ${markets} market${markets>1?'s':''} savings</span><span style="color:var(--green)">+${(Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, 0.3) * c.pixel_count).toFixed(1)} 💰/hr</span></div>` : ''}
       <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚔️ Army (${CONFIG.ARMY_UPKEEP_PER_UNIT}💰 × ${c.army_size} units)</span><span style="color:var(--red)">−${armyUpkeep.toFixed(1)} 💰/hr</span></div>
       ${borderSp.nations > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🚧 Border pixels (${borderSp.borderPixels} × ${CONFIG.BORDER_UPKEEP_PER_NATION}💰/hr)</span><span style="color:var(--red)">−${borderSp.cost.toFixed(1)} 💰/hr</span></div>` : ''}
-      ${harborsSp > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚓ ${harborsSp} harbor${harborsSp>1?'s':''} (${CONFIG.INFRA_COSTS.harbor.upkeepPerHour}💰/hr each)</span><span style="color:var(--red)">−${harborUpkeepSp.toFixed(1)} 💰/hr</span></div>` : `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚓ Harbors (none built)</span><span style="color:var(--muted)">−0 💰/hr</span></div>`}
+      ${harborsSp > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚓ ${harborsSp} harbour${harborsSp>1?'s':''} (${CONFIG.INFRA_COSTS.harbor.upkeepPerHour}💰/hr each)</span><span style="color:var(--red)">−${harborUpkeepSp.toFixed(1)} 💰/hr</span></div>` : `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚓ Harbours (none built)</span><span style="color:var(--muted)">−0 💰/hr</span></div>`}
     </div>
     <div class="section-label">🍞 Food & Population</div>
     <div style="font-size:0.78rem;line-height:1.9;margin-bottom:0.75rem">
@@ -2169,7 +2154,7 @@ async function renderMyCountry(body) {
       </div>
       ${currentFood >= foodCap ? `<div style="font-size:0.72rem;color:var(--gold);margin-top:0.1rem;padding:0.3rem 0.5rem;background:rgba(245,158,11,0.08);border-radius:5px">⚠ Food at cap — build more farms or expand to raise it.</div>` : ''}
       ${foodMult < 1 ? `<div style="font-size:0.72rem;color:var(--red);margin-top:0.1rem;padding:0.3rem 0.5rem;background:rgba(239,68,68,0.08);border-radius:5px">⚠ Food reserves low (${currentFood.toFixed(1)} / ${foodThreshold.toFixed(0)} needed): income −${((1-foodMult)*100).toFixed(0)}%. Stock up food before going to war!</div>` : ''}
-      ${foodBal < 0 ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:0.1rem">Food draining: −${(-foodBal).toFixed(1)}/hr. Need ${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM)} more farm${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM) !== 1 ? 's' : ''} to break even.</div>` : ''}
+      ${foodBal < 0 ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:0.1rem">Need ${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM)} more farm${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM) !== 1 ? 's' : ''} to break even.</div>` : ''}
     </div>
 
     <div class="section-label">⚔️ War Aggression</div>
@@ -2240,7 +2225,7 @@ async function renderMyCountry(body) {
         <span style="${border.cost > 0 ? 'color:var(--red)' : 'color:var(--muted)'}">−${border.cost.toFixed(1)} 💰/hr</span>
       </div>
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">${harborsCount > 0 ? `⚓ Harbors (${harborsCount} × ${CONFIG.INFRA_COSTS.harbor.upkeepPerHour}💰/hr)` : '⚓ Harbors (none built)'}</span>
+        <span style="color:var(--muted)">${harborsCount > 0 ? `⚓ Harbours (${harborsCount} × ${CONFIG.INFRA_COSTS.harbor.upkeepPerHour}💰/hr)` : '⚓ Harbours (none built)'}</span>
         <span style="${harborsCount > 0 ? 'color:var(--red)' : 'color:var(--muted)'}">−${harborUpkeep.toFixed(1)} 💰/hr</span>
       </div>
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">

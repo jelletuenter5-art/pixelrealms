@@ -516,13 +516,13 @@ create policy "update boats" on boats for update using (true);`);
     }
     if (type === 'harbor') {
       const tile = this.mapData?.[y]?.[x];
-      if (!tile || tile.terrain === 'water') return { ok: false, msg: 'Harbors must be built on land.' };
+      if (!tile || tile.terrain === 'water') return { ok: false, msg: 'Harbours must be built on land.' };
       const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
       const bordersWater = dirs.some(([dx, dy]) => {
         const t = this.mapData?.[y + dy]?.[x + dx];
         return t && t.terrain === 'water';
       });
-      if (!bordersWater) return { ok: false, msg: 'Harbors must be built on a land tile bordering water.' };
+      if (!bordersWater) return { ok: false, msg: 'Harbours must be built on a land tile bordering water.' };
     }
 
     const { data: infra, error } = await sb.from('infrastructure').insert({
@@ -607,7 +607,7 @@ create policy "update boats" on boats for update using (true);`);
   async sendBoat(toX, toY, mode) {
     if (!this.country) return { ok: false, msg: 'No country.' };
     const myHarbors = Object.values(this.infraData).filter(i => i.country_id === this.country.id && i.type === 'harbor');
-    if (!myHarbors.length) return { ok: false, msg: 'Build a harbor first (⚓ 180g).' };
+    if (!myHarbors.length) return { ok: false, msg: 'Build a harbour first (⚓ 180g).' };
 
     // Target must border water
     const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
@@ -633,7 +633,7 @@ create policy "update boats" on boats for update using (true);`);
         bestHarbor = h;
       }
     }
-    if (!bestPath) return { ok: false, msg: 'No water route found to that tile from any of your harbors.' };
+    if (!bestPath) return { ok: false, msg: 'No water route found to that tile from any of your harbours.' };
 
     // For expand: deduct 1 token
     if (mode === 'expand') {
