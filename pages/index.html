@@ -329,12 +329,12 @@
 async function loadStats() {
   const [profilesRes, pixelsRes, deadRes] = await Promise.all([
     sb.from('profiles').select('id, total_pixels_ever', { count: 'exact' }),
-    sb.from('countries').select('pixel_count'),
+    sb.from('countries').select('pixels_captured'),
     sb.from('countries').select('id', { count: 'exact' }).eq('is_alive', false),
   ]);
   // Total pixels = historical (from finished games) + current live pixels
   const historical = (profilesRes.data || []).reduce((s, p) => s + (p.total_pixels_ever || 0), 0);
-  const live = (pixelsRes.data || []).reduce((s, c) => s + (c.pixel_count || 0), 0);
+  const live = (pixelsRes.data || []).reduce((s, c) => s + (c.pixels_captured || 0), 0);
   document.getElementById('totalPixels').textContent = (historical + live).toLocaleString();
   document.getElementById('nationsFallen').textContent = (deadRes.count || 0).toLocaleString();
   // Random between 0.01–0.3x accounts, rounded normally

@@ -498,6 +498,7 @@ async function loadMyGames() {
       archivedGames.add(c.game_id);
     }
     if (c.games?.delete_at && now > new Date(c.games.delete_at).getTime()) {
+      await archiveGamePixels(c.game_id);
       await sb.from('games').delete().eq('id', c.game_id);
       archivedGames.add(c.game_id);
     }
@@ -823,7 +824,7 @@ async function createWorld(category) {
 async function loadLeaderboard() {
   const [{ data: profiles }, { data: countries }] = await Promise.all([
     sb.from('profiles').select('*'),
-    sb.from('countries').select('player_id, pixel_count, is_alive'),
+    sb.from('countries').select('player_id, pixels_captured, is_alive'),
   ]);
 
   if (!profiles || profiles.length === 0) {
@@ -831,11 +832,11 @@ async function loadLeaderboard() {
     return;
   }
 
-  // Sum live pixel counts per player across all their active countries
+  // Sum all-time captured pixels per player across live games (pixels_captured only goes up)
   const livePixels = {};
   const liveGames = {};
   (countries || []).forEach(c => {
-    livePixels[c.player_id] = (livePixels[c.player_id] || 0) + (c.pixel_count || 0);
+    livePixels[c.player_id] = (livePixels[c.player_id] || 0) + (c.pixels_captured || 0);
     if (c.is_alive) liveGames[c.player_id] = (liveGames[c.player_id] || 0) + 1;
   });
 
@@ -848,7 +849,10 @@ async function loadLeaderboard() {
   const rankClass = (i) => i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
   const rankEmoji = (i) => i === 0 ? '👑' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
 
-  list.innerHTML = ranked.map((p, i) => `<div class="lb-row">
+  const top10 = ranked.slice(0, 10);
+  const myRank = currentUser ? ranked.findIndex(p => p.id === currentUser.id) : -1;
+
+  let html = top10.map((p, i) => `<div class="lb-row">
     <div class="rank ${rankClass(i)}">${rankEmoji(i) || '#' + (i+1)}</div>
     <div class="lb-name">${p.avatar_emoji || '🙂'} ${p.username}</div>
     <div class="lb-stat highlight" data-label="Wins">${p.total_wins}</div>
@@ -856,6 +860,21 @@ async function loadLeaderboard() {
     <div class="lb-stat" data-label="Games">${(p.games_played || 0) + (liveGames[p.id] || 0)}</div>
     <div class="lb-stat" data-label="Joined">${new Date(p.created_at).toLocaleDateString()}</div>
   </div>`).join('');
+
+  if (myRank >= 10) {
+    const me = ranked[myRank];
+    html += `<div class="lb-row" style="color:var(--muted);justify-content:center;font-size:0.8rem;padding:0.25rem">…</div>
+    <div class="lb-row" style="border:1px solid var(--gold);border-radius:8px">
+      <div class="rank">#${myRank + 1}</div>
+      <div class="lb-name">${me.avatar_emoji || '🙂'} ${me.username}</div>
+      <div class="lb-stat highlight" data-label="Wins">${me.total_wins}</div>
+      <div class="lb-stat highlight" data-label="Pixels">${me.totalPixels.toLocaleString()}</div>
+      <div class="lb-stat" data-label="Games">${(me.games_played || 0) + (liveGames[me.id] || 0)}</div>
+      <div class="lb-stat" data-label="Joined">${new Date(me.created_at).toLocaleDateString()}</div>
+    </div>`;
+  }
+
+  list.innerHTML = html;
 }
 
 // ── SETTINGS ──────────────────────────────────────
@@ -1064,8 +1083,26 @@ function spectateEventRealm(gameId) {
   window.location.href = `game.html?game=${gameId}&spectate=1`;
 }
 
+// Before deleting a game, save each country's pixels_captured into profiles.total_pixels_ever
+async function archiveGamePixels(gameId) {
+  const { data: countries } = await sb.from('countries').select('player_id, pixels_captured').eq('game_id', gameId);
+  if (!countries?.length) return;
+  // Group by player_id
+  const byPlayer = {};
+  for (const c of countries) {
+    byPlayer[c.player_id] = (byPlayer[c.player_id] || 0) + (c.pixels_captured || 0);
+  }
+  for (const [playerId, captured] of Object.entries(byPlayer)) {
+    if (!captured) continue;
+    const { data: prof } = await sb.from('profiles').select('total_pixels_ever').eq('id', playerId).single();
+    if (!prof) continue;
+    await sb.from('profiles').update({ total_pixels_ever: (prof.total_pixels_ever || 0) + captured }).eq('id', playerId);
+  }
+}
+
 async function deleteEventRealm(gameId) {
   if (!confirm('Permanently delete this event realm and all its data?')) return;
+  await archiveGamePixels(gameId);
   await sb.from('games').delete().eq('id', gameId);
   loadAdminGames();
   loadEventGames();
