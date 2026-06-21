@@ -111,6 +111,9 @@ create policy "update boats" on boats for update using (true);`);
     // Correct pixel_count if actual pixels differ — also handles the case where
     // a player lost all pixels but pixel_count was never zeroed (e.g. water-spawn edge case)
     if (correctPixelCount !== this.country.pixel_count) updates.pixel_count = correctPixelCount;
+    // Bootstrap pixels_captured for countries created before this stat was tracked —
+    // ensures it's always >= pixel_count so the leaderboard never decreases on pixel loss
+    if ((this.country.pixels_captured || 0) < correctPixelCount) updates.pixels_captured = correctPixelCount;
     // If pixel_count is now 0 and they're still marked alive, eliminate them
     if (correctPixelCount === 0 && this.country.is_alive) {
       updates.is_alive = false;

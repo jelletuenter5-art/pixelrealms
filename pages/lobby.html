@@ -824,7 +824,7 @@ async function createWorld(category) {
 async function loadLeaderboard() {
   const [{ data: profiles }, { data: countries }] = await Promise.all([
     sb.from('profiles').select('*'),
-    sb.from('countries').select('player_id, pixel_count, pixels_captured, is_alive'),
+    sb.from('countries').select('player_id, pixels_captured, is_alive'),
   ]);
 
   if (!profiles || profiles.length === 0) {
@@ -832,14 +832,11 @@ async function loadLeaderboard() {
     return;
   }
 
-  // Sum all-time captured pixels per player across live games.
-  // Use max(pixels_captured, pixel_count) so existing countries before the
-  // pixels_captured tracking was added still show their current territory.
+  // pixels_captured is bootstrapped on login to be >= pixel_count, and only ever goes up
   const livePixels = {};
   const liveGames = {};
   (countries || []).forEach(c => {
-    const contrib = Math.max(c.pixels_captured || 0, c.pixel_count || 0);
-    livePixels[c.player_id] = (livePixels[c.player_id] || 0) + contrib;
+    livePixels[c.player_id] = (livePixels[c.player_id] || 0) + (c.pixels_captured || 0);
     if (c.is_alive) liveGames[c.player_id] = (liveGames[c.player_id] || 0) + 1;
   });
 
