@@ -70,6 +70,10 @@ class GameEngine {
       await this._enforceMarketCap();
     }
 
+    // Fix all other countries whose pixel_count is out of sync with the actual map.
+    // This catches ghosts (0px but still alive) and desync from mid-session crashes.
+    await this._reconcileAllCountries();
+
     await this.loadBoats();
 
     console.log('%c⛵ PixelRealms — Run this SQL in Supabase if boats table is missing:', 'color:#f59e0b;font-weight:bold');
@@ -111,8 +115,9 @@ create policy "update boats" on boats for update using (true);`);
     // Correct pixel_count if actual pixels differ — also handles the case where
     // a player lost all pixels but pixel_count was never zeroed (e.g. water-spawn edge case)
     if (correctPixelCount !== this.country.pixel_count) updates.pixel_count = correctPixelCount;
-    // If pixel_count is now 0 and they're still marked alive, eliminate them
-    if (correctPixelCount === 0 && this.country.is_alive) {
+    // Only eliminate if they LOST pixels (had some before) — not if they haven't spawned yet
+    // (pixel_count === 0 with no pixels means they're in spawn selection, not eliminated)
+    if (correctPixelCount === 0 && this.country.pixel_count > 0 && this.country.is_alive) {
       updates.is_alive = false;
       updates.surrendered_at = new Date().toISOString();
     }
@@ -127,6 +132,33 @@ create policy "update boats" on boats for update using (true);`);
     if (Object.keys(updates).length > 0) {
       const { data } = await sb.from('countries').update(updates).eq('id', this.country.id).select().single();
       if (data) this.country = data;
+    }
+  }
+
+  // Fix pixel_count and is_alive for ALL countries based on actual pixel data.
+  // Runs once on load — fixes ghost countries and desync without needing a server trigger.
+  async _reconcileAllCountries() {
+    // Count actual owned pixels per country from the already-loaded pixelData
+    const actualCount = {};
+    for (const p of Object.values(this.pixelData)) {
+      if (p.country_id) actualCount[p.country_id] = (actualCount[p.country_id] || 0) + 1;
+    }
+    const now = new Date().toISOString();
+    for (const country of Object.values(this.countries)) {
+      if (country.id === this.country?.id) continue; // own country handled by _reconcileCountryStats
+      const actual = actualCount[country.id] || 0;
+      const updates = {};
+      if (actual !== country.pixel_count) updates.pixel_count = actual;
+      // Eliminate if they have 0 actual pixels AND had pixels before (pixel_count > 0)
+      // — avoids eliminating players still in spawn selection
+      if (actual === 0 && country.pixel_count > 0 && country.is_alive) {
+        updates.is_alive = false;
+        updates.surrendered_at = now;
+      }
+      if (Object.keys(updates).length > 0) {
+        await sb.from('countries').update(updates).eq('id', country.id);
+        this.countries[country.id] = { ...country, ...updates };
+      }
     }
   }
 

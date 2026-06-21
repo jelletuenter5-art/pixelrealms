@@ -429,6 +429,21 @@ window.addEventListener('resize', adjustMainPadding);
   initSettings();
   loadMyFeedback();
 
+  // Clean up ghost countries: joined but left before placing their nation (pixel_count=0,
+  // is_alive=true, created more than 15 minutes ago). Decrement player count per game.
+  (async () => {
+    const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const { data: ghosts } = await sb.from('countries')
+      .select('id, game_id').eq('pixel_count', 0).eq('is_alive', true).lt('created_at', cutoff);
+    if (ghosts?.length) {
+      for (const g of ghosts) {
+        await sb.from('countries').delete().eq('id', g.id);
+        const { data: game } = await sb.from('games').select('current_players').eq('id', g.game_id).single();
+        if (game) await sb.from('games').update({ current_players: Math.max(0, (game.current_players || 1) - 1) }).eq('id', g.game_id);
+      }
+    }
+  })();
+
   await loadMyGames();
   await loadOpenGames();
   loadEventGames();
@@ -742,7 +757,7 @@ async function submitJoin(gameId) {
     flag_emoji: flag,
     gold: CONFIG.STARTING_GOLD,
     food: 50,
-    pixel_count: CONFIG.STARTING_PIXELS,
+    pixel_count: 0,
     pending_pixels: CONFIG.STARTING_EXPANSION_TOKENS,
     army_size: CONFIG.STARTING_ARMY,
     income_per_pixel: CONFIG.BASE_INCOME_PER_PIXEL,
