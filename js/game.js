@@ -231,8 +231,10 @@ create policy "update boats" on boats for update using (true);`);
     const armyUpkeep = this.country.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
     const harborCount = myInfra.filter(i => i.type === 'harbor').length;
     const harborUpkeep = harborCount * CONFIG.INFRA_COSTS.harbor.upkeepPerHour;
+    // Border upkeep capped at gross income — being surrounded can't create an inescapable spiral
+    const borderCost = Math.min(border.cost, hourlyIncome);
     const currentGold = Number.isFinite(this.country.gold) ? this.country.gold : 0;
-    const newGold = Math.max(0, Math.round((currentGold + (hourlyIncome - pixelUpkeep - armyUpkeep - border.cost - harborUpkeep) * hoursOffline) * 10000) / 10000);
+    const newGold = Math.max(0, Math.round((currentGold + (hourlyIncome - pixelUpkeep - armyUpkeep - borderCost - harborUpkeep) * hoursOffline) * 10000) / 10000);
 
     // Food offline — capped at 2× population + farms×20
     const foodCap = this.country.pixel_count * CONFIG.POPULATION_PER_PIXEL + farmInfra.length * 20;
@@ -1076,7 +1078,8 @@ async function tickIncome(engine) {
   const armyUpkeep = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
   const harborCount = myInfra.filter(i => i.type === 'harbor').length;
   const harborUpkeep = harborCount * CONFIG.INFRA_COSTS.harbor.upkeepPerHour;
-  const netHourly = hourlyIncome - pixelUpkeep - armyUpkeep - border.cost - harborUpkeep;
+  const borderCost = Math.min(border.cost, hourlyIncome);
+  const netHourly = hourlyIncome - pixelUpkeep - armyUpkeep - borderCost - harborUpkeep;
 
   const tickHours = CONFIG.INCOME_TICK_SECONDS / 3600;
   const tick = netHourly * tickHours;
