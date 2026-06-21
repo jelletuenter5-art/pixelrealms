@@ -1997,6 +1997,23 @@ async function spectateCountry(id, fromClick = false) {
       <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">👥 Population</span><span>${population.toLocaleString()} people</span></div>
       <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🍞 Food balance</span><span style="color:${foodBalSp >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBalSp >= 0 ? '+' : ''}${foodBalSp.toFixed(1)}/hr ${foodBalSp >= 0 ? '✓' : '⚠ deficit'}</span></div>
     </div>
+    <div class="section-label">⚔️ War Aggression</div>
+    <div style="font-size:0.78rem;line-height:1.9;margin-bottom:0.75rem">
+      ${(() => {
+        const agg = Number.isFinite(c.food_aggression) ? c.food_aggression : 0;
+        const pct = Math.min(100, (agg / 2) * 100);
+        const col = agg < 0.3 ? 'var(--green)' : agg < 1 ? 'var(--gold)' : 'var(--red)';
+        const label = agg < 0.1 ? 'Peace' : agg < 0.5 ? 'Skirmishing' : agg < 1.2 ? 'At War' : 'Full War';
+        const decayBonus = myInfra.filter(i => i.type === 'market').length * CONFIG.MARKET_DECAY_BONUS;
+        const decayRate = CONFIG.FOOD_AGGRESSION_DECAY + decayBonus;
+        return `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Status</span><span style="color:${col};font-weight:600">${label}</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Aggression level</span><span style="color:${col}">${agg.toFixed(3)}</span></div>
+        <div style="margin:0.3rem 0 0.2rem;background:var(--panel);border-radius:4px;height:6px;overflow:hidden"><div style="height:100%;width:${pct.toFixed(1)}%;background:${col};border-radius:4px;transition:width 0.3s"></div></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Food drain from war</span><span style="color:var(--red)">+${(agg * c.army_size * CONFIG.FOOD_AGGRESSION_PER_ATTACK).toFixed(2)}/hr extra</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Decay rate</span><span style="color:var(--muted)">−${decayRate.toFixed(3)}/hr</span></div>
+        ${agg > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Reaches peace in</span><span style="color:var(--muted)">~${(agg / decayRate).toFixed(1)} hrs</span></div>` : ''}`;
+      })()}
+    </div>
     <div style="margin-top:0.5rem;font-size:0.75rem;color:var(--muted);text-align:center">👁️ Spectating — read only</div>
   `;
   } catch(e) {
