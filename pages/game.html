@@ -2327,6 +2327,12 @@ function renderAdmin(body) {
       <button class="btn" onclick="adminGiveArmy()">⚔️ Give</button>
     </div>
 
+    <label style="font-size:0.78rem;color:var(--muted)">Food</label>
+    <div style="display:flex;gap:0.4rem;margin:0.3rem 0 0.75rem">
+      <input id="adminFoodAmount" type="number" value="500" style="flex:1;padding:0.4rem;background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--text)">
+      <button class="btn" onclick="adminGiveFood()">🍞 Give</button>
+    </div>
+
     <div id="adminMsg" style="font-size:0.78rem;color:var(--green)"></div>
   `;
 }
@@ -2376,6 +2382,22 @@ async function adminGiveArmy() {
   if (engine.country?.id === targetId) engine.country = data;
   msg.style.color = 'var(--green)';
   msg.textContent = `✅ Gave ${amount} army to ${target.name}.`;
+  updateTopBar(); renderRightPanel();
+}
+
+async function adminGiveFood() {
+  const targetId = document.getElementById('adminTarget').value;
+  const amount = parseFloat(document.getElementById('adminFoodAmount').value);
+  if (!targetId || !amount) return;
+  const target = engine.countries[targetId] || allCountriesCache[targetId];
+  const newFood = (Number.isFinite(target.food) ? target.food : 0) + amount;
+  const { data, error } = await sb.from('countries').update({ food: newFood }).eq('id', targetId).select().single();
+  const msg = document.getElementById('adminMsg');
+  if (error) { msg.style.color = 'var(--red)'; msg.textContent = 'Error: ' + error.message; return; }
+  engine.countries[targetId] = data;
+  if (engine.country?.id === targetId) engine.country = data;
+  msg.style.color = 'var(--green)';
+  msg.textContent = `✅ Gave ${amount} food to ${target.name}.`;
   updateTopBar(); renderRightPanel();
 }
 
