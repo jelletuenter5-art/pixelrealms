@@ -2173,7 +2173,29 @@ async function renderMyCountry(body) {
       ${foodBal < 0 ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:0.1rem">Food draining: −${(-foodBal).toFixed(1)}/hr. Need ${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM)} more farm${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM) !== 1 ? 's' : ''} to break even.</div>` : ''}
     </div>
 
-    <div class="section-label">📈 Income</div>
+    <div class="section-label">⚔️ War Aggression</div>
+    <div style="font-size:0.78rem;line-height:1.9;margin-bottom:0.75rem">
+      ${(() => {
+        const agg = aggression;
+        const pct = Math.min(100, (agg / 2) * 100);
+        const col = agg < 0.1 ? 'var(--green)' : agg < 0.5 ? 'var(--gold)' : 'var(--red)';
+        const label = agg < 0.1 ? '☮️ Peace' : agg < 0.5 ? '⚠️ Skirmishing' : agg < 1.2 ? '⚔️ At War' : '🔥 Full War';
+        const decayRate = CONFIG.FOOD_AGGRESSION_DECAY + markets * CONFIG.MARKET_DECAY_BONUS;
+        return `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.2rem">
+          <span style="color:var(--muted)">Status</span>
+          <span style="color:${col};font-weight:700">${label}</span>
+        </div>
+        <div style="background:var(--panel);border-radius:6px;height:8px;overflow:hidden;margin-bottom:0.4rem">
+          <div style="height:100%;width:${pct.toFixed(1)}%;background:${col};border-radius:6px;transition:width 0.4s"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Aggression</span><span style="color:${col}">${agg.toFixed(3)}</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Extra food drain</span><span style="color:${agg > 0 ? 'var(--red)' : 'var(--muted)'}">${agg > 0 ? `−${(agg * armySize * CONFIG.FOOD_AGGRESSION_PER_ATTACK).toFixed(2)}/hr` : 'none'}</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Decay rate</span><span style="color:var(--muted)">−${decayRate.toFixed(3)}/hr${markets > 0 ? ` (${markets} market bonus)` : ''}</span></div>
+        ${agg >= 0.1 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">ETA to peace</span><span style="color:var(--muted)">~${(agg / decayRate).toFixed(1)} hrs</span></div>` : ''}
+        `;
+      })()}
+    </div>
     <div style="font-size:0.8rem;line-height:2;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between">
         <span style="color:var(--muted)">🗺️ Base ${CONFIG.BASE_INCOME_PER_PIXEL}💰/px × ${pixelCount} px</span>
