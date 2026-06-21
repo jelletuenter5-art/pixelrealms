@@ -432,8 +432,8 @@
       </div>
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
         <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🏪 Market <span style="color:var(--gold);font-weight:400">250g</span></div>
-        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">−0.03 💰/px/hr territory upkeep · +0.001 war decay/hr per market · max 10</div>
-        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">5 markets → 0.035 decay/hr · 10 markets → 0.04 decay/hr · no terrain effect</div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">−0.015 💰/px/hr territory upkeep · +0.001 war decay/hr per market · max 20</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">20 markets cancels territory upkeep · 10 mkt → 0.04 decay/hr · 20 mkt → 0.05 decay/hr</div>
       </div>
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
         <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">⚔️ Barracks <span style="color:var(--gold);font-weight:400">150g</span></div>
@@ -455,7 +455,7 @@
     <div class="section-label">💰 Economy</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
       Each pixel earns <strong>1 💰/hr</strong> base. Mines and farms add income on top. Your army costs
-      <strong>0.5 💰/hr per unit</strong>, and territory costs <strong>0.3 💰/px/hr</strong> (each market reduces this by 0.03, max 10 markets).
+      <strong>0.5 💰/hr per unit</strong>, and territory costs <strong>0.3 💰/px/hr</strong> (each market reduces this by 0.015, max 20 markets — at cap your territory upkeep is fully cancelled).
       You also pay <strong>10 💰/hr per border pixel</strong> — each of your pixels touching an enemy tile adds upkeep, so compact empires are cheaper to defend than sprawling ones.
       Watch <strong>Net gold/hr</strong> in <strong>My Realm</strong> — if it's negative your gold drains, but it will never go below 0.
     </p>
@@ -464,7 +464,7 @@
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
       Attacking costs your troops no matter the outcome. Each attack (win or lose) raises your army's
       <strong>food consumption rate by +0.05/unit</strong> — so a 100-army nation goes from 10 food/hr to 15 food/hr after one attack.
-      This <strong>war aggression decays at −0.03/hr</strong> base rate (boosted by Markets up to −0.04/hr), so your supply lines recover if you stop fighting.
+      This <strong>war aggression decays at −0.03/hr</strong> base rate (boosted by Markets up to −0.05/hr with 20 markets), so your supply lines recover if you stop fighting.
       Stocking up food reserves before a war is key — if your stored food drops below <strong>25% of your population</strong>, your gold income is penalised by up to <strong>−80%</strong>.
       The attack preview shows exactly how your food balance will change before you confirm.
     </p>
@@ -1420,7 +1420,7 @@ function showBuildMenu() {
         extraNote = `${terrainLabel}: +${thisFarmIncome.toFixed(1)} 💰/hr (${terrMult}x terrain) · +${foodProd} food/hr`;
       } else if (type === 'market') {
         const newDecay = (CONFIG.FOOD_AGGRESSION_DECAY + (existingMarkets + 1) * CONFIG.MARKET_DECAY_BONUS).toFixed(3);
-        extraNote = `−0.03 💰/px/hr upkeep · war decay → ${newDecay}/hr (${existingMarkets + 1}/${CONFIG.INFRA_COSTS.market.maxCount} markets)`;
+        extraNote = `−0.015 💰/px/hr upkeep · war decay → ${newDecay}/hr (${existingMarkets + 1}/${CONFIG.INFRA_COSTS.market.maxCount} markets)`;
       } else if (type === 'trading_post') {
         const terrMult = CONFIG.TRADING_POST_TERRAIN_MULT[terrain] ?? 0.9;
         const border = calcBorderUpkeep(engine.pixelData, engine.country?.id);
