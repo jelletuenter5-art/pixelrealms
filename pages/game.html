@@ -266,6 +266,7 @@
     <button class="btn-xs panel-toggle" onclick="toggleLeftPanel()">☰<span class="notif-dot" id="leftToggleNotifDot"></span></button>
     <span class="logo">PR</span>
     <span class="game-title" id="gameTitle">—</span>
+    <span id="gameDayBadge" style="font-size:0.72rem;color:var(--muted);background:var(--panel2);border:1px solid var(--border);border-radius:20px;padding:0.2rem 0.6rem;white-space:nowrap"></span>
     <div class="topbar-stats">
       <div class="stat-pill"><span id="myCountryFlag">🏳️</span> <span id="myCountryName" style="color:var(--text)">—</span></div>
       <div class="stat-pill gold-stat">💰 <span class="val" id="myGold">—</span></div>
@@ -718,6 +719,7 @@ let lastMousePos = null;
   renderLeftPanel();
   renderRightPanel();
   setupRealtime();
+  setInterval(updateGameDayBadge, 60000); // refresh day/time badge every minute
   if (!SPECTATE) {
     checkPendingTrades();
     checkInactiveCountries();
@@ -1636,9 +1638,22 @@ function resetView() {
 }
 
 // ── TOP BAR ───────────────────────────────────────────
+function updateGameDayBadge() {
+  const badge = document.getElementById('gameDayBadge');
+  if (!badge || !engine.game?.created_at) return;
+  const start = new Date(engine.game.created_at).getTime();
+  const elapsed = Date.now() - start;
+  const day = Math.floor(elapsed / 86400000);
+  const totalHours = Math.floor(elapsed / 3600000);
+  const hours = totalHours % 24;
+  const mins = Math.floor((elapsed % 3600000) / 60000);
+  badge.textContent = `Day ${day} · ${String(hours).padStart(2,'0')}:${String(mins).padStart(2,'0')}`;
+}
+
 function updateTopBar() {
   const c = engine.country;
   document.getElementById('gameTitle').textContent = engine.game?.name || '';
+  updateGameDayBadge();
   if (SPECTATE) { document.querySelector('.topbar-stats').style.display = 'none'; return; }
   if (!c) return;
   document.getElementById('myCountryFlag').textContent = c.flag_emoji || '🏳️';
