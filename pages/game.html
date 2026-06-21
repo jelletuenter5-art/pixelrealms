@@ -1753,7 +1753,10 @@ async function renderEvents(body) {
 
   body.innerHTML = data.map(e => {
     const cls = `event-${e.type}`;
-    const time = new Date(e.created_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    const ed = new Date(e.created_at);
+    const isToday = ed.toDateString() === new Date().toDateString();
+    const hm = ed.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    const time = isToday ? hm : `${ed.getDate()} ${ed.toLocaleString([], { month:'short' })} · ${hm}`;
     return `<div class="event-item">
       <div class="${cls}">${e.message}</div>
       <div class="time">${time}</div>
