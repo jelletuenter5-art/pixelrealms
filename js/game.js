@@ -149,9 +149,10 @@ create policy "update boats" on boats for update using (true);`);
       const actual = actualCount[country.id] || 0;
       const updates = {};
       if (actual !== country.pixel_count) updates.pixel_count = actual;
-      // Eliminate if they have 0 actual pixels AND had pixels before (pixel_count > 0)
-      // — avoids eliminating players still in spawn selection
-      if (actual === 0 && country.pixel_count > 0 && country.is_alive) {
+      // Eliminate if 0 actual pixels and still alive, provided they're not a brand-new
+      // player in spawn selection (give 30 min grace period for new spawns)
+      const ageMinutes = (Date.now() - new Date(country.created_at).getTime()) / 60000;
+      if (actual === 0 && country.is_alive && (country.pixel_count > 0 || ageMinutes > 30)) {
         updates.is_alive = false;
         updates.surrendered_at = now;
       }
