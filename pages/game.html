@@ -266,7 +266,6 @@
     <button class="btn-xs panel-toggle" onclick="toggleLeftPanel()">☰<span class="notif-dot" id="leftToggleNotifDot"></span></button>
     <span class="logo">PR</span>
     <span class="game-title" id="gameTitle">—</span>
-    <span id="gameDayBadge" style="font-size:0.72rem;color:var(--muted);background:var(--panel2);border:1px solid var(--border);border-radius:20px;padding:0.2rem 0.6rem;white-space:nowrap"></span>
     <div class="topbar-stats">
       <div class="stat-pill"><span id="myCountryFlag">🏳️</span> <span id="myCountryName" style="color:var(--text)">—</span></div>
       <div class="stat-pill gold-stat">💰 <span class="val" id="myGold">—</span></div>
@@ -275,6 +274,7 @@
       <div class="stat-pill" title="Expansion tokens available">🎯 <span class="val" id="myTokens">—</span></div>
     </div>
     <div class="topbar-btns">
+      <span id="gameDayBadge" style="font-size:0.72rem;color:var(--muted);background:var(--panel2);border:1px solid var(--border);border-radius:20px;padding:0.2rem 0.6rem;white-space:nowrap"></span>
       <button class="btn-xs" onclick="openTutorial()">❓ How to Play</button>
       <button class="btn-xs" onclick="window.location.href='lobby.html'">← Lobby</button>
       <button class="btn-xs panel-toggle" onclick="toggleRightPanel()">📋<span class="notif-dot" id="rightToggleNotifDot"></span></button>
@@ -719,7 +719,7 @@ let lastMousePos = null;
   renderLeftPanel();
   renderRightPanel();
   setupRealtime();
-  setInterval(updateGameDayBadge, 60000); // refresh day/time badge every minute
+  setInterval(updateGameDayBadge, 3600000); // refresh day badge every hour
   if (!SPECTATE) {
     checkPendingTrades();
     checkInactiveCountries();
@@ -1641,13 +1641,9 @@ function resetView() {
 function updateGameDayBadge() {
   const badge = document.getElementById('gameDayBadge');
   if (!badge || !engine.game?.created_at) return;
-  const start = new Date(engine.game.created_at).getTime();
-  const elapsed = Date.now() - start;
+  const elapsed = Date.now() - new Date(engine.game.created_at).getTime();
   const day = Math.floor(elapsed / 86400000);
-  const totalHours = Math.floor(elapsed / 3600000);
-  const hours = totalHours % 24;
-  const mins = Math.floor((elapsed % 3600000) / 60000);
-  badge.textContent = `Day ${day} · ${String(hours).padStart(2,'0')}:${String(mins).padStart(2,'0')}`;
+  badge.textContent = `Day ${day}`;
 }
 
 function updateTopBar() {
@@ -2096,7 +2092,7 @@ async function renderMyCountry(body) {
       <div style="width:40px;height:40px;background:${c.color};border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.4rem">${c.flag_emoji}</div>
       <div>
         <div style="font-family:'Cinzel',serif;font-weight:700">${c.name}</div>
-        <div style="font-size:0.75rem;color:var(--muted)">Founded ${new Date(c.created_at).toLocaleDateString()}</div>
+        <div style="font-size:0.75rem;color:var(--muted)">Founded ${new Date(c.created_at).toLocaleDateString()} · <span style="color:var(--gold)">Day ${Math.floor((Date.now() - new Date(engine.game?.created_at || c.created_at).getTime()) / 86400000)}</span></div>
       </div>
     </div>
 
