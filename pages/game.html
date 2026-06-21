@@ -466,7 +466,7 @@
       Attacking costs your troops no matter the outcome. Each attack (win or lose) raises your army's
       <strong>food consumption rate by +0.05/unit</strong> — so a 100-army nation goes from 10 food/hr to 15 food/hr after one attack.
       This <strong>war aggression decays at −0.03/hr</strong> base rate (boosted by Markets up to −0.05/hr with 20 markets), so your supply lines recover if you stop fighting.
-      Stocking up food reserves before a war is key — if your stored food drops below <strong>25% of your population</strong>, your gold income is penalised by up to <strong>−80%</strong>.
+      Stocking up food reserves before a war is key — if your stored food drops below <strong>50% of your population</strong>, your gold income is penalised by up to <strong>−80%</strong>.
       The attack preview shows exactly how your food balance will change before you confirm.
     </p>
 
@@ -476,7 +476,7 @@
       Each pixel produces <strong>0.5 food/hr</strong> (foraging) and consumes <strong>0.2 food/hr</strong>.
       Your army consumes <strong>0.1 food/hr per unit</strong> at peace — this rises with war aggression (see above).
       Build farms to cover deficits: each farm produces <strong>5 food/hr</strong>, boosted by terrain.
-      If your stored food drops below <strong>25% of your population</strong>, your gold income is reduced by up to <strong>−80%</strong> — so stockpile food before long campaigns.
+      If your stored food drops below <strong>50% of your population</strong>, your gold income is reduced by up to <strong>−80%</strong> — so stockpile food before long campaigns.
       Food is capped at <strong>your total population + 20 per farm built</strong>. Expand your territory or build farms to raise the cap.
     </p>
 
@@ -1805,7 +1805,7 @@ async function renderTrade(body) {
         <span style="color:var(--muted);font-size:0.75rem;margin-left:auto">wants to send you</span>
       </div>
       <div style="font-size:1.3rem;font-weight:800;color:var(--gold);margin-bottom:${t.message ? '0.35rem' : '0.6rem'}">💰 ${t.gold_offered} gold</div>
-      ${t.message ? `<div style="font-size:0.8rem;color:var(--text);background:var(--panel);border-radius:6px;padding:0.35rem 0.5rem;margin-bottom:0.6rem;border-left:2px solid var(--gold);font-style:italic">"${escapeHtml(t.message)}"</div>` : ''}
+      ${t.message ? (() => { const msg = escapeHtml(t.message); const short = msg.length > 80 ? msg.slice(0, 80) + '…' : msg; const hasMore = msg.length > 80; return `<div style="font-size:0.8rem;color:var(--text);background:var(--panel);border-radius:6px;padding:0.35rem 0.5rem;margin-bottom:0.6rem;border-left:2px solid var(--gold);font-style:italic"><span id="tmsg-short-${t.id}">"${short}"${hasMore ? ` <button onclick="document.getElementById('tmsg-short-${t.id}').style.display='none';document.getElementById('tmsg-full-${t.id}').style.display='inline'" style="font-size:0.7rem;padding:0 0.35rem;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-style:normal;margin-left:0.2rem">Read more</button>` : ''}</span>${hasMore ? `<span id="tmsg-full-${t.id}" style="display:none">"${msg}" <button onclick="document.getElementById('tmsg-full-${t.id}').style.display='none';document.getElementById('tmsg-short-${t.id}').style.display='inline'" style="font-size:0.7rem;padding:0 0.35rem;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-style:normal;margin-left:0.2rem">Show less</button></span>` : ''}</div>`; })() : ''}
       <div style="display:flex;gap:0.5rem">
         <button onclick="acceptTrade('${t.id}')" style="flex:1;padding:0.45rem;border-radius:7px;border:none;background:linear-gradient(135deg,#166534,#15803d);color:#fff;font-weight:700;cursor:pointer;font-size:0.82rem">✓ Accept</button>
         <button onclick="rejectTrade('${t.id}')" style="padding:0.45rem 0.75rem;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:0.82rem">✕ Decline</button>
@@ -1820,7 +1820,7 @@ async function renderTrade(body) {
       </div>
       <div style="text-align:right">
         <div style="color:var(--gold);font-weight:700">💰 ${t.gold_offered}g</div>
-        ${t.message ? `<div style="font-size:0.7rem;color:var(--muted);font-style:italic;margin-top:0.15rem;max-width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">"${escapeHtml(t.message)}"</div>` : ''}
+        ${t.message ? (() => { const msg = escapeHtml(t.message); const short = msg.length > 40 ? msg.slice(0, 40) + '…' : msg; const hasMore = msg.length > 40; return `<div style="font-size:0.7rem;color:var(--muted);font-style:italic;margin-top:0.15rem;max-width:140px"><span id="smsg-short-${t.id}">"${short}"${hasMore ? ` <button onclick="document.getElementById('smsg-short-${t.id}').style.display='none';document.getElementById('smsg-full-${t.id}').style.display='block'" style="font-size:0.65rem;padding:0 0.3rem;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-style:normal">more</button>` : ''}</span>${hasMore ? `<span id="smsg-full-${t.id}" style="display:none;white-space:normal;word-break:break-word">"${msg}" <button onclick="document.getElementById('smsg-full-${t.id}').style.display='none';document.getElementById('smsg-short-${t.id}').style.display='inline'" style="font-size:0.65rem;padding:0 0.3rem;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-style:normal">less</button></span>` : ''}</div>`; })() : ''}
         <button onclick="cancelTrade('${t.id}')" style="font-size:0.72rem;padding:0.2rem 0.5rem;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;margin-top:0.25rem">Cancel</button>
       </div>
     </div>`).join('') || '<div style="color:var(--muted);font-size:0.82rem;padding:0.25rem 0">No outgoing offers</div>';
@@ -1944,7 +1944,7 @@ async function spectateCountry(id, fromClick = false) {
   const mineIncomeSp = calcMineIncome(mineInfra, c.pixel_count, engine.pixelData);
   const farmIncomeSp = calcFarmIncome(farmInfra, c.pixel_count, engine.pixelData);
   const foodBalSp = calcFoodBalance(farmInfra.length, c.pixel_count, c.army_size, c.food_aggression || 0);
-  const foodThresholdSp = c.pixel_count * CONFIG.POPULATION_PER_PIXEL * 0.25;
+  const foodThresholdSp = c.pixel_count * CONFIG.POPULATION_PER_PIXEL * 0.5;
   const currentFoodSp = Number.isFinite(c.food) ? c.food : 0;
   const foodMultSp = (foodThresholdSp > 0 && currentFoodSp < foodThresholdSp)
     ? Math.max(0.2, currentFoodSp / foodThresholdSp)
@@ -2068,7 +2068,7 @@ async function renderMyCountry(body) {
   const aggression = Number.isFinite(c.food_aggression) ? c.food_aggression : 0;
   const foodBal = calcFoodBalance(farms, pixelCount, armySize, aggression);
   const population = pixelCount * CONFIG.POPULATION_PER_PIXEL;
-  const foodThreshold = population * 0.25;
+  const foodThreshold = population * 0.5;
   const currentFood = Number.isFinite(c.food) ? c.food : 0;
   const foodCap = pixelCount * CONFIG.POPULATION_PER_PIXEL + farms * 20;
   const foodMult = (foodThreshold > 0 && currentFood < foodThreshold)
