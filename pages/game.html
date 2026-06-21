@@ -2009,7 +2009,6 @@ async function spectateCountry(id, fromClick = false) {
         return `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Status</span><span style="color:${col};font-weight:600">${label}</span></div>
         <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Aggression level</span><span style="color:${col}">${agg.toFixed(3)}</span></div>
         <div style="margin:0.3rem 0 0.2rem;background:var(--panel);border-radius:4px;height:6px;overflow:hidden"><div style="height:100%;width:${pct.toFixed(1)}%;background:${col};border-radius:4px;transition:width 0.3s"></div></div>
-        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Food drain from war</span><span style="color:var(--red)">+${(agg * c.army_size * CONFIG.FOOD_AGGRESSION_PER_ATTACK).toFixed(2)}/hr extra</span></div>
         <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Decay rate</span><span style="color:var(--muted)">−${decayRate.toFixed(3)}/hr</span></div>
         ${agg > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Reaches peace in</span><span style="color:var(--muted)">~${(agg / decayRate).toFixed(1)} hrs</span></div>` : ''}`;
       })()}
@@ -2190,7 +2189,6 @@ async function renderMyCountry(body) {
           <div style="height:100%;width:${pct.toFixed(1)}%;background:${col};border-radius:6px;transition:width 0.4s"></div>
         </div>
         <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Aggression</span><span style="color:${col}">${agg.toFixed(3)}</span></div>
-        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Extra food drain</span><span style="color:${agg > 0 ? 'var(--red)' : 'var(--muted)'}">${agg > 0 ? `−${(agg * armySize * CONFIG.FOOD_AGGRESSION_PER_ATTACK).toFixed(2)}/hr` : 'none'}</span></div>
         <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Decay rate</span><span style="color:var(--muted)">−${decayRate.toFixed(3)}/hr${markets > 0 ? ` (${markets} market bonus)` : ''}</span></div>
         ${agg >= 0.1 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">ETA to peace</span><span style="color:var(--muted)">~${(agg / decayRate).toFixed(1)} hrs</span></div>` : ''}
         `;
