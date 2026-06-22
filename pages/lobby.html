@@ -510,11 +510,10 @@ async function loadMyGames() {
   const myGameIds = [...new Set(countries.map(c => c.game_id))];
   if (myGameIds.length) {
     const { data: allCounts } = await sb.from('countries')
-      .select('game_id')
-      .in('game_id', myGameIds)
-      .eq('is_alive', true);
+      .select('game_id, pixel_count, pixels_lost')
+      .in('game_id', myGameIds);
     const countMap = {};
-    (allCounts || []).forEach(r => { countMap[r.game_id] = (countMap[r.game_id] || 0) + 1; });
+    (allCounts || []).filter(r => (r.pixel_count || 0) + (r.pixels_lost || 0) > 0).forEach(r => { countMap[r.game_id] = (countMap[r.game_id] || 0) + 1; });
     for (const c of countries) {
       if (c.games) {
         const real = countMap[c.game_id] || 0;
@@ -635,15 +634,14 @@ async function loadOpenGames() {
   if (data?.length) {
     const ids = data.map(g => g.id);
     const { data: counts } = await sb.from('countries')
-      .select('game_id')
-      .in('game_id', ids)
-      .eq('is_alive', true);
+      .select('game_id, pixel_count, pixels_lost')
+      .in('game_id', ids);
     const countMap = {};
-    (counts || []).forEach(r => { countMap[r.game_id] = (countMap[r.game_id] || 0) + 1; });
+    (counts || []).filter(r => (r.pixel_count || 0) + (r.pixels_lost || 0) > 0).forEach(r => { countMap[r.game_id] = (countMap[r.game_id] || 0) + 1; });
     for (const g of data) {
       const real = countMap[g.id] || 0;
-      g.current_players = real;
-      if (real !== (g.current_players ?? 0)) {
+      if (real !== g.current_players) {
+        g.current_players = real;
         sb.from('games').update({ current_players: real }).eq('id', g.id);
       }
     }
@@ -1082,9 +1080,9 @@ async function loadEventGames() {
   // Sync current_players from real alive country count
   if (data.length) {
     const ids = data.map(g => g.id);
-    const { data: counts } = await sb.from('countries').select('game_id').in('game_id', ids).eq('is_alive', true);
+    const { data: counts } = await sb.from('countries').select('game_id, pixel_count, pixels_lost').in('game_id', ids);
     const countMap = {};
-    (counts || []).forEach(r => { countMap[r.game_id] = (countMap[r.game_id] || 0) + 1; });
+    (counts || []).filter(r => (r.pixel_count || 0) + (r.pixels_lost || 0) > 0).forEach(r => { countMap[r.game_id] = (countMap[r.game_id] || 0) + 1; });
     for (const g of data) {
       const real = countMap[g.id] || 0;
       if (real !== g.current_players) { g.current_players = real; sb.from('games').update({ current_players: real }).eq('id', g.id); }
