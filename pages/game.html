@@ -1711,8 +1711,10 @@ async function renderNations(body) {
   // Cache all countries for spectate mode lookup
   allCountries.forEach(c => { allCountriesCache[c.id] = c; });
 
-  const alive = allCountries.filter(c => c.is_alive).sort((a,b) => b.pixel_count - a.pixel_count || a.id.localeCompare(b.id));
-  const dead = allCountries.filter(c => !c.is_alive).sort((a,b) => a.name.localeCompare(b.name));
+  // Exclude ghost countries (joined but never placed on map)
+  const visible = allCountries.filter(c => c.pixel_count > 0 || !c.is_alive && c.pixels_lost > 0);
+  const alive = visible.filter(c => c.is_alive).sort((a,b) => b.pixel_count - a.pixel_count || a.id.localeCompare(b.id));
+  const dead = visible.filter(c => !c.is_alive).sort((a,b) => a.name.localeCompare(b.name));
   const myId = engine.country?.id;
   let rank = 0;
   const aliveHtml = alive.map(c => {
