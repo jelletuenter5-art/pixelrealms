@@ -2583,7 +2583,6 @@ async function renderChat(body) {
 
 function chatMsgHtml(m) {
   const c = engine.countries[m.country_id] || {};
-  // Treat as admin if flagged, or if there's no matching country and no country_id (pre-migration fallback)
   const isAdmin = !!m.is_admin || (!m.country_id && !c.name && !!m.player_name);
   const nation = isAdmin
     ? `🛡️ ${escapeHtml(m.player_name || 'Admin')}`
@@ -2602,15 +2601,29 @@ function chatMsgHtml(m) {
     const mon = d.toLocaleString([], { month: 'short' });
     return `${day} ${mon} · ${hm}`;
   })() : '';
+  const deleteBtn = (currentProfile?.is_admin && m.id)
+    ? `<button onclick="deleteChatMsg('${m.id}', this)" style="flex-shrink:0;background:transparent;border:none;color:var(--muted);font-size:0.75rem;cursor:pointer;padding:0 0 0 0.25rem;line-height:1;opacity:0.5" title="Delete message">🗑</button>`
+    : '';
   return `<div class="chat-msg" style="${msgBorder}">
     <div class="sender" style="color:${senderColor}">
       ${nation}${userLabel}${adminBadge}
     </div>
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem">
       <div class="body" style="flex:1">${escapeHtml(m.content)}</div>
-      ${timestamp ? `<span style="color:var(--muted);font-size:0.7rem;white-space:nowrap;margin-top:0.1rem;flex-shrink:0">${timestamp}</span>` : ''}
+      <div style="display:flex;align-items:center;gap:0.25rem;flex-shrink:0">
+        ${timestamp ? `<span style="color:var(--muted);font-size:0.7rem;white-space:nowrap;margin-top:0.1rem">${timestamp}</span>` : ''}
+        ${deleteBtn}
+      </div>
     </div>
   </div>`;
+}
+
+async function deleteChatMsg(id, btn) {
+  if (!confirm('Delete this message?')) return;
+  btn.disabled = true;
+  const { error } = await sb.from('messages').delete().eq('id', id);
+  if (error) { btn.disabled = false; showToast('Failed to delete message', 'error'); return; }
+  btn.closest('.chat-msg').remove();
 }
 
 function escapeHtml(s) {
