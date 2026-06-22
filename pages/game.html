@@ -479,7 +479,7 @@
       Each pixel gives you <strong>15 population</strong>, which unlocks barracks (100 pop each).
       Your land produces <strong>0.5 food/hr per pixel</strong> (foraging) and consumes <strong>0.2 food/hr per pixel</strong>.
       Your army eats <strong>0.1 food/hr per unit</strong> at peace — this rises during war.
-      Build farms to keep your food in surplus. Farms produce <strong>5 food/hr</strong> each and can be <strong>upgraded for 200g</strong> to produce <strong>10 food/hr</strong>. Food is capped at <strong>total population + 20 per farm</strong>.
+      Build farms to keep your food in surplus. Farms produce <strong>5 food/hr</strong> each and can be <strong>upgraded for 200g</strong> to produce <strong>15 food/hr</strong>. Food is capped at <strong>total population + 20 per farm</strong>.
       If your stored food drops below <strong>50% of your population</strong>, your gold income is penalised by up to <strong>−80%</strong> — always stockpile food before going to war.
     </p>
 
@@ -2755,7 +2755,7 @@ function showAttackPreview(tx, ty) {
     : '<span style="color:var(--red)">❌ Likely Defeat</span>';
 
   const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === engine.country?.id);
-  const myFarms = myInfra.filter(i => i.type === 'farm').length;
+  const myInfraFarms = myInfra.filter(i => i.type === 'farm');
   const myMarkets = myInfra.filter(i => i.type === 'market').length;
   const myPixels = engine.country?.pixel_count || 0;
   const myArmySize = engine.country?.army_size || 0;
@@ -2763,7 +2763,8 @@ function showAttackPreview(tx, ty) {
   const aggressionAfter = curAggression + CONFIG.FOOD_AGGRESSION_PER_ATTACK;
   const curArmyRate = (CONFIG.FOOD_CONSUMPTION_PER_ARMY + curAggression).toFixed(2);
   const newArmyRate = (CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggressionAfter).toFixed(2);
-  const foodBalAfter = calcFoodBalance(myFarms, myPixels, myArmySize, aggressionAfter);
+  const speed = engine.speed || 1;
+  const foodBalAfter = calcFoodBalance(myInfraFarms, myPixels, myArmySize, aggressionAfter) * speed;
 
   document.getElementById('attackPreviewBody').innerHTML = `
     <div>Target: <strong style="color:${defender.color}">${defender.flag_emoji || ''} ${defender.name}</strong></div>
