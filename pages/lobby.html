@@ -587,7 +587,10 @@ async function loadMyGames() {
     return `<div class="game-card" onclick="enterGame('${g.id}')">
       <div class="game-card-header">
         <span class="game-name">${g.name}</span>
-        <div style="display:flex;gap:0.4rem;align-items:center"><span class="badge ${statusClass}">${statusLabel}</span>${elim}</div>
+        <div style="display:flex;gap:0.4rem;align-items:center;flex-shrink:0">
+          ${(g.speed_multiplier && g.speed_multiplier !== 1) ? `<span style="color:#f59e0b;font-weight:600;font-size:0.75rem;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);border-radius:12px;padding:0.1rem 0.45rem;white-space:nowrap">⚡ ${g.speed_multiplier}×</span>` : ''}
+          <span class="badge ${statusClass}">${statusLabel}</span>${elim}
+        </div>
       </div>
       <div class="game-meta">
         <span><span class="country-dot" style="background:${c.color}"></span> ${c.name}</span>
@@ -595,7 +598,6 @@ async function loadMyGames() {
         <span>💰 ${Math.floor(c.gold)} gold</span>
         <span>👥 ${g.current_players || 0}/${g.max_players} players</span>
         <span>📅 Day ${Math.floor((Date.now() - new Date(g.created_at).getTime()) / 86400000)}</span>
-        ${(g.speed_multiplier && g.speed_multiplier !== 1) ? `<span style="color:#f59e0b;font-weight:600">⚡ ${g.speed_multiplier}× speed</span>` : ''}
       </div>
       ${deleteWarning}
       <div style="margin-top:0.75rem; display:flex; justify-content:space-between; align-items:center">
@@ -1129,11 +1131,16 @@ async function loadEventGames() {
       ? `<button class="btn btn-primary" style="width:100%;margin-top:1rem;background:rgba(56,189,248,0.15);border:1px solid var(--blue);color:var(--blue)" onclick="spectateEventRealm('${g.id}')">👁️ Spectate</button>`
       : `<div style="display:flex;gap:0.5rem;margin-top:1rem"><button class="btn btn-primary" style="flex:1" onclick="joinEventRealm('${g.id}', '${escapeHtmlLobby(g.name)}')">⚔️ Join</button><button class="btn btn-primary" style="flex:1;background:rgba(56,189,248,0.15);border:1px solid var(--blue);color:var(--blue)" onclick="spectateEventRealm('${g.id}')">👁️ Spectate</button></div>`;
     return `<div class="game-card">
-      <div class="game-card-header"><span class="game-name">${escapeHtmlLobby(g.name)}</span>${badge}</div>
+      <div class="game-card-header">
+        <span class="game-name">${escapeHtmlLobby(g.name)}</span>
+        <div style="display:flex;gap:0.4rem;align-items:center;flex-shrink:0">
+          ${(g.speed_multiplier && g.speed_multiplier !== 1) ? `<span style="color:#f59e0b;font-weight:600;font-size:0.75rem;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);border-radius:12px;padding:0.1rem 0.45rem;white-space:nowrap">⚡ ${g.speed_multiplier}×</span>` : ''}
+          ${badge}
+        </div>
+      </div>
       <div class="game-meta">
         <span>🗺️ ${g.map_width}×${g.map_height}</span>
         <span>${g.current_players || 0}/${g.max_players} players</span>
-        ${(g.speed_multiplier && g.speed_multiplier !== 1) ? `<span style="color:#f59e0b;font-weight:600">⚡ ${g.speed_multiplier}× speed</span>` : ''}
       </div>
       ${action}
     </div>`;
