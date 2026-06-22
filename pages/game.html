@@ -12,6 +12,7 @@
 <script src="../js/config.js"></script>
 <script src="../js/mapgen.js"></script>
 <script src="../js/game.js"></script>
+<script src="../js/audio.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -275,6 +276,7 @@
     </div>
     <div class="topbar-btns">
       <span id="gameDayBadge" style="font-size:0.72rem;color:var(--muted);background:var(--panel2);border:1px solid var(--border);border-radius:20px;padding:0.2rem 0.6rem;white-space:nowrap"></span>
+      <button class="btn-xs" id="muteBtn" onclick="toggleAudio()" title="Toggle music & sounds">🔊</button>
       <button class="btn-xs" onclick="openTutorial()">❓ How to Play</button>
       <button class="btn-xs" onclick="window.location.href='lobby.html'">← Lobby</button>
       <button class="btn-xs panel-toggle" onclick="toggleRightPanel()">📋<span class="notif-dot" id="rightToggleNotifDot"></span></button>
@@ -1295,6 +1297,7 @@ async function handleClick(e) {
       showToast('That tile is already yours.'); return;
     }
     const res = await engine.expandTo(tx, ty);
+    if (res.ok) AudioEngine.playExpand();
     if (res.needsAttack) {
       setMode('attack');
       showToast(res.msg);
@@ -1464,6 +1467,7 @@ function openBuildModal(type) {
   document.getElementById('buildModalConfirm').onclick = async () => {
     const res = await engine.buildInfra(selectedBuildType, selectedBuildTile.x, selectedBuildTile.y);
     showToast(res.msg, res.ok ? 'ok' : 'error');
+    if (res.ok) AudioEngine.playBuild();
     closeBuildModal();
     if (res.ok) {
       selectedBuildTile = null;
@@ -1543,6 +1547,20 @@ function openManageBuilding(x, y) {
   document.getElementById('manageBuildingModal').style.display = 'flex';
 }
 function closeManageBuildingModal() { document.getElementById('manageBuildingModal').style.display = 'none'; }
+
+// ── AUDIO ─────────────────────────────────────────────
+function toggleAudio() {
+  const muted = AudioEngine.toggleMute();
+  document.getElementById('muteBtn').textContent = muted ? '🔇' : '🔊';
+}
+function _unlockAudio() {
+  AudioEngine.unlock();
+  document.getElementById('muteBtn').textContent = AudioEngine.isMuted() ? '🔇' : '🔊';
+  document.removeEventListener('click', _unlockAudio);
+}
+document.addEventListener('click', _unlockAudio);
+// Set initial icon
+document.getElementById('muteBtn').textContent = AudioEngine.isMuted() ? '🔇' : '🔊';
 
 // ── TUTORIAL ──────────────────────────────────────────
 function openTutorial() {
@@ -2686,6 +2704,7 @@ function showAttackPreview(tx, ty) {
   document.getElementById('confirmAttackBtn').onclick = async () => {
     modal.style.display = 'none';
     const res = await engine.attack(tx, ty);
+    if (res.ok) AudioEngine.playAttack();
     showToast(res.msg, res.ok && res.success ? 'ok' : 'error');
     if (res.ok) { renderMap(); updateTopBar(); if (rightTab === 'country') renderRightPanel(); }
   };

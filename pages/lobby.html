@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/config.js"></script>
+<script src="../js/audio.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -194,6 +195,7 @@
   <div class="topbar-actions">
     <button class="topbar-icon-btn" onclick="inviteFriends()">🔗 <span class="label">Invite</span></button>
     <a class="topbar-icon-btn" href="https://discord.gg/rhFHYVXXSZ" target="_blank" rel="noopener">💬 <span class="label">Discord</span></a>
+    <button class="topbar-icon-btn" id="lobbyMuteBtn" onclick="toggleLobbyAudio()">🔊 <span class="label">Music</span></button>
     <button class="topbar-icon-btn" onclick="logout()">🚪 <span class="label">Sign Out</span></button>
   </div>
 </div>
@@ -457,6 +459,24 @@ async function logout() {
   await sb.auth.signOut();
   window.location.href = 'index.html';
 }
+
+// ── AUDIO ─────────────────────────────────────────────
+function toggleLobbyAudio() {
+  const muted = AudioEngine.toggleMute();
+  const btn = document.getElementById('lobbyMuteBtn');
+  if (btn) btn.innerHTML = (muted ? '🔇' : '🔊') + ' <span class="label">Music</span>';
+}
+function _unlockLobbyAudio() {
+  AudioEngine.unlock();
+  const btn = document.getElementById('lobbyMuteBtn');
+  if (btn) btn.innerHTML = (AudioEngine.isMuted() ? '🔇' : '🔊') + ' <span class="label">Music</span>';
+  document.removeEventListener('click', _unlockLobbyAudio);
+}
+document.addEventListener('click', _unlockLobbyAudio);
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('lobbyMuteBtn');
+  if (btn) btn.innerHTML = (AudioEngine.isMuted() ? '🔇' : '🔊') + ' <span class="label">Music</span>';
+});
 
 async function inviteFriends() {
   const url = window.location.origin + window.location.pathname.replace(/lobby\.html$/, 'index.html');
