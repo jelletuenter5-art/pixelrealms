@@ -798,8 +798,8 @@ async function chooseSpawn(tx, ty) {
     _spawning = false; return;
   }
 
-  if (claimed.length !== engine.country.pixel_count) {
-    const { data } = await sb.from('countries').update({ pixel_count: claimed.length }).eq('id', engine.country.id).select().single();
+  if (claimed.length !== engine.country.pixel_count || !engine.country.food) {
+    const { data } = await sb.from('countries').update({ pixel_count: claimed.length, food: 60 }).eq('id', engine.country.id).select().single();
     if (data) engine.country = data;
   }
 
