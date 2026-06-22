@@ -1045,13 +1045,21 @@ function renderMap() {
       if (infra && ps > 11) {
         const cx = px + pw / 2, cy = py + pw / 2;
         const r = pw * 0.36;
+        const isUpgradedBuilding = infra.type === 'farm' && (infra.level || 1) >= 2;
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.fillStyle = isUpgradedBuilding ? 'rgba(255,245,200,0.97)' : 'rgba(255,255,255,0.92)';
         ctx.fill();
-        ctx.lineWidth = Math.max(1, ps * 0.07);
-        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.lineWidth = isUpgradedBuilding ? Math.max(1.5, ps * 0.11) : Math.max(1, ps * 0.07);
+        ctx.strokeStyle = isUpgradedBuilding ? '#f59e0b' : 'rgba(0,0,0,0.5)';
         ctx.stroke();
+        if (isUpgradedBuilding) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, r + Math.max(1, ps * 0.07), 0, Math.PI * 2);
+          ctx.lineWidth = Math.max(1, ps * 0.05);
+          ctx.strokeStyle = 'rgba(245,158,11,0.35)';
+          ctx.stroke();
+        }
 
         // Size multipliers per type — complex/wide emoji need to be smaller
         const sizeMap = { barracks: 0.30, trading_post: 0.28, mine: 0.32, market: 0.36, farm: 0.40, wall: 0.36, harbor: 0.34 };
