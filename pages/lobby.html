@@ -280,8 +280,11 @@
       </div>
       <button class="btn btn-primary" onclick="saveSettings()">Save Changes</button>
       <div id="settingsMsg" style="margin-top:0.75rem; font-size:0.85rem"></div>
-    </div>
-  </div>
+      <div id="adminChatIconSection" style="display:none;margin-top:1.5rem;border-top:1px solid var(--border);padding-top:1.25rem">
+        <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:0.5rem;color:var(--gold)">🛡️ Admin Chat Icon</label>
+        <p style="font-size:0.78rem;color:var(--muted);margin-bottom:0.75rem">Shown next to your name when you message as admin in-game.</p>
+        <div class="avatar-picker" id="adminChatIconPicker"></div>
+      </div>
 
   <!-- FEEDBACK -->
   <div id="feedback" class="section">
@@ -983,6 +986,15 @@ function initSettings() {
        ).join('') +
        `</div>`
     );
+
+    // Admin chat icon picker
+    const CHAT_ICONS = ['🛡️','👑','🔱','⚡','🌟','🎖️','👁️','🔮','🦾','💎','☄️','⚔️','🧬','🏴'];
+    const currentIcon = currentProfile?.admin_icon || '🛡️';
+    document.getElementById('adminChatIconSection').style.display = '';
+    document.getElementById('adminChatIconPicker').innerHTML = CHAT_ICONS.map(e =>
+      `<div class="avatar-option ${e === currentIcon ? 'selected' : ''}" data-icon="${e}" onclick="pickAdminChatIcon(this)">${e}</div>`
+    ).join('');
+    window._adminChatIcon = currentIcon;
   }
 
   const colorPicker = document.getElementById('colorPickerSettings');
@@ -992,6 +1004,12 @@ function initSettings() {
 
   window._settingsAvatar = currentProfile?.avatar_emoji || '🙂';
   window._settingsColor = currentProfile?.avatar_color || '#4ade80';
+}
+
+function pickAdminChatIcon(el) {
+  document.querySelectorAll('#adminChatIconPicker .avatar-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  window._adminChatIcon = el.dataset.icon;
 }
 
 function pickAvatar(el) {
@@ -1016,11 +1034,13 @@ async function saveSettings() {
     if (existing) { msg.style.color = 'var(--red)'; msg.textContent = 'That name is already taken.'; return; }
   }
 
-  const { data, error } = await sb.from('profiles').update({
+  const updates = {
     username: newUsername,
     avatar_emoji: window._settingsAvatar,
     avatar_color: window._settingsColor,
-  }).eq('id', currentUser.id).select().single();
+  };
+  if (currentProfile?.is_admin && window._adminChatIcon) updates.admin_icon = window._adminChatIcon;
+  const { data, error } = await sb.from('profiles').update(updates).eq('id', currentUser.id).select().single();
 
   if (error) { msg.style.color = 'var(--red)'; msg.textContent = error.message; return; }
 
