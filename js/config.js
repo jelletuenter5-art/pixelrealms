@@ -32,7 +32,7 @@ const CONFIG = {
   PIXELS_PER_HOUR: 1,             // expansion tokens per hour offline
   MAX_STACK: 24,                  // max stacked expansion tokens
   STARTING_PIXELS: 5,             // pixels at country creation
-  STARTING_GOLD: 100,
+  STARTING_GOLD: 120,
   STARTING_EXPANSION_TOKENS: 3,   // expansion tokens available immediately
   ARMY_PER_PIXEL: 2,              // army units per pixel at start
   ATTACK_GOLD_COST: 0,
