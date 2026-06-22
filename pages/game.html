@@ -2043,19 +2043,19 @@ async function spectateCountry(id, fromClick = false) {
       ${statCard('🎯 Tokens', Math.floor(Math.min((c.pending_pixels || 0) + Math.max(0, (Date.now() - new Date(c.last_active)) / 3600000) * CONFIG.PIXELS_PER_HOUR * spSpeed, CONFIG.MAX_STACK)), 'green')}
     </div>
     <div class="section-label">📈 Income</div>
-    <div style="font-size:0.78rem;line-height:1.9;margin-bottom:0.5rem">
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🗺️ Base ${(CONFIG.BASE_INCOME_PER_PIXEL * spSpeed).toFixed(2)}💰/px × ${c.pixel_count} px</span><span style="color:var(--gold)">+${baseIncomeSp.toFixed(1)} 💰/hr</span></div>
-      ${farmInfra.length > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🌾 ${farmInfra.length} farm${farmInfra.length>1?'s':''} (terrain-adjusted)</span><span style="color:var(--gold)">+${farmIncomeSp.toFixed(1)} 💰/hr</span></div>` : ''}
-      ${mineInfra.length > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⛏️ ${mineInfra.length} mine${mineInfra.length>1?'s':''} (terrain-adjusted)</span><span style="color:var(--gold)">+${mineIncomeSp.toFixed(1)} 💰/hr</span></div>` : ''}
-      ${foodMultSp < 1 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--red)">🍞 Low food reserves (−${((1-foodMultSp)*100).toFixed(0)}%)</span><span style="color:var(--red)">${((grossIncomeSp / foodMultSp * (foodMultSp-1))).toFixed(1)} 💰/hr</span></div>` : ''}
+    <div style="font-size:0.78rem;line-height:1.75;margin-bottom:0.5rem">
+      <div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">🗺️ Base income (${c.pixel_count} px)</span><span style="color:var(--gold);white-space:nowrap">+${baseIncomeSp.toFixed(1)} 💰/hr</span></div>
+      ${farmInfra.length > 0 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">🌾 ${farmInfra.length} farm${farmInfra.length>1?'s':''}</span><span style="color:var(--gold);white-space:nowrap">+${farmIncomeSp.toFixed(1)} 💰/hr</span></div>` : ''}
+      ${mineInfra.length > 0 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">⛏️ ${mineInfra.length} mine${mineInfra.length>1?'s':''}</span><span style="color:var(--gold);white-space:nowrap">+${mineIncomeSp.toFixed(1)} 💰/hr</span></div>` : ''}
+      ${foodMultSp < 1 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--red);white-space:nowrap">🍞 Low food (−${((1-foodMultSp)*100).toFixed(0)}%)</span><span style="color:var(--red);white-space:nowrap">${((grossIncomeSp / foodMultSp * (foodMultSp-1))).toFixed(1)} 💰/hr</span></div>` : ''}
     </div>
     <div class="section-label">📉 Upkeep</div>
-    <div style="font-size:0.78rem;line-height:1.9;margin-bottom:0.75rem">
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🗺️ Territory (${(0.3 * spSpeed).toFixed(3)}💰/px × ${c.pixel_count} px)</span><span style="color:var(--red)">−${(0.3 * c.pixel_count * spSpeed).toFixed(1)} 💰/hr</span></div>
-      ${markets > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🏪 ${markets} market${markets>1?'s':''} savings</span><span style="color:var(--green)">+${(Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, 0.3) * c.pixel_count * spSpeed).toFixed(1)} 💰/hr</span></div>` : ''}
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚔️ Army (${(CONFIG.ARMY_UPKEEP_PER_UNIT * spSpeed).toFixed(2)}💰 × ${c.army_size} units)</span><span style="color:var(--red)">−${armyUpkeepSp.toFixed(1)} 💰/hr</span></div>
-      ${borderSp.nations > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🚧 Border pixels (${borderSp.borderPixels} × ${(CONFIG.BORDER_UPKEEP_PER_NATION * spSpeed).toFixed(1)}💰/hr)</span><span style="color:var(--red)">−${borderCostDispSp.toFixed(1)} 💰/hr</span></div>` : ''}
-      ${harborsSp > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚓ ${harborsSp} harbour${harborsSp>1?'s':''} (${CONFIG.INFRA_COSTS.harbor.upkeepPerHour * spSpeed}💰/hr each)</span><span style="color:var(--red)">−${harborUpkeepSp.toFixed(1)} 💰/hr</span></div>` : `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚓ Harbours (none built)</span><span style="color:var(--muted)">−0 💰/hr</span></div>`}
+    <div style="font-size:0.78rem;line-height:1.75;margin-bottom:0.75rem">
+      <div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">🗺️ Territory (${c.pixel_count} px)</span><span style="color:var(--red);white-space:nowrap">−${(0.3 * c.pixel_count * spSpeed).toFixed(1)} 💰/hr</span></div>
+      ${markets > 0 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">🏪 ${markets} market${markets>1?'s':''} savings</span><span style="color:var(--green);white-space:nowrap">+${(Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, 0.3) * c.pixel_count * spSpeed).toFixed(1)} 💰/hr</span></div>` : ''}
+      <div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">⚔️ Army (${c.army_size} units)</span><span style="color:var(--red);white-space:nowrap">−${armyUpkeepSp.toFixed(1)} 💰/hr</span></div>
+      ${borderSp.nations > 0 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">🚧 Border (${borderSp.borderPixels} px)</span><span style="color:var(--red);white-space:nowrap">−${borderCostDispSp.toFixed(1)} 💰/hr</span></div>` : ''}
+      ${harborsSp > 0 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">⚓ Harbours (${harborsSp})</span><span style="color:var(--red);white-space:nowrap">−${harborUpkeepSp.toFixed(1)} 💰/hr</span></div>` : ''}
     </div>
     <div style="display:flex;justify-content:space-between;font-size:0.78rem;font-weight:700;padding:0.5rem 0;border-top:1px solid var(--border);margin-top:0.25rem">
       <span>💹 Net income</span>
@@ -2267,58 +2267,58 @@ async function renderMyCountry(body) {
         `;
       })()}
     </div>
-    <div style="font-size:0.8rem;line-height:2;margin-bottom:0.75rem">
-      <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">🗺️ Base ${(CONFIG.BASE_INCOME_PER_PIXEL * speed).toFixed(2)}💰/px × ${pixelCount} px</span>
-        <span style="color:var(--gold)">+${baseIncome.toFixed(1)} 💰/hr</span>
+    <div style="font-size:0.8rem;line-height:1.75;margin-bottom:0.75rem">
+      <div style="display:flex;justify-content:space-between;gap:0.5rem">
+        <span style="color:var(--muted);white-space:nowrap">🗺️ Base income (${pixelCount} px)</span>
+        <span style="color:var(--gold);white-space:nowrap">+${baseIncome.toFixed(1)} 💰/hr</span>
       </div>
-      ${farms > 0 ? `<div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">🌾 ${farms} farm${farms>1?'s':''} (terrain-adjusted)</span>
-        <span style="color:var(--gold)">+${farmIncome.toFixed(1)} 💰/hr</span>
+      ${farms > 0 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem">
+        <span style="color:var(--muted);white-space:nowrap">🌾 ${farms} farm${farms>1?'s':''}</span>
+        <span style="color:var(--gold);white-space:nowrap">+${farmIncome.toFixed(1)} 💰/hr</span>
       </div>` : ''}
-      ${mines > 0 ? `<div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">⛏️ ${mines} mine${mines>1?'s':''} (terrain-adjusted)</span>
-        <span style="color:var(--gold)">+${mineIncome.toFixed(1)} 💰/hr</span>
+      ${mines > 0 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem">
+        <span style="color:var(--muted);white-space:nowrap">⛏️ ${mines} mine${mines>1?'s':''}</span>
+        <span style="color:var(--gold);white-space:nowrap">+${mineIncome.toFixed(1)} 💰/hr</span>
       </div>` : ''}
-      ${tradingPosts > 0 ? `<div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">🏛️ ${tradingPosts} trading post${tradingPosts>1?'s':''} (${border.nations} neighbor${border.nations!==1?'s':''})</span>
-        <span style="color:var(--gold)">+${tradingPostIncome.toFixed(1)} 💰/hr</span>
+      ${tradingPosts > 0 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem">
+        <span style="color:var(--muted);white-space:nowrap">🏛️ ${tradingPosts} trading post${tradingPosts>1?'s':''}</span>
+        <span style="color:var(--gold);white-space:nowrap">+${tradingPostIncome.toFixed(1)} 💰/hr</span>
       </div>` : ''}
-      ${foodMult < 1 ? `<div style="display:flex;justify-content:space-between">
-        <span style="color:var(--red)">🍞 Low food reserves (−${((1-foodMult)*100).toFixed(0)}%)</span>
-        <span style="color:var(--red)">−${((1-foodMult) * (baseIncome + farmIncome + mineIncome + tradingPostIncome)).toFixed(1)} 💰/hr</span>
+      ${foodMult < 1 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem">
+        <span style="color:var(--red);white-space:nowrap">🍞 Low food (−${((1-foodMult)*100).toFixed(0)}%)</span>
+        <span style="color:var(--red);white-space:nowrap">−${((1-foodMult) * (baseIncome + farmIncome + mineIncome + tradingPostIncome)).toFixed(1)} 💰/hr</span>
       </div>` : ''}
-      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
-        <span style="color:var(--text);font-weight:600">Total income</span>
-        <span style="color:var(--gold);font-weight:700">+${incomePerHr} 💰/hr</span>
+      <div style="display:flex;justify-content:space-between;gap:0.5rem;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
+        <span style="color:var(--text);font-weight:600;white-space:nowrap">Total income</span>
+        <span style="color:var(--gold);font-weight:700;white-space:nowrap">+${incomePerHr} 💰/hr</span>
       </div>
     </div>
 
     <div class="section-label">📉 Upkeep</div>
-    <div style="font-size:0.8rem;line-height:2;margin-bottom:0.75rem">
-      <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">🗺️ Territory (${(0.3 * speed).toFixed(3)}💰/px × ${pixelCount} px)</span>
-        <span style="color:var(--red)">−${(0.3 * pixelCount * speed).toFixed(1)} 💰/hr</span>
+    <div style="font-size:0.8rem;line-height:1.75;margin-bottom:0.75rem">
+      <div style="display:flex;justify-content:space-between;gap:0.5rem">
+        <span style="color:var(--muted);white-space:nowrap">🗺️ Territory (${pixelCount} px)</span>
+        <span style="color:var(--red);white-space:nowrap">−${(0.3 * pixelCount * speed).toFixed(1)} 💰/hr</span>
       </div>
-      ${markets > 0 ? `<div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">🏪 ${markets} market${markets>1?'s':''} savings</span>
-        <span style="color:var(--green)">+${marketSavings.toFixed(1)} 💰/hr</span>
+      ${markets > 0 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem">
+        <span style="color:var(--muted);white-space:nowrap">🏪 ${markets} market${markets>1?'s':''} savings</span>
+        <span style="color:var(--green);white-space:nowrap">+${marketSavings.toFixed(1)} 💰/hr</span>
       </div>` : ''}
-      <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">⚔️ Army (${(CONFIG.ARMY_UPKEEP_PER_UNIT * speed).toFixed(2)}💰 × ${displayArmy} units)</span>
-        <span style="color:var(--red)">−${armyUnitUpkeep.toFixed(1)} 💰/hr</span>
+      <div style="display:flex;justify-content:space-between;gap:0.5rem">
+        <span style="color:var(--muted);white-space:nowrap">⚔️ Army (${displayArmy} units)</span>
+        <span style="color:var(--red);white-space:nowrap">−${armyUnitUpkeep.toFixed(1)} 💰/hr</span>
       </div>
-      <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">🚧 Border pixels (${border.borderPixels} × ${(CONFIG.BORDER_UPKEEP_PER_NATION * speed).toFixed(1)}💰/hr each)</span>
-        <span style="${borderCostDisplay > 0 ? 'color:var(--red)' : 'color:var(--muted)'}">−${borderCostDisplay.toFixed(1)} 💰/hr</span>
+      <div style="display:flex;justify-content:space-between;gap:0.5rem">
+        <span style="color:var(--muted);white-space:nowrap">🚧 Border (${border.borderPixels} px)</span>
+        <span style="${borderCostDisplay > 0 ? 'color:var(--red)' : 'color:var(--muted)'};white-space:nowrap">−${borderCostDisplay.toFixed(1)} 💰/hr</span>
       </div>
-      <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">${harborsCount > 0 ? `⚓ Harbours (${harborsCount} × ${CONFIG.INFRA_COSTS.harbor.upkeepPerHour * speed}💰/hr)` : '⚓ Harbours (none built)'}</span>
-        <span style="${harborsCount > 0 ? 'color:var(--red)' : 'color:var(--muted)'}">−${harborUpkeep.toFixed(1)} 💰/hr</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
-        <span style="color:var(--text);font-weight:600">Total upkeep</span>
-        <span style="color:var(--red);font-weight:700">−${upkeep} 💰/hr</span>
+      ${harborsCount > 0 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem">
+        <span style="color:var(--muted);white-space:nowrap">⚓ Harbours (${harborsCount})</span>
+        <span style="color:var(--red);white-space:nowrap">−${harborUpkeep.toFixed(1)} 💰/hr</span>
+      </div>` : ''}
+      <div style="display:flex;justify-content:space-between;gap:0.5rem;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
+        <span style="color:var(--text);font-weight:600;white-space:nowrap">Total upkeep</span>
+        <span style="color:var(--red);font-weight:700;white-space:nowrap">−${upkeep} 💰/hr</span>
       </div>
     </div>
 
