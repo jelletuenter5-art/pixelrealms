@@ -42,6 +42,7 @@ class GameEngine {
     ]);
 
     this.game = gameRes.data;
+    this.speed = this.game?.speed_multiplier || 1;
     this.country = countryRes.data;
 
     // Index pixel data
@@ -224,8 +225,9 @@ create policy "update boats" on boats for update using (true);`);
 
     if (hoursOffline < 0.05) return; // < 3 min, skip
 
+    const speed = this.speed || 1;
     const newTokens = Math.min(
-      this.country.pending_pixels + hoursOffline * CONFIG.PIXELS_PER_HOUR,
+      this.country.pending_pixels + hoursOffline * CONFIG.PIXELS_PER_HOUR * speed,
       CONFIG.MAX_STACK
     );
 
@@ -258,23 +260,24 @@ create policy "update boats" on boats for update using (true);`);
     // Border upkeep capped at gross income — being surrounded can't create an inescapable spiral
     const borderCost = Math.min(border.cost, hourlyIncome);
     const currentGold = Number.isFinite(this.country.gold) ? this.country.gold : 0;
-    const newGold = Math.max(0, Math.round((currentGold + (hourlyIncome - pixelUpkeep - armyUpkeep - borderCost - harborUpkeep) * hoursOffline) * 10000) / 10000);
+    const scaledHours = hoursOffline * speed;
+    const newGold = Math.max(0, Math.round((currentGold + (hourlyIncome - pixelUpkeep - armyUpkeep - borderCost - harborUpkeep) * scaledHours) * 10000) / 10000);
 
     // Food offline — capped at 2× population + farms×20
     const foodCap = this.country.pixel_count * CONFIG.POPULATION_PER_PIXEL + farmInfra.length * 20;
-    const newFood = Math.min(foodCap, Math.max(0, Math.round((currentFood + foodBalance * hoursOffline) * 100) / 100));
+    const newFood = Math.min(foodCap, Math.max(0, Math.round((currentFood + foodBalance * scaledHours) * 100) / 100));
 
     // Army regen offline — barracks regenerate up to their cap
     const armyCap = barracksCount * CONFIG.INFRA_COSTS.barracks.armyBonus;
     const currentArmy = this.country.army_size || 0;
     const newArmy = barracksCount > 0 && currentArmy < armyCap
-      ? Math.min(armyCap, Math.floor(currentArmy + barracksCount * CONFIG.BARRACKS_REGEN_PER_HOUR * hoursOffline))
+      ? Math.min(armyCap, Math.floor(currentArmy + barracksCount * CONFIG.BARRACKS_REGEN_PER_HOUR * scaledHours))
       : currentArmy;
 
     // Food aggression decays offline — boosted by markets
     const marketsCount = myInfra.filter(i => i.type === 'market').length;
     const effectiveDecay = CONFIG.FOOD_AGGRESSION_DECAY + marketsCount * CONFIG.MARKET_DECAY_BONUS;
-    const newAggression = Math.max(0, Math.round((currentAggression - effectiveDecay * hoursOffline) * 100000) / 100000);
+    const newAggression = Math.max(0, Math.round((currentAggression - effectiveDecay * scaledHours) * 100000) / 100000);
 
     const updates = {
       pending_pixels: newTokens,
@@ -298,7 +301,8 @@ create policy "update boats" on boats for update using (true);`);
     if (!this.country) return 0;
     const last = new Date(this.country.last_active);
     const hoursElapsed = Math.max(0, (Date.now() - last) / 3600000);
-    return Math.min(this.country.pending_pixels + hoursElapsed * CONFIG.PIXELS_PER_HOUR, CONFIG.MAX_STACK);
+    const speed = this.speed || 1;
+    return Math.min(this.country.pending_pixels + hoursElapsed * CONFIG.PIXELS_PER_HOUR * speed, CONFIG.MAX_STACK);
   }
 
   getLiveTokens() {
@@ -666,7 +670,8 @@ create policy "update boats" on boats for update using (true);`);
     }
 
     const now = new Date();
-    const arrivesAt = new Date(now.getTime() + bestPath.length * CONFIG.BOAT_MINUTES_PER_TILE * 60000);
+    const boatMinutes = CONFIG.BOAT_MINUTES_PER_TILE / (this.speed || 1);
+    const arrivesAt = new Date(now.getTime() + bestPath.length * boatMinutes * 60000);
 
     const { data, error } = await sb.from('boats').insert({
       game_id: this.gameId,
@@ -689,7 +694,7 @@ create policy "update boats" on boats for update using (true);`);
     }
 
     this.boatData[data.id] = data;
-    const eta = Math.round(bestPath.length * CONFIG.BOAT_MINUTES_PER_TILE);
+    const eta = Math.round(bestPath.length * boatMinutes);
     await this._logEvent('build', `${this.country.name} deployed a boat towards (${toX},${toY}) — ETA ${eta} min`);
     return { ok: true, msg: `⛵ Boat deployed! Arrives in ~${eta} minutes.` };
   }
@@ -1105,7 +1110,8 @@ async function tickIncome(engine) {
   const borderCost = Math.min(border.cost, hourlyIncome);
   const netHourly = hourlyIncome - pixelUpkeep - armyUpkeep - borderCost - harborUpkeep;
 
-  const tickHours = CONFIG.INCOME_TICK_SECONDS / 3600;
+  const speed = engine.speed || 1;
+  const tickHours = CONFIG.INCOME_TICK_SECONDS / 3600 * speed;
   const tick = netHourly * tickHours;
   const safeGold = Number.isFinite(c.gold) ? c.gold : 0;
   const newGold = Math.max(0, Math.round((safeGold + tick) * 10000) / 10000);
@@ -1141,7 +1147,7 @@ async function tickIncome(engine) {
   // Uses actual wall-clock elapsed time so browser tab throttling doesn't starve regen
   const barracksCount = myInfra.filter(i => i.type === 'barracks').length;
   const now = Date.now();
-  const regenElapsedHours = engine._lastRegenTime ? (now - engine._lastRegenTime) / 3600000 : tickHours;
+  const regenElapsedHours = (engine._lastRegenTime ? (now - engine._lastRegenTime) / 3600000 : tickHours / speed) * speed;
   engine._lastRegenTime = now;
   if (barracksCount > 0 && c.army_size < barracksCount * CONFIG.INFRA_COSTS.barracks.armyBonus) {
     engine._armyRegenAccum = (engine._armyRegenAccum || 0) + barracksCount * CONFIG.BARRACKS_REGEN_PER_HOUR * regenElapsedHours;

@@ -276,6 +276,7 @@
     </div>
     <div class="topbar-btns">
       <span id="gameDayBadge" style="font-size:0.72rem;color:var(--muted);background:var(--panel2);border:1px solid var(--border);border-radius:20px;padding:0.2rem 0.6rem;white-space:nowrap"></span>
+      <span id="gameSpeedBadge" style="display:none;font-size:0.72rem;color:#f59e0b;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);border-radius:20px;padding:0.2rem 0.6rem;white-space:nowrap"></span>
       <button class="btn-xs" id="muteBtn" onclick="toggleAudio()" title="Toggle music & sounds">🔊</button>
       <button class="btn-xs" onclick="openTutorial()">❓ How to Play</button>
       <button class="btn-xs" onclick="window.location.href='lobby.html'">← Lobby</button>
@@ -1657,6 +1658,10 @@ function updateTopBar() {
   const c = engine.country;
   document.getElementById('gameTitle').textContent = engine.game?.name || '';
   updateGameDayBadge();
+  const speedBadge = document.getElementById('gameSpeedBadge');
+  const spd = engine.game?.speed_multiplier;
+  if (speedBadge && spd && spd !== 1) { speedBadge.textContent = `⚡ ${spd}× speed`; speedBadge.style.display = ''; }
+  else if (speedBadge) speedBadge.style.display = 'none';
   if (SPECTATE) { document.querySelector('.topbar-stats').style.display = 'none'; return; }
   if (!c) return;
   document.getElementById('myCountryFlag').textContent = c.flag_emoji || '🏳️';

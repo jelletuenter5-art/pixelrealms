@@ -326,7 +326,7 @@
         <label>Realm Name</label>
         <input type="text" id="createRealmName" placeholder="Summer Tournament" maxlength="60">
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0.75rem">
         <div class="form-group" style="margin:0">
           <label>Map Width</label>
           <input type="number" id="createRealmWidth" value="100" min="30" max="500">
@@ -338,6 +338,10 @@
         <div class="form-group" style="margin:0">
           <label>Max Players</label>
           <input type="number" id="createRealmPlayers" value="30" min="2" max="200">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Speed ×</label>
+          <input type="number" id="createRealmSpeed" value="1" min="0.5" max="20" step="0.5" title="1 = normal, 2 = twice as fast, etc.">
         </div>
       </div>
       <button class="btn btn-primary" style="margin-top:1rem" onclick="createEventRealm()">Create Realm</button>
@@ -591,6 +595,7 @@ async function loadMyGames() {
         <span>💰 ${Math.floor(c.gold)} gold</span>
         <span>👥 ${g.current_players || 0}/${g.max_players} players</span>
         <span>📅 Day ${Math.floor((Date.now() - new Date(g.created_at).getTime()) / 86400000)}</span>
+        ${(g.speed_multiplier && g.speed_multiplier !== 1) ? `<span style="color:#f59e0b;font-weight:600">⚡ ${g.speed_multiplier}× speed</span>` : ''}
       </div>
       ${deleteWarning}
       <div style="margin-top:0.75rem; display:flex; justify-content:space-between; align-items:center">
@@ -1128,6 +1133,7 @@ async function loadEventGames() {
       <div class="game-meta">
         <span>🗺️ ${g.map_width}×${g.map_height}</span>
         <span>${g.current_players || 0}/${g.max_players} players</span>
+        ${(g.speed_multiplier && g.speed_multiplier !== 1) ? `<span style="color:#f59e0b;font-weight:600">⚡ ${g.speed_multiplier}× speed</span>` : ''}
       </div>
       ${action}
     </div>`;
@@ -1139,9 +1145,11 @@ async function createEventRealm() {
   const width = parseInt(document.getElementById('createRealmWidth').value);
   const height = parseInt(document.getElementById('createRealmHeight').value);
   const maxPlayers = parseInt(document.getElementById('createRealmPlayers').value);
+  const speed = parseFloat(document.getElementById('createRealmSpeed').value) || 1;
   const msg = document.getElementById('createRealmMsg');
   if (!name) { msg.style.color = 'var(--red)'; msg.textContent = 'Realm name is required.'; return; }
   if (width < 30 || height < 30 || maxPlayers < 2) { msg.style.color = 'var(--red)'; msg.textContent = 'Invalid dimensions or player count.'; return; }
+  if (speed < 0.5 || speed > 20) { msg.style.color = 'var(--red)'; msg.textContent = 'Speed must be between 0.5 and 20.'; return; }
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = 'EV-';
   for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
@@ -1149,7 +1157,7 @@ async function createEventRealm() {
     name, code, is_admin_created: true, is_open: true,
     max_players: maxPlayers, map_width: width, map_height: height,
     map_seed: Math.floor(Math.random() * 9999999),
-    status: 'waiting', current_players: 0,
+    status: 'waiting', current_players: 0, speed_multiplier: speed,
   }).select().single();
   if (error) { msg.style.color = 'var(--red)'; msg.textContent = error.message; return; }
   msg.style.color = 'var(--green)';
@@ -1223,7 +1231,7 @@ async function loadAdminGames() {
         <span style="font-weight:600">${escapeHtmlLobby(g.name)}</span>
         <span style="font-size:0.78rem;color:${color};margin-left:0.5rem">${g.status}</span>
         <span style="font-size:0.75rem;color:var(--muted)">${age}</span>
-        <div style="font-size:0.75rem;color:var(--muted);margin-top:0.2rem">${g.current_players || 0}/${g.max_players} players · ${g.map_width}×${g.map_height}</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:0.2rem">${g.current_players || 0}/${g.max_players} players · ${g.map_width}×${g.map_height}${(g.speed_multiplier && g.speed_multiplier !== 1) ? ` · <span style="color:#f59e0b">⚡ ${g.speed_multiplier}×</span>` : ''}</div>
       </div>
       <div style="display:flex;gap:0.4rem;align-items:center">
         <button class="btn-sm" onclick="window.location.href='game.html?game=${g.id}&spectate=1'">View</button>
