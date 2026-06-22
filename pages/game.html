@@ -1938,14 +1938,21 @@ async function spectateCountry(id, fromClick = false) {
     : 1;
   const borderSp = calcBorderUpkeep(engine.pixelData, c.id);
   const baseIncomeSp = CONFIG.BASE_INCOME_PER_PIXEL * c.pixel_count;
-  const grossIncomeSp = (baseIncomeSp + farmIncomeSp + mineIncomeSp) * foodMultSp;
+  const tradingPostInfraSp = myInfra.filter(i => i.type === 'trading_post');
+  const tradingPostIncomeSp = calcTradingPostIncome(tradingPostInfraSp, engine.pixelData, borderSp.nations);
+  const grossIncomeSp = (baseIncomeSp + farmIncomeSp + mineIncomeSp + tradingPostIncomeSp) * foodMultSp;
   const incomePerHr = grossIncomeSp.toFixed(1);
   const pixelUpkeep = Math.max(0, c.army_upkeep_per_pixel * c.pixel_count);
   const armyUpkeep = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
   const harborsSp = myInfra.filter(i => i.type === 'harbor').length;
   const harborUpkeepSp = harborsSp * CONFIG.INFRA_COSTS.harbor.upkeepPerHour;
   const upkeep = (pixelUpkeep + armyUpkeep + borderSp.cost + harborUpkeepSp).toFixed(1);
+  const borderCostSp = Math.min(borderSp.cost, grossIncomeSp);
+  const netIncomeSp = grossIncomeSp - pixelUpkeep - armyUpkeep - borderCostSp - harborUpkeepSp;
   const population = c.pixel_count * CONFIG.POPULATION_PER_PIXEL;
+  const aggressionSp = Number.isFinite(c.food_aggression) ? c.food_aggression : 0;
+  const foodProdSp = c.pixel_count * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmInfra.length * CONFIG.FOOD_PRODUCTION_PER_FARM;
+  const foodConsSp = c.pixel_count * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + c.army_size * (CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggressionSp);
 
   body.innerHTML = `
     <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
@@ -1979,10 +1986,16 @@ async function spectateCountry(id, fromClick = false) {
       ${borderSp.nations > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🚧 Border pixels (${borderSp.borderPixels} × ${CONFIG.BORDER_UPKEEP_PER_NATION}💰/hr)</span><span style="color:var(--red)">−${borderSp.cost.toFixed(1)} 💰/hr</span></div>` : ''}
       ${harborsSp > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚓ ${harborsSp} harbour${harborsSp>1?'s':''} (${CONFIG.INFRA_COSTS.harbor.upkeepPerHour}💰/hr each)</span><span style="color:var(--red)">−${harborUpkeepSp.toFixed(1)} 💰/hr</span></div>` : `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚓ Harbours (none built)</span><span style="color:var(--muted)">−0 💰/hr</span></div>`}
     </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.78rem;font-weight:700;padding:0.5rem 0;border-top:1px solid var(--border);margin-top:0.25rem">
+      <span>💹 Net income</span>
+      <span style="color:${netIncomeSp >= 0 ? 'var(--green)' : 'var(--red)'}">${netIncomeSp >= 0 ? '+' : ''}${netIncomeSp.toFixed(1)} 💰/hr</span>
+    </div>
     <div class="section-label">🍞 Food & Population</div>
     <div style="font-size:0.78rem;line-height:1.9;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">👥 Population</span><span>${population.toLocaleString()} people</span></div>
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🍞 Food balance</span><span style="color:${foodBalSp >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBalSp >= 0 ? '+' : ''}${foodBalSp.toFixed(1)}/hr ${foodBalSp >= 0 ? '✓' : '⚠ deficit'}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🌱 Production</span><span style="color:var(--green)">+${foodProdSp.toFixed(1)}/hr</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🍖 Consumption</span><span style="color:var(--red)">−${foodConsSp.toFixed(1)}/hr</span></div>
+      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.2rem;padding-top:0.2rem"><span style="color:var(--muted)">⚖️ Balance</span><span style="color:${foodBalSp >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBalSp >= 0 ? '+' : ''}${foodBalSp.toFixed(1)}/hr ${foodBalSp >= 0 ? '✓' : '⚠ deficit'}</span></div>
     </div>
     <div class="section-label">⚔️ War Aggression</div>
     <div style="font-size:0.78rem;line-height:1.9;margin-bottom:0.75rem">
