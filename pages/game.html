@@ -409,7 +409,7 @@
 
     <div class="section-label">🌱 Expanding Your Territory</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      You earn <strong>1 expansion token per hour</strong> (max 24 stacked) — shown as 🎯 in the top bar.
+      You earn <strong>1 expansion token per hour</strong> (max 24 stacked) — shown as 🎯 in the top bar. In speed-boosted worlds, tokens accrue proportionally faster.
       Switch to <strong>Expand</strong> mode and click any unclaimed tile directly next to your territory to claim it for 1 token.
       Water tiles cannot be claimed on foot. You can also <strong>buy tokens</strong> for 1,000 💰 each when you need to expand faster.
     </p>
@@ -417,7 +417,7 @@
     <div class="section-label">🏗️ Buildings</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
       Switch to <strong>Build</strong> mode and click one of your own tiles to open the building menu.
-      Clicking a tile that already has a building lets you <strong>delete it</strong> for a 25% gold refund.
+      Clicking a tile that already has a building opens a <strong>manage dialog</strong> where you can upgrade (farms), fortify the tile, or delete the building for a 25% gold refund.
     </p>
     <p style="font-size:0.85rem;color:var(--accent);line-height:1.6;margin-bottom:0.4rem">
       ⚠️ <strong>Building cap: 1 building per 2 pixels.</strong> A 10-pixel nation can have at most 5 buildings. Expand to unlock more slots.
@@ -427,6 +427,7 @@
         <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🌾 Farm <span style="color:var(--gold);font-weight:400">100g</span></div>
         <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+0.04 💰/px/hr income nation-wide · +5 food/hr</div>
         <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Terrain: grass 1.5× · hill 1.0× · mountain 0.5× · desert 0.3×</div>
+        <div style="font-size:0.72rem;color:#f59e0b;margin-top:0.25rem">⭐ Upgradeable for 200g → doubles food to 10/hr. Upgraded farms show a gold ring on the map.</div>
       </div>
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
         <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">⛏️ Mine <span style="color:var(--gold);font-weight:400">120g</span></div>
@@ -439,7 +440,7 @@
         <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Terrain: desert 1.5× · hill 1.1× · grass 0.9× · mountain 0.5×</div>
       </div>
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
-        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🏪 Market <span style="color:var(--gold);font-weight:400">250g</span></div>
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🏪 Market <span style="color:var(--gold);font-weight:400">350g</span></div>
         <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">−0.0075 💰/px/hr territory upkeep (max 40) · +0.004 war aggression decay/hr per market</div>
         <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">40 markets fully cancels territory upkeep · also speeds up recovery from war</div>
       </div>
@@ -449,7 +450,7 @@
         <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Requires 100 population per barracks — roughly 1 per 7 pixels</div>
       </div>
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
-        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🧱 Fortification <span style="color:var(--gold);font-weight:400" id="htpWallCost">80g</span></div>
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🧱 Fortification <span style="color:var(--gold);font-weight:400">80g</span></div>
         <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+50% defense on that tile when attacked · shown as gold border lines on the map</div>
         <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Does not count toward building cap · stacks with other buildings · lost if the tile is captured</div>
       </div>
@@ -473,7 +474,7 @@
       Each pixel gives you <strong>15 population</strong>, which unlocks barracks (100 pop each).
       Your land produces <strong>0.5 food/hr per pixel</strong> (foraging) and consumes <strong>0.2 food/hr per pixel</strong>.
       Your army eats <strong>0.1 food/hr per unit</strong> at peace — this rises during war.
-      Build farms to keep your food in surplus. Food is capped at <strong>total population + 20 per farm</strong>.
+      Build farms to keep your food in surplus. Farms produce <strong>5 food/hr</strong> each and can be <strong>upgraded for 200g</strong> to produce <strong>10 food/hr</strong>. Food is capped at <strong>total population + 20 per farm</strong>.
       If your stored food drops below <strong>50% of your population</strong>, your gold income is penalised by up to <strong>−80%</strong> — always stockpile food before going to war.
     </p>
 
@@ -495,6 +496,11 @@
     </p>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
       Each attack raises your <strong>war aggression</strong>, which increases your army's food consumption. Aggression decays over time (faster with markets). Keep an eye on the <strong>War Aggression</strong> section in My Realm — it shows your current status, the progress bar, and your estimated time to peace. Sustained wars without enough food can cripple your economy, so plan your campaigns carefully.
+    </p>
+
+    <div class="section-label">⚡ Speed Worlds</div>
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
+      Some event realms run at a <strong>speed multiplier</strong> (shown as ⚡ 2× etc. on the world card and in the game topbar). In a 2× world, everything happens twice as fast — tokens accrue in 30 minutes instead of an hour, income and upkeep tick at double rate, food is produced and consumed faster, war aggression decays quicker, boats travel at double speed, and army regenerates twice as fast. All displayed stats in My Realm already show the multiplied values, so what you see is what you get.
     </p>
 
     <div class="section-label">🤝 Trade</div>
