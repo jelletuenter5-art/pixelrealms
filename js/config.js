@@ -11,7 +11,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // GAME CONSTANTS
 // ============================================================
 const CONFIG = {
-  BASE_INCOME_PER_PIXEL: 1,          // base gold per pixel per hour
+  BASE_INCOME_PER_PIXEL: 1.5,         // base gold per pixel per hour
   STARTING_ARMY: 5,                  // army units at nation creation
   BORDER_UPKEEP_PER_NATION: 10,      // gold/hr upkeep per border pixel (pixel of yours touching an enemy pixel)
   POPULATION_PER_PIXEL: 15,          // people per pixel owned
