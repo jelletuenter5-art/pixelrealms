@@ -1392,6 +1392,7 @@ function showBuildMenu() {
     }
 
     if (!isFortification && !blocked) {
+      const spd = engine.speed || 1;
       if (type === 'barracks') {
         const reqPop = (existingBarracks + 1) * CONFIG.BARRACKS_POPULATION_COST;
         popOk = population >= reqPop;
@@ -1401,26 +1402,26 @@ function showBuildMenu() {
           : `Need ${reqPop} pop (= ${pixelsNeeded} pixels). You have ${population}`;
       } else if (type === 'mine') {
         const terrMult = CONFIG.MINE_TERRAIN_MULT[terrain] ?? 1.0;
-        const flatIncome = Math.max(0, info.flatIncome - existingMines * 0.1) * terrMult;
-        const pixBonus = Math.max(0, info.pixelBonus - existingMines * 0.002) * pixelCount;
+        const flatIncome = Math.max(0, info.flatIncome - existingMines * 0.1) * terrMult * spd;
+        const pixBonus = Math.max(0, info.pixelBonus - existingMines * 0.002) * pixelCount * spd;
         extraNote = `${terrainLabel}: ~${(flatIncome + pixBonus).toFixed(1)} 💰/hr (${terrMult}x terrain mult)`;
       } else if (type === 'farm') {
         const terrMult = CONFIG.FARM_TERRAIN_MULT[terrain] ?? 1.0;
-        const thisFarmIncome = info.incomeBonus * terrMult * pixelCount;
-        const foodProd = CONFIG.FOOD_PRODUCTION_PER_FARM;
-        extraNote = `${terrainLabel}: +${thisFarmIncome.toFixed(1)} 💰/hr (${terrMult}x terrain) · +${foodProd} food/hr`;
+        const thisFarmIncome = info.incomeBonus * terrMult * pixelCount * spd;
+        const foodProd = CONFIG.FOOD_PRODUCTION_PER_FARM * spd;
+        extraNote = `${terrainLabel}: +${thisFarmIncome.toFixed(1)} 💰/hr (${terrMult}x terrain) · +${foodProd.toFixed(1)} food/hr`;
       } else if (type === 'market') {
-        const newDecay = (CONFIG.FOOD_AGGRESSION_DECAY + (existingMarkets + 1) * CONFIG.MARKET_DECAY_BONUS).toFixed(3);
-        extraNote = `−0.0075 💰/px/hr upkeep · war decay → ${newDecay}/hr (${existingMarkets + 1}/${CONFIG.INFRA_COSTS.market.maxCount} markets)`;
+        const newDecay = ((CONFIG.FOOD_AGGRESSION_DECAY + (existingMarkets + 1) * CONFIG.MARKET_DECAY_BONUS) * spd).toFixed(3);
+        extraNote = `−${(0.0075 * spd).toFixed(4)} 💰/px/hr upkeep · war decay → ${newDecay}/hr (${existingMarkets + 1}/${CONFIG.INFRA_COSTS.market.maxCount} markets)`;
       } else if (type === 'trading_post') {
         const terrMult = CONFIG.TRADING_POST_TERRAIN_MULT[terrain] ?? 0.9;
         const border = calcBorderUpkeep(engine.pixelData, engine.country?.id);
-        const perPost = (info.flatIncome + border.nations * info.incomePerNation) * terrMult;
+        const perPost = (info.flatIncome + border.nations * info.incomePerNation) * terrMult * spd;
         extraNote = `${terrainLabel}: +${perPost.toFixed(1)} 💰/hr · ${border.nations} neighbor${border.nations!==1?'s':''} now (${terrMult}x terrain)`;
       } else if (type === 'harbor') {
         const bordersWater = [[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy]) => mapData?.[selectedBuildTile.y+dy]?.[selectedBuildTile.x+dx]?.terrain === 'water');
         if (!bordersWater) { blocked = true; blockedMsg = 'Tile must border water'; }
-        else extraNote = `10💰/hr upkeep · must border water ✓`;
+        else extraNote = `${(10 * spd).toFixed(1)}💰/hr upkeep · must border water ✓`;
       }
     }
 
@@ -1491,20 +1492,21 @@ function openManageBuilding(x, y) {
   const terrain = tile?.terrain || 'grass';
   const terrainLabel = terrain.charAt(0).toUpperCase() + terrain.slice(1);
   document.getElementById('manageBuildingCoords').textContent = `Location: (${x}, ${y}) · ${terrainLabel}`;
+  const mngSpd = engine.speed || 1;
   let effectText = cost?.effect || '';
   if (infra.type === 'farm') {
     const terrMult = CONFIG.FARM_TERRAIN_MULT[terrain] ?? 1.0;
     const c = engine.country;
     const pixelCount = c?.pixel_count ?? 0;
-    const goldIncome = (CONFIG.INFRA_COSTS.farm.incomeBonus * terrMult * pixelCount).toFixed(1);
-    effectText = `+${goldIncome}g/hr income (${terrMult}x ${terrainLabel}) · +${CONFIG.FOOD_PRODUCTION_PER_FARM} food/hr`;
+    const goldIncome = (CONFIG.INFRA_COSTS.farm.incomeBonus * terrMult * pixelCount * mngSpd).toFixed(1);
+    effectText = `+${goldIncome}g/hr income (${terrMult}x ${terrainLabel}) · +${(CONFIG.FOOD_PRODUCTION_PER_FARM * mngSpd).toFixed(1)} food/hr`;
   } else if (infra.type === 'mine') {
     const terrMult = CONFIG.MINE_TERRAIN_MULT[terrain] ?? 1.0;
     const c = engine.country;
     const myMines = Object.values(engine.infraData || {}).filter(i => i.country_id === c?.id && i.type === 'mine');
     const idx = myMines.findIndex(m => m.pixel_x === x && m.pixel_y === y);
-    const flatIncome = Math.max(0, CONFIG.INFRA_COSTS.mine.flatIncome - idx * 0.1) * terrMult;
-    const pixBonus = Math.max(0, CONFIG.INFRA_COSTS.mine.pixelBonus - idx * 0.002) * (c?.pixel_count ?? 0);
+    const flatIncome = Math.max(0, CONFIG.INFRA_COSTS.mine.flatIncome - idx * 0.1) * terrMult * mngSpd;
+    const pixBonus = Math.max(0, CONFIG.INFRA_COSTS.mine.pixelBonus - idx * 0.002) * (c?.pixel_count ?? 0) * mngSpd;
     effectText = `~${(flatIncome + pixBonus).toFixed(1)}g/hr (${terrMult}x ${terrainLabel} · mine #${idx + 1})`;
   }
   // Append fortification status
