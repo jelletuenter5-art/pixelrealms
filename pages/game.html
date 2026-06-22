@@ -1951,35 +1951,37 @@ async function spectateCountry(id, fromClick = false) {
   try {
   if (fresh) allCountriesCache[id] = fresh;
 
+  const spSpeed = engine.speed || 1;
   const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id);
   const mineInfra = myInfra.filter(i => i.type === 'mine');
   const farmInfra = myInfra.filter(i => i.type === 'farm');
   const markets = myInfra.filter(i => i.type === 'market').length;
-  const mineIncomeSp = calcMineIncome(mineInfra, c.pixel_count, engine.pixelData);
-  const farmIncomeSp = calcFarmIncome(farmInfra, c.pixel_count, engine.pixelData);
-  const foodBalSp = calcFoodBalance(farmInfra.length, c.pixel_count, c.army_size, c.food_aggression || 0);
+  const mineIncomeSp = calcMineIncome(mineInfra, c.pixel_count, engine.pixelData) * spSpeed;
+  const farmIncomeSp = calcFarmIncome(farmInfra, c.pixel_count, engine.pixelData) * spSpeed;
+  const foodBalSp = calcFoodBalance(farmInfra.length, c.pixel_count, c.army_size, c.food_aggression || 0) * spSpeed;
   const foodThresholdSp = c.pixel_count * CONFIG.POPULATION_PER_PIXEL * 0.5;
   const currentFoodSp = Number.isFinite(c.food) ? c.food : 0;
   const foodMultSp = (foodThresholdSp > 0 && currentFoodSp < foodThresholdSp)
     ? Math.max(0.2, currentFoodSp / foodThresholdSp)
     : 1;
   const borderSp = calcBorderUpkeep(engine.pixelData, c.id);
-  const baseIncomeSp = CONFIG.BASE_INCOME_PER_PIXEL * c.pixel_count;
+  const baseIncomeSp = CONFIG.BASE_INCOME_PER_PIXEL * c.pixel_count * spSpeed;
   const tradingPostInfraSp = myInfra.filter(i => i.type === 'trading_post');
-  const tradingPostIncomeSp = calcTradingPostIncome(tradingPostInfraSp, engine.pixelData, borderSp.nations);
+  const tradingPostIncomeSp = calcTradingPostIncome(tradingPostInfraSp, engine.pixelData, borderSp.nations) * spSpeed;
   const grossIncomeSp = (baseIncomeSp + farmIncomeSp + mineIncomeSp + tradingPostIncomeSp) * foodMultSp;
   const incomePerHr = grossIncomeSp.toFixed(1);
-  const pixelUpkeep = Math.max(0, c.army_upkeep_per_pixel * c.pixel_count);
-  const armyUpkeep = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
+  const pixelUpkeepSp = Math.max(0, c.army_upkeep_per_pixel * c.pixel_count * spSpeed);
+  const armyUpkeepSp = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT * spSpeed;
   const harborsSp = myInfra.filter(i => i.type === 'harbor').length;
-  const harborUpkeepSp = harborsSp * CONFIG.INFRA_COSTS.harbor.upkeepPerHour;
-  const upkeep = (pixelUpkeep + armyUpkeep + borderSp.cost + harborUpkeepSp).toFixed(1);
-  const borderCostSp = Math.min(borderSp.cost, grossIncomeSp);
-  const netIncomeSp = grossIncomeSp - pixelUpkeep - armyUpkeep - borderCostSp - harborUpkeepSp;
+  const harborUpkeepSp = harborsSp * CONFIG.INFRA_COSTS.harbor.upkeepPerHour * spSpeed;
+  const borderCostDispSp = borderSp.cost * spSpeed;
+  const upkeep = (pixelUpkeepSp + armyUpkeepSp + borderCostDispSp + harborUpkeepSp).toFixed(1);
+  const borderCostSp = Math.min(borderCostDispSp, grossIncomeSp);
+  const netIncomeSp = grossIncomeSp - pixelUpkeepSp - armyUpkeepSp - borderCostSp - harborUpkeepSp;
   const population = c.pixel_count * CONFIG.POPULATION_PER_PIXEL;
   const aggressionSp = Number.isFinite(c.food_aggression) ? c.food_aggression : 0;
-  const foodProdSp = c.pixel_count * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmInfra.length * CONFIG.FOOD_PRODUCTION_PER_FARM;
-  const foodConsSp = c.pixel_count * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + c.army_size * (CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggressionSp);
+  const foodProdSp = (c.pixel_count * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmInfra.length * CONFIG.FOOD_PRODUCTION_PER_FARM) * spSpeed;
+  const foodConsSp = (c.pixel_count * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + c.army_size * (CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggressionSp)) * spSpeed;
 
   body.innerHTML = `
     <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
@@ -1996,22 +1998,22 @@ async function spectateCountry(id, fromClick = false) {
       ${statCard('⚔️ Army', c.army_size, 'muted')}
       ${statCard('🍞 Food', (Number.isFinite(c.food) ? c.food : 0).toFixed(1) + ' / ' + (c.pixel_count * CONFIG.POPULATION_PER_PIXEL), 'green')}
       ${statCard('🏗️ Buildings', myInfra.length, 'gold')}
-      ${statCard('🎯 Tokens', Math.floor(Math.min((c.pending_pixels || 0) + Math.max(0, (Date.now() - new Date(c.last_active)) / 3600000) * CONFIG.PIXELS_PER_HOUR, CONFIG.MAX_STACK)), 'green')}
+      ${statCard('🎯 Tokens', Math.floor(Math.min((c.pending_pixels || 0) + Math.max(0, (Date.now() - new Date(c.last_active)) / 3600000) * CONFIG.PIXELS_PER_HOUR * spSpeed, CONFIG.MAX_STACK)), 'green')}
     </div>
     <div class="section-label">📈 Income</div>
     <div style="font-size:0.78rem;line-height:1.9;margin-bottom:0.5rem">
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🗺️ Base ${CONFIG.BASE_INCOME_PER_PIXEL}💰/px × ${c.pixel_count} px</span><span style="color:var(--gold)">+${baseIncomeSp.toFixed(1)} 💰/hr</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🗺️ Base ${(CONFIG.BASE_INCOME_PER_PIXEL * spSpeed).toFixed(2)}💰/px × ${c.pixel_count} px</span><span style="color:var(--gold)">+${baseIncomeSp.toFixed(1)} 💰/hr</span></div>
       ${farmInfra.length > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🌾 ${farmInfra.length} farm${farmInfra.length>1?'s':''} (terrain-adjusted)</span><span style="color:var(--gold)">+${farmIncomeSp.toFixed(1)} 💰/hr</span></div>` : ''}
       ${mineInfra.length > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⛏️ ${mineInfra.length} mine${mineInfra.length>1?'s':''} (terrain-adjusted)</span><span style="color:var(--gold)">+${mineIncomeSp.toFixed(1)} 💰/hr</span></div>` : ''}
       ${foodMultSp < 1 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--red)">🍞 Low food reserves (−${((1-foodMultSp)*100).toFixed(0)}%)</span><span style="color:var(--red)">${((grossIncomeSp / foodMultSp * (foodMultSp-1))).toFixed(1)} 💰/hr</span></div>` : ''}
     </div>
     <div class="section-label">📉 Upkeep</div>
     <div style="font-size:0.78rem;line-height:1.9;margin-bottom:0.75rem">
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🗺️ Territory (0.3 × ${c.pixel_count} px)</span><span style="color:var(--red)">−${(0.3 * c.pixel_count).toFixed(1)} 💰/hr</span></div>
-      ${markets > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🏪 ${markets} market${markets>1?'s':''} savings</span><span style="color:var(--green)">+${(Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, 0.3) * c.pixel_count).toFixed(1)} 💰/hr</span></div>` : ''}
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚔️ Army (${CONFIG.ARMY_UPKEEP_PER_UNIT}💰 × ${c.army_size} units)</span><span style="color:var(--red)">−${armyUpkeep.toFixed(1)} 💰/hr</span></div>
-      ${borderSp.nations > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🚧 Border pixels (${borderSp.borderPixels} × ${CONFIG.BORDER_UPKEEP_PER_NATION}💰/hr)</span><span style="color:var(--red)">−${borderSp.cost.toFixed(1)} 💰/hr</span></div>` : ''}
-      ${harborsSp > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚓ ${harborsSp} harbour${harborsSp>1?'s':''} (${CONFIG.INFRA_COSTS.harbor.upkeepPerHour}💰/hr each)</span><span style="color:var(--red)">−${harborUpkeepSp.toFixed(1)} 💰/hr</span></div>` : `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚓ Harbours (none built)</span><span style="color:var(--muted)">−0 💰/hr</span></div>`}
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🗺️ Territory (${(0.3 * spSpeed).toFixed(3)}💰/px × ${c.pixel_count} px)</span><span style="color:var(--red)">−${(0.3 * c.pixel_count * spSpeed).toFixed(1)} 💰/hr</span></div>
+      ${markets > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🏪 ${markets} market${markets>1?'s':''} savings</span><span style="color:var(--green)">+${(Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, 0.3) * c.pixel_count * spSpeed).toFixed(1)} 💰/hr</span></div>` : ''}
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚔️ Army (${(CONFIG.ARMY_UPKEEP_PER_UNIT * spSpeed).toFixed(2)}💰 × ${c.army_size} units)</span><span style="color:var(--red)">−${armyUpkeepSp.toFixed(1)} 💰/hr</span></div>
+      ${borderSp.nations > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🚧 Border pixels (${borderSp.borderPixels} × ${(CONFIG.BORDER_UPKEEP_PER_NATION * spSpeed).toFixed(1)}💰/hr)</span><span style="color:var(--red)">−${borderCostDispSp.toFixed(1)} 💰/hr</span></div>` : ''}
+      ${harborsSp > 0 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚓ ${harborsSp} harbour${harborsSp>1?'s':''} (${CONFIG.INFRA_COSTS.harbor.upkeepPerHour * spSpeed}💰/hr each)</span><span style="color:var(--red)">−${harborUpkeepSp.toFixed(1)} 💰/hr</span></div>` : `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚓ Harbours (none built)</span><span style="color:var(--muted)">−0 💰/hr</span></div>`}
     </div>
     <div style="display:flex;justify-content:space-between;font-size:0.78rem;font-weight:700;padding:0.5rem 0;border-top:1px solid var(--border);margin-top:0.25rem">
       <span>💹 Net income</span>
@@ -2032,7 +2034,7 @@ async function spectateCountry(id, fromClick = false) {
         const col = agg < 0.3 ? 'var(--green)' : agg < 1 ? 'var(--gold)' : 'var(--red)';
         const label = agg < 0.1 ? 'Peace' : agg < 0.5 ? 'Skirmishing' : agg < 1.2 ? 'At War' : 'Full War';
         const decayBonus = myInfra.filter(i => i.type === 'market').length * CONFIG.MARKET_DECAY_BONUS;
-        const decayRate = CONFIG.FOOD_AGGRESSION_DECAY + decayBonus;
+        const decayRate = (CONFIG.FOOD_AGGRESSION_DECAY + decayBonus) * spSpeed;
         return `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Status</span><span style="color:${col};font-weight:600">${label}</span></div>
         <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Aggression level</span><span style="color:${col}">${agg.toFixed(3)}</span></div>
         <div style="margin:0.3rem 0 0.2rem;background:var(--panel);border-radius:4px;height:6px;overflow:hidden"><div style="height:100%;width:${pct.toFixed(1)}%;background:${col};border-radius:4px;transition:width 0.3s"></div></div>
@@ -2082,11 +2084,11 @@ async function renderMyCountry(body) {
   if (!c) { body.innerHTML = '<div style="color:var(--muted)">Not in this game</div>'; return; }
   try {
 
+  const speed = engine.speed || 1;
   const livePending = engine.getLivePending();
   const liveTokens = Math.floor(livePending);
-  const nextToken = CONFIG.PIXELS_PER_HOUR;
   const fraction = livePending % 1;
-  const pct = (fraction / nextToken * 100).toFixed(0);
+  const pct = (fraction * 100).toFixed(0);
 
   // Null-safe country fields
   const gold = Number.isFinite(c.gold) ? c.gold : 0;
@@ -2104,12 +2106,12 @@ async function renderMyCountry(body) {
   const farms = farmInfraArr.length;
   const tradingPostInfraArr = myInfra.filter(i => i.type === 'trading_post');
   const tradingPosts = tradingPostInfraArr.length;
-  const mineIncome = calcMineIncome(mineInfraArr, pixelCount, engine.pixelData);
-  const farmIncome = calcFarmIncome(farmInfraArr, pixelCount, engine.pixelData);
+  const mineIncome = calcMineIncome(mineInfraArr, pixelCount, engine.pixelData) * speed;
+  const farmIncome = calcFarmIncome(farmInfraArr, pixelCount, engine.pixelData) * speed;
   const border = calcBorderUpkeep(engine.pixelData, c.id);
-  const tradingPostIncome = calcTradingPostIncome(tradingPostInfraArr, engine.pixelData, border.nations);
+  const tradingPostIncome = calcTradingPostIncome(tradingPostInfraArr, engine.pixelData, border.nations) * speed;
   const aggression = Number.isFinite(c.food_aggression) ? c.food_aggression : 0;
-  const foodBal = calcFoodBalance(farms, pixelCount, armySize, aggression);
+  const foodBal = calcFoodBalance(farms, pixelCount, armySize, aggression) * speed;
   const population = pixelCount * CONFIG.POPULATION_PER_PIXEL;
   const foodThreshold = population * 0.5;
   const currentFood = Number.isFinite(c.food) ? c.food : 0;
@@ -2120,16 +2122,17 @@ async function renderMyCountry(body) {
   const armyFoodRate = Math.round((CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggression) * 100) / 100;
   const armyFoodCost = Math.floor(armySize) * armyFoodRate;
 
-  const baseIncome = CONFIG.BASE_INCOME_PER_PIXEL * pixelCount;
+  const baseIncome = CONFIG.BASE_INCOME_PER_PIXEL * pixelCount * speed;
   const grossIncome = (baseIncome + farmIncome + mineIncome + tradingPostIncome) * foodMult;
   const incomePerHr = grossIncome.toFixed(1);
-  const rawTerritoryUpkeep = 0.3 * pixelCount;
-  const marketSavings = Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, 0.3) * pixelCount;
+  const rawTerritoryUpkeep = 0.3 * pixelCount * speed;
+  const marketSavings = Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, 0.3) * pixelCount * speed;
   const pixelUpkeep = Math.max(0, rawTerritoryUpkeep - marketSavings);
-  const armyUnitUpkeep = armySize * CONFIG.ARMY_UPKEEP_PER_UNIT;
+  const armyUnitUpkeep = armySize * CONFIG.ARMY_UPKEEP_PER_UNIT * speed;
   const harborsCount = myInfra.filter(i => i.type === 'harbor').length;
-  const harborUpkeep = harborsCount * CONFIG.INFRA_COSTS.harbor.upkeepPerHour;
-  const upkeep = (pixelUpkeep + armyUnitUpkeep + border.cost + harborUpkeep).toFixed(1);
+  const harborUpkeep = harborsCount * CONFIG.INFRA_COSTS.harbor.upkeepPerHour * speed;
+  const borderCostDisplay = border.cost * speed;
+  const upkeep = (pixelUpkeep + armyUnitUpkeep + borderCostDisplay + harborUpkeep).toFixed(1);
   const buildingCap = Math.floor(pixelCount / 2);
   const buildingsAtCap = myInfra.length >= buildingCap;
   const myForts = Object.values(engine.wallData || {}).filter(i => i.country_id === c.id).length;
@@ -2150,7 +2153,7 @@ async function renderMyCountry(body) {
       </div>
       <div class="token-progress"><div class="token-fill" style="width:${pct}%"></div></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.4rem">
-        <span style="font-size:0.7rem;color:var(--muted)">+1 per hour · Max ${CONFIG.MAX_STACK}</span>
+        <span style="font-size:0.7rem;color:var(--muted)">+${speed} per hour · Max ${CONFIG.MAX_STACK}</span>
         <button onclick="buyExpansionToken()" style="font-size:0.7rem;padding:0.2rem 0.6rem;border-radius:5px;border:1px solid var(--gold);background:transparent;color:var(--gold);cursor:pointer" title="Buy 1 token for ${CONFIG.TOKEN_BUY_COST} gold">💰 Buy for ${CONFIG.TOKEN_BUY_COST}g</button>
       </div>
     </div>
@@ -2179,17 +2182,18 @@ async function renderMyCountry(body) {
     <div style="font-size:0.8rem;line-height:1.9;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between">
         <span style="color:var(--muted)">Production</span>
-        <span style="color:var(--green)">+${(pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farms * CONFIG.FOOD_PRODUCTION_PER_FARM).toFixed(1)}/hr</span>
+        <span style="color:var(--green)">+${((pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farms * CONFIG.FOOD_PRODUCTION_PER_FARM) * speed).toFixed(1)}/hr</span>
       </div>
-      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${CONFIG.FOOD_PRODUCTION_PER_PIXEL} (foraging)${farms > 0 ? ` + ${farms} farm${farms>1?'s':''} × ${CONFIG.FOOD_PRODUCTION_PER_FARM}` : ''}</div>
+      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${(CONFIG.FOOD_PRODUCTION_PER_PIXEL * speed).toFixed(2)} (foraging)${farms > 0 ? ` + ${farms} farm${farms>1?'s':''} × ${(CONFIG.FOOD_PRODUCTION_PER_FARM * speed).toFixed(1)}` : ''}</div>
       <div style="display:flex;justify-content:space-between;margin-top:0.2rem">
         <span style="color:var(--muted)">Consumption</span>
-        <span style="color:var(--red)">−${(pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + armyFoodCost).toFixed(1)}/hr</span>
+        <span style="color:var(--red)">−${((pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + armyFoodCost) * speed).toFixed(1)}/hr</span>
       </div>
-      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${CONFIG.FOOD_CONSUMPTION_PER_PIXEL} + ${displayArmy} army × ${armyFoodRate.toFixed(2)}${aggression > 0 ? ` <span style="color:var(--red)">(war: +${aggression.toFixed(2)}/unit, −${(CONFIG.FOOD_AGGRESSION_DECAY + markets * CONFIG.MARKET_DECAY_BONUS).toFixed(3)}/hr${markets > 0 ? ` · ${markets}mkt` : ''})</span>` : ''}</div>
+      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${(CONFIG.FOOD_CONSUMPTION_PER_PIXEL * speed).toFixed(2)} + ${displayArmy} army × ${(armyFoodRate * speed).toFixed(2)}${aggression > 0 ? ` <span style="color:var(--red)">(war: +${aggression.toFixed(2)}/unit, −${((CONFIG.FOOD_AGGRESSION_DECAY + markets * CONFIG.MARKET_DECAY_BONUS) * speed).toFixed(3)}/hr${markets > 0 ? ` · ${markets}mkt` : ''})</span>` : ''}</div>
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
         <span style="font-weight:600">Balance</span>
         <span style="font-weight:700;color:${foodBal >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBal >= 0 ? '+' : ''}${foodBal.toFixed(1)}/hr ${foodBal >= 0 ? '✓' : '⚠'}</span>
+
       </div>
       <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--muted);margin-top:0.15rem">
         <span>🔒 Cap (pop + farms×20)</span><span>${foodCap}</span>
@@ -2206,7 +2210,7 @@ async function renderMyCountry(body) {
         const pct = Math.min(100, (agg / 2) * 100);
         const col = agg < 0.1 ? 'var(--green)' : agg < 0.5 ? 'var(--gold)' : 'var(--red)';
         const label = agg < 0.1 ? '☮️ Peace' : agg < 0.5 ? '⚠️ Skirmishing' : agg < 1.2 ? '⚔️ At War' : '🔥 Full War';
-        const decayRate = CONFIG.FOOD_AGGRESSION_DECAY + markets * CONFIG.MARKET_DECAY_BONUS;
+        const decayRate = (CONFIG.FOOD_AGGRESSION_DECAY + markets * CONFIG.MARKET_DECAY_BONUS) * speed;
         return `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.2rem">
           <span style="color:var(--muted)">Status</span>
@@ -2223,7 +2227,7 @@ async function renderMyCountry(body) {
     </div>
     <div style="font-size:0.8rem;line-height:2;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">🗺️ Base ${CONFIG.BASE_INCOME_PER_PIXEL}💰/px × ${pixelCount} px</span>
+        <span style="color:var(--muted)">🗺️ Base ${(CONFIG.BASE_INCOME_PER_PIXEL * speed).toFixed(2)}💰/px × ${pixelCount} px</span>
         <span style="color:var(--gold)">+${baseIncome.toFixed(1)} 💰/hr</span>
       </div>
       ${farms > 0 ? `<div style="display:flex;justify-content:space-between">
@@ -2251,23 +2255,23 @@ async function renderMyCountry(body) {
     <div class="section-label">📉 Upkeep</div>
     <div style="font-size:0.8rem;line-height:2;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">🗺️ Territory (0.3💰/px × ${pixelCount} px)</span>
-        <span style="color:var(--red)">−${(0.3 * pixelCount).toFixed(1)} 💰/hr</span>
+        <span style="color:var(--muted)">🗺️ Territory (${(0.3 * speed).toFixed(3)}💰/px × ${pixelCount} px)</span>
+        <span style="color:var(--red)">−${(0.3 * pixelCount * speed).toFixed(1)} 💰/hr</span>
       </div>
       ${markets > 0 ? `<div style="display:flex;justify-content:space-between">
         <span style="color:var(--muted)">🏪 ${markets} market${markets>1?'s':''} savings</span>
         <span style="color:var(--green)">+${marketSavings.toFixed(1)} 💰/hr</span>
       </div>` : ''}
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">⚔️ Army (${CONFIG.ARMY_UPKEEP_PER_UNIT}💰 × ${displayArmy} units)</span>
+        <span style="color:var(--muted)">⚔️ Army (${(CONFIG.ARMY_UPKEEP_PER_UNIT * speed).toFixed(2)}💰 × ${displayArmy} units)</span>
         <span style="color:var(--red)">−${armyUnitUpkeep.toFixed(1)} 💰/hr</span>
       </div>
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">🚧 Border pixels (${border.borderPixels} × ${CONFIG.BORDER_UPKEEP_PER_NATION}💰/hr each)</span>
-        <span style="${border.cost > 0 ? 'color:var(--red)' : 'color:var(--muted)'}">−${border.cost.toFixed(1)} 💰/hr</span>
+        <span style="color:var(--muted)">🚧 Border pixels (${border.borderPixels} × ${(CONFIG.BORDER_UPKEEP_PER_NATION * speed).toFixed(1)}💰/hr each)</span>
+        <span style="${borderCostDisplay > 0 ? 'color:var(--red)' : 'color:var(--muted)'}">−${borderCostDisplay.toFixed(1)} 💰/hr</span>
       </div>
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">${harborsCount > 0 ? `⚓ Harbours (${harborsCount} × ${CONFIG.INFRA_COSTS.harbor.upkeepPerHour}💰/hr)` : '⚓ Harbours (none built)'}</span>
+        <span style="color:var(--muted)">${harborsCount > 0 ? `⚓ Harbours (${harborsCount} × ${CONFIG.INFRA_COSTS.harbor.upkeepPerHour * speed}💰/hr)` : '⚓ Harbours (none built)'}</span>
         <span style="${harborsCount > 0 ? 'color:var(--red)' : 'color:var(--muted)'}">−${harborUpkeep.toFixed(1)} 💰/hr</span>
       </div>
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
@@ -2278,20 +2282,20 @@ async function renderMyCountry(body) {
 
     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.75rem;margin-bottom:1rem">
       <span style="font-weight:700;font-size:0.85rem">⚖️ NET</span>
-      <span style="font-weight:800;font-size:1.1rem;color:${parseFloat(incomePerHr) - parseFloat(upkeep) >= 0 ? 'var(--green)' : 'var(--red)'}">${parseFloat(incomePerHr) - parseFloat(upkeep) >= 0 ? '+' : ''}${(parseFloat(incomePerHr) - parseFloat(upkeep)).toFixed(1)} 💰/hr</span>
+      <span style="font-weight:800;font-size:1.1rem;color:${grossIncome - pixelUpkeep - armyUnitUpkeep - Math.min(borderCostDisplay, grossIncome) - harborUpkeep >= 0 ? 'var(--green)' : 'var(--red)'}">${grossIncome - pixelUpkeep - armyUnitUpkeep - Math.min(borderCostDisplay, grossIncome) - harborUpkeep >= 0 ? '+' : ''}${(grossIncome - pixelUpkeep - armyUnitUpkeep - Math.min(borderCostDisplay, grossIncome) - harborUpkeep).toFixed(1)} 💰/hr</span>
     </div>
 
     ${(() => {
       const barracksBuilt = myInfra.filter(i => i.type === 'barracks').length;
       const armyCap = barracksBuilt * CONFIG.INFRA_COSTS.barracks.armyBonus;
-      const regenRate = barracksBuilt * CONFIG.BARRACKS_REGEN_PER_HOUR;
+      const regenRate = barracksBuilt * CONFIG.BARRACKS_REGEN_PER_HOUR * speed;
       return barracksBuilt > 0 ? `<div class="section-label">⚔️ Army Regeneration</div>
     <div style="font-size:0.8rem;line-height:1.9;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between">
         <span style="color:var(--muted)">${barracksBuilt} barracks × 20 cap</span>
         <span style="font-weight:600">${displayArmy} / ${armyCap}</span>
       </div>
-      ${armySize < armyCap ? `<div style="font-size:0.7rem;color:var(--green)">+${regenRate}/hr regenerating back to ${armyCap}</div>` : `<div style="font-size:0.7rem;color:var(--muted)">At full strength</div>`}
+      ${armySize < armyCap ? `<div style="font-size:0.7rem;color:var(--green)">+${regenRate.toFixed(2)}/hr regenerating back to ${armyCap}</div>` : `<div style="font-size:0.7rem;color:var(--muted)">At full strength</div>`}
     </div>` : '';
     })()}
 
