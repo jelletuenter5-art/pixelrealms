@@ -12,17 +12,19 @@ const AudioEngine = (() => {
   let nextChordTime = 0;
   let chordIndex = 0;
 
-  // Chill ambient chord progression — Am · F · C · G
+  // Am · F · C · G · Dm · F — slightly extended for more variety
   const CHORDS = [
-    [110, 165, 220, 261.63],       // Am (bass + triad)
-    [87.31, 130.81, 174.61, 220],  // F
-    [65.41, 130.81, 164.81, 196],  // C
-    [98, 147, 196, 246.94],        // G
+    [110,   220,   261.63, 329.63],  // Am
+    [174.61,220,   261.63, 349.23],  // F
+    [130.81,196,   261.63, 329.63],  // C
+    [196,   246.94,293.66, 392],     // G
+    [146.83,220,   293.66, 349.23],  // Dm
+    [174.61,220,   261.63, 329.63],  // F
   ];
 
-  const CHORD_DURATION = 9;   // seconds per chord
-  const CHORD_OVERLAP  = 2.5; // crossfade seconds
-  const LOOKAHEAD      = 20;  // schedule this many seconds ahead
+  const CHORD_DURATION = 6;
+  const CHORD_OVERLAP  = 2;
+  const LOOKAHEAD      = 18;
 
   function init() {
     if (ctx) return;
@@ -33,16 +35,15 @@ const AudioEngine = (() => {
     masterGain.connect(ctx.destination);
 
     musicGain = ctx.createGain();
-    musicGain.gain.value = 0.38;
+    musicGain.gain.value = 0.18; // quieter overall
     musicGain.connect(masterGain);
 
     sfxGain = ctx.createGain();
-    sfxGain.gain.value = 0.7;
+    sfxGain.gain.value = 0.65;
     sfxGain.connect(masterGain);
   }
 
-  // Simple convolution reverb from noise impulse
-  function makeReverb(duration = 1.8, decay = 2.5) {
+  function makeReverb(duration = 2.2, decay = 3) {
     const len = Math.floor(ctx.sampleRate * duration);
     const buf = ctx.createBuffer(2, len, ctx.sampleRate);
     for (let c = 0; c < 2; c++) {
@@ -54,26 +55,24 @@ const AudioEngine = (() => {
     return conv;
   }
 
-  function playChord(freqs, startTime) {
+  function playPad(freqs, startTime) {
     const dur = CHORD_DURATION + CHORD_OVERLAP;
-    const reverb = makeReverb();
+    const reverb  = makeReverb();
     const revGain = ctx.createGain();
-    revGain.gain.value = 0.35;
+    revGain.gain.value = 0.4;
     reverb.connect(revGain);
     revGain.connect(musicGain);
 
     freqs.forEach((freq, i) => {
       const osc = ctx.createOscillator();
       const g   = ctx.createGain();
-      // Alternate sine/triangle for warmth
-      osc.type = i === 0 ? 'sine' : (i === 1 ? 'triangle' : 'sine');
+      osc.type = i === 0 ? 'sine' : 'triangle';
       osc.frequency.value = freq;
-      // Slight detune for richness
-      osc.detune.value = (i % 2 === 0 ? 1 : -1) * (i * 2);
+      osc.detune.value = (i % 2 === 0 ? 1 : -1) * (i * 3);
 
-      const vol = i === 0 ? 0.055 : 0.04;
+      const vol = i === 0 ? 0.06 : 0.045;
       g.gain.setValueAtTime(0, startTime);
-      g.gain.linearRampToValueAtTime(vol, startTime + 2.5);
+      g.gain.linearRampToValueAtTime(vol, startTime + 1.8);
       g.gain.setValueAtTime(vol, startTime + dur - CHORD_OVERLAP);
       g.gain.linearRampToValueAtTime(0, startTime + dur);
 
@@ -83,48 +82,93 @@ const AudioEngine = (() => {
       osc.start(startTime);
       osc.stop(startTime + dur + 0.1);
     });
+  }
 
-    // Soft high shimmer on top
-    const shimFreq = freqs[freqs.length - 1] * 2;
-    const shimOsc  = ctx.createOscillator();
-    const shimGain = ctx.createGain();
-    shimOsc.type = 'sine';
-    shimOsc.frequency.value = shimFreq;
-    shimOsc.detune.value = 5;
-    shimGain.gain.setValueAtTime(0, startTime);
-    shimGain.gain.linearRampToValueAtTime(0.018, startTime + 3);
-    shimGain.gain.setValueAtTime(0.018, startTime + dur - CHORD_OVERLAP);
-    shimGain.gain.linearRampToValueAtTime(0, startTime + dur);
-    shimOsc.connect(shimGain);
-    shimGain.connect(musicGain);
-    shimGain.connect(reverb);
-    shimOsc.start(startTime);
-    shimOsc.stop(startTime + dur + 0.1);
+  // Gentle arpeggio — plays chord notes one by one, high octave, soft
+  function playArpeggio(freqs, startTime) {
+    const dur    = CHORD_DURATION + CHORD_OVERLAP;
+    const step   = CHORD_DURATION / (freqs.length * 2);
+    const reverb = makeReverb(1.2, 4);
+    const revG   = ctx.createGain();
+    revG.gain.value = 0.25;
+    reverb.connect(revG);
+    revG.connect(musicGain);
+
+    freqs.forEach((freq, i) => {
+      // Play each note twice — once ascending, once descending
+      [i, freqs.length - 1 - i].forEach((idx, pass) => {
+        const t   = startTime + (i + pass * freqs.length) * step;
+        const osc = ctx.createOscillator();
+        const g   = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freqs[idx] * 2; // upper octave
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.035, t + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+        osc.connect(g);
+        g.connect(musicGain);
+        g.connect(reverb);
+        osc.start(t);
+        osc.stop(t + 0.6);
+      });
+    });
+  }
+
+  // Slow walking melody — picks a note from the chord and wanders slightly
+  const MELODY_OFFSETS = [0, 2, 1, 3, 1, 0, 2, 3]; // index into chord freqs
+  let melodyStep = 0;
+  function playMelodyNote(freqs, startTime) {
+    const idx  = MELODY_OFFSETS[melodyStep % MELODY_OFFSETS.length] % freqs.length;
+    melodyStep++;
+    const freq = freqs[idx] * 4; // two octaves up
+    const t    = startTime + Math.random() * 1.5; // slight timing drift for humanity
+    const osc  = ctx.createOscillator();
+    const g    = ctx.createGain();
+    const reverb = makeReverb(1.5, 4);
+    const revG   = ctx.createGain();
+    revG.gain.value = 0.3;
+    reverb.connect(revG);
+    revG.connect(musicGain);
+
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    osc.detune.value = (Math.random() - 0.5) * 8; // tiny human pitch wobble
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.022, t + 0.08);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+    osc.connect(g);
+    g.connect(musicGain);
+    osc.connect(reverb);
+    osc.start(t);
+    osc.stop(t + 1.4);
   }
 
   function scheduleChords() {
     if (!ctx || !musicRunning) return;
     const now = ctx.currentTime;
     while (nextChordTime < now + LOOKAHEAD) {
-      playChord(CHORDS[chordIndex % CHORDS.length], Math.max(nextChordTime, now + 0.05));
+      const t     = Math.max(nextChordTime, now + 0.05);
+      const chord = CHORDS[chordIndex % CHORDS.length];
+      playPad(chord, t);
+      playArpeggio(chord, t);
+      playMelodyNote(chord, t);
       chordIndex++;
       nextChordTime += CHORD_DURATION;
     }
   }
 
-  function startMusic() {
+  async function startMusic() {
     if (musicRunning) return;
     musicRunning = true;
-    nextChordTime = ctx.currentTime + 0.2;
+    nextChordTime = ctx.currentTime + 0.3;
     scheduleChords();
-    schedulerTimer = setInterval(scheduleChords, 3000);
+    schedulerTimer = setInterval(scheduleChords, 2500);
   }
 
   // ── Sound Effects ──────────────────────────────────────────
 
   function playExpand() {
     if (!ctx || muted) return;
-    // Soft ascending chime — three quick notes
     [523.25, 659.25, 783.99].forEach((freq, i) => {
       const osc  = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -144,8 +188,6 @@ const AudioEngine = (() => {
   function playBuild() {
     if (!ctx || muted) return;
     const t = ctx.currentTime;
-
-    // Woody thunk
     const osc1  = ctx.createOscillator();
     const gain1 = ctx.createGain();
     osc1.type = 'triangle';
@@ -158,7 +200,6 @@ const AudioEngine = (() => {
     osc1.start(t);
     osc1.stop(t + 0.3);
 
-    // Follow-up chime
     const osc2  = ctx.createOscillator();
     const gain2 = ctx.createGain();
     const t2    = t + 0.1;
@@ -176,8 +217,6 @@ const AudioEngine = (() => {
   function playAttack() {
     if (!ctx || muted) return;
     const t = ctx.currentTime;
-
-    // Low noise thud
     const bufLen = Math.floor(ctx.sampleRate * 0.3);
     const buf    = ctx.createBuffer(1, bufLen, ctx.sampleRate);
     const data   = buf.getChannelData(0);
@@ -196,7 +235,6 @@ const AudioEngine = (() => {
     noise.start(t);
     noise.stop(t + 0.35);
 
-    // Pitch drop
     const osc  = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
@@ -215,16 +253,16 @@ const AudioEngine = (() => {
   function toggleMute() {
     muted = !muted;
     localStorage.setItem('pr_muted', muted);
-    if (masterGain) masterGain.gain.setTargetAtTime(muted ? 0 : 1, ctx.currentTime, 0.15);
+    if (masterGain) masterGain.gain.setTargetAtTime(muted ? 0 : 1, ctx.currentTime, 0.2);
     return muted;
   }
 
   function isMuted() { return muted; }
 
-  // Call on first user interaction to unlock audio context
-  function unlock() {
+  // Call on any user interaction — safe to call multiple times
+  async function unlock() {
     init();
-    if (ctx.state === 'suspended') ctx.resume();
+    if (ctx.state === 'suspended') await ctx.resume();
     if (!musicRunning) startMusic();
   }
 
