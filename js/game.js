@@ -246,7 +246,7 @@ create policy "update boats" on boats for update using (true);`);
     const border = calcBorderUpkeep(this.pixelData, this.country.id);
     const tradingPostIncome = calcTradingPostIncome(tradingPostInfra, this.pixelData, border.nations);
     const currentAggression = Number.isFinite(this.country.food_aggression) ? this.country.food_aggression : 0;
-    const foodBalance = calcFoodBalance(farmInfra.length, this.country.pixel_count, this.country.army_size, currentAggression);
+    const foodBalance = calcFoodBalance(farmInfra, this.country.pixel_count, this.country.army_size, currentAggression);
     const foodThreshold = this.country.pixel_count * CONFIG.POPULATION_PER_PIXEL * 0.5;
     const currentFood = Number.isFinite(this.country.food) ? this.country.food : 0;
     const foodMult = (foodThreshold > 0 && currentFood < foodThreshold)
@@ -699,6 +699,22 @@ create policy "update boats" on boats for update using (true);`);
     return { ok: true, msg: `⛵ Boat deployed! Arrives in ~${eta} minutes.` };
   }
 
+  async upgradeInfra(infraId) {
+    const infra = Object.values(this.infraData || {}).find(i => i.id === infraId);
+    if (!infra || infra.country_id !== this.country?.id) return { ok: false, msg: 'Building not found.' };
+    if (infra.type !== 'farm') return { ok: false, msg: 'Only farms can be upgraded.' };
+    if ((infra.level || 1) >= 2) return { ok: false, msg: 'Already upgraded.' };
+    const cost = CONFIG.INFRA_COSTS.farm.upgradeCost;
+    if (this.country.gold < cost) return { ok: false, msg: `Need ${cost} gold to upgrade.` };
+    const { data, error } = await sb.from('infrastructure').update({ level: 2 }).eq('id', infraId).select().single();
+    if (error) return { ok: false, msg: error.message };
+    this.infraData[`${infra.pixel_x},${infra.pixel_y}`] = data;
+    const { data: c2 } = await sb.from('countries').update({ gold: this.country.gold - cost }).eq('id', this.country.id).select().single();
+    if (c2) this.country = c2;
+    await this._logEvent('build', `${this.country.name} upgraded a farm at (${infra.pixel_x},${infra.pixel_y}) to level 2`);
+    return { ok: true, msg: '🌾 Farm upgraded! Now produces 10 food/hr.' };
+  }
+
   async cancelBoat(boatId) {
     const boat = this.boatData?.[boatId];
     if (!boat || boat.country_id !== this.country?.id) return { ok: false, msg: 'Boat not found.' };
@@ -1071,8 +1087,17 @@ function calcTradingPostIncome(tradingPostInfra, pixelData, borderNations) {
   }, 0);
 }
 
-function calcFoodBalance(farmCount, pixelCount, armySize, aggression = 0) {
-  const production = pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmCount * CONFIG.FOOD_PRODUCTION_PER_FARM;
+// Returns total food/hr produced by farms, accounting for upgrades (level 2 = 10/hr, level 1 = 5/hr)
+function calcFarmFoodProduction(farmInfra) {
+  if (!farmInfra || farmInfra.length === 0) return 0;
+  return farmInfra.reduce((sum, f) => sum + (f.level >= 2 ? CONFIG.INFRA_COSTS.farm.upgradedFoodPerHour : CONFIG.FOOD_PRODUCTION_PER_FARM), 0);
+}
+
+function calcFoodBalance(farmInfraOrCount, pixelCount, armySize, aggression = 0) {
+  const farmFood = Array.isArray(farmInfraOrCount)
+    ? calcFarmFoodProduction(farmInfraOrCount)
+    : farmInfraOrCount * CONFIG.FOOD_PRODUCTION_PER_FARM;
+  const production = pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmFood;
   const armyRate = CONFIG.FOOD_CONSUMPTION_PER_ARMY + (aggression || 0);
   const consumption = pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + (armySize || 0) * armyRate;
   return production - consumption;
@@ -1095,7 +1120,7 @@ async function tickIncome(engine) {
   const tradingPostIncome = calcTradingPostIncome(tradingPostInfra, engine.pixelData, border.nations);
 
   const aggression = Number.isFinite(c.food_aggression) ? c.food_aggression : 0;
-  const foodBalance = calcFoodBalance(farmInfra.length, c.pixel_count, c.army_size, aggression);
+  const foodBalance = calcFoodBalance(farmInfra, c.pixel_count, c.army_size, aggression);
   const foodThreshold = c.pixel_count * CONFIG.POPULATION_PER_PIXEL * 0.5;
   const currentFood = Number.isFinite(c.food) ? c.food : 0;
   const foodMult = (foodThreshold > 0 && currentFood < foodThreshold)

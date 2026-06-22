@@ -1409,7 +1409,7 @@ function showBuildMenu() {
         const terrMult = CONFIG.FARM_TERRAIN_MULT[terrain] ?? 1.0;
         const thisFarmIncome = info.incomeBonus * terrMult * pixelCount * spd;
         const foodProd = CONFIG.FOOD_PRODUCTION_PER_FARM * spd;
-        extraNote = `${terrainLabel}: +${thisFarmIncome.toFixed(1)} 💰/hr (${terrMult}x terrain) · +${foodProd.toFixed(1)} food/hr`;
+        extraNote = `${terrainLabel}: +${thisFarmIncome.toFixed(1)} 💰/hr (${terrMult}x terrain) · +${foodProd.toFixed(1)} food/hr · upgradeable to ${(CONFIG.INFRA_COSTS.farm.upgradedFoodPerHour * spd).toFixed(1)}/hr for ${CONFIG.INFRA_COSTS.farm.upgradeCost}g`;
       } else if (type === 'market') {
         const newDecay = ((CONFIG.FOOD_AGGRESSION_DECAY + (existingMarkets + 1) * CONFIG.MARKET_DECAY_BONUS) * spd).toFixed(3);
         extraNote = `−${(0.0075 * spd).toFixed(4)} 💰/px/hr upkeep · war decay → ${newDecay}/hr (${existingMarkets + 1}/${CONFIG.INFRA_COSTS.market.maxCount} markets)`;
@@ -1493,13 +1493,16 @@ function openManageBuilding(x, y) {
   const terrainLabel = terrain.charAt(0).toUpperCase() + terrain.slice(1);
   document.getElementById('manageBuildingCoords').textContent = `Location: (${x}, ${y}) · ${terrainLabel}`;
   const mngSpd = engine.speed || 1;
+  const farmLevel = infra.level || 1;
   let effectText = cost?.effect || '';
   if (infra.type === 'farm') {
     const terrMult = CONFIG.FARM_TERRAIN_MULT[terrain] ?? 1.0;
     const c = engine.country;
     const pixelCount = c?.pixel_count ?? 0;
     const goldIncome = (CONFIG.INFRA_COSTS.farm.incomeBonus * terrMult * pixelCount * mngSpd).toFixed(1);
-    effectText = `+${goldIncome}g/hr income (${terrMult}x ${terrainLabel}) · +${(CONFIG.FOOD_PRODUCTION_PER_FARM * mngSpd).toFixed(1)} food/hr`;
+    const foodRate = farmLevel >= 2 ? CONFIG.INFRA_COSTS.farm.upgradedFoodPerHour : CONFIG.FOOD_PRODUCTION_PER_FARM;
+    const lvlLabel = farmLevel >= 2 ? ' ⭐ Upgraded' : '';
+    effectText = `+${goldIncome}g/hr income (${terrMult}x ${terrainLabel}) · +${(foodRate * mngSpd).toFixed(1)} food/hr${lvlLabel}`;
   } else if (infra.type === 'mine') {
     const terrMult = CONFIG.MINE_TERRAIN_MULT[terrain] ?? 1.0;
     const c = engine.country;
@@ -1519,6 +1522,35 @@ function openManageBuilding(x, y) {
     closeManageBuildingModal();
     await deleteBuilding(infra.id, infra.type, x, y);
   };
+
+  // Upgrade button — shown for farms at level 1 only
+  let upgradeBtn = document.getElementById('manageBuildingUpgrade');
+  if (!upgradeBtn) {
+    upgradeBtn = document.createElement('button');
+    upgradeBtn.id = 'manageBuildingUpgrade';
+    upgradeBtn.className = 'btn';
+    upgradeBtn.style.cssText = 'margin-top:0.5rem;width:100%';
+    deleteBtn.parentNode.insertBefore(upgradeBtn, deleteBtn);
+  }
+  if (infra.type === 'farm' && farmLevel < 2) {
+    const upgCost = CONFIG.INFRA_COSTS.farm.upgradeCost;
+    const canAffordUpg = (engine.country?.gold || 0) >= upgCost;
+    upgradeBtn.innerHTML = `⭐ Upgrade Farm → 10 food/hr <span style="color:${canAffordUpg?'var(--gold)':'var(--red)'}">💰 ${upgCost}g</span>`;
+    upgradeBtn.style.background = canAffordUpg ? 'rgba(245,158,11,0.15)' : '#374151';
+    upgradeBtn.style.border = `1px solid ${canAffordUpg ? 'rgba(245,158,11,0.5)' : '#4b5563'}`;
+    upgradeBtn.style.color = canAffordUpg ? 'var(--gold)' : 'var(--muted)';
+    upgradeBtn.style.cursor = canAffordUpg ? 'pointer' : 'not-allowed';
+    upgradeBtn.onclick = async () => {
+      if (!canAffordUpg) { showToast(`Need ${upgCost} gold`, 'error'); return; }
+      closeManageBuildingModal();
+      const res = await engine.upgradeInfra(infra.id);
+      showToast(res.msg, res.ok ? 'ok' : 'error');
+      if (res.ok) { renderRightPanel(); }
+    };
+    upgradeBtn.style.display = 'block';
+  } else {
+    upgradeBtn.style.display = 'none';
+  }
 
   // Fortify button — only shown when not yet fortified; cannot be removed once built
   let fortBtn = document.getElementById('manageBuildingFortify');
@@ -1960,7 +1992,7 @@ async function spectateCountry(id, fromClick = false) {
   const markets = myInfra.filter(i => i.type === 'market').length;
   const mineIncomeSp = calcMineIncome(mineInfra, c.pixel_count, engine.pixelData) * spSpeed;
   const farmIncomeSp = calcFarmIncome(farmInfra, c.pixel_count, engine.pixelData) * spSpeed;
-  const foodBalSp = calcFoodBalance(farmInfra.length, c.pixel_count, c.army_size, c.food_aggression || 0) * spSpeed;
+  const foodBalSp = calcFoodBalance(farmInfra, c.pixel_count, c.army_size, c.food_aggression || 0) * spSpeed;
   const foodThresholdSp = c.pixel_count * CONFIG.POPULATION_PER_PIXEL * 0.5;
   const currentFoodSp = Number.isFinite(c.food) ? c.food : 0;
   const foodMultSp = (foodThresholdSp > 0 && currentFoodSp < foodThresholdSp)
@@ -1982,7 +2014,7 @@ async function spectateCountry(id, fromClick = false) {
   const netIncomeSp = grossIncomeSp - pixelUpkeepSp - armyUpkeepSp - borderCostSp - harborUpkeepSp;
   const population = c.pixel_count * CONFIG.POPULATION_PER_PIXEL;
   const aggressionSp = Number.isFinite(c.food_aggression) ? c.food_aggression : 0;
-  const foodProdSp = (c.pixel_count * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmInfra.length * CONFIG.FOOD_PRODUCTION_PER_FARM) * spSpeed;
+  const foodProdSp = (c.pixel_count * CONFIG.FOOD_PRODUCTION_PER_PIXEL + calcFarmFoodProduction(farmInfra)) * spSpeed;
   const foodConsSp = (c.pixel_count * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + c.army_size * (CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggressionSp)) * spSpeed;
 
   body.innerHTML = `
@@ -2113,7 +2145,8 @@ async function renderMyCountry(body) {
   const border = calcBorderUpkeep(engine.pixelData, c.id);
   const tradingPostIncome = calcTradingPostIncome(tradingPostInfraArr, engine.pixelData, border.nations) * speed;
   const aggression = Number.isFinite(c.food_aggression) ? c.food_aggression : 0;
-  const foodBal = calcFoodBalance(farms, pixelCount, armySize, aggression) * speed;
+  const farmFoodProd = calcFarmFoodProduction(farmInfraArr);
+  const foodBal = calcFoodBalance(farmInfraArr, pixelCount, armySize, aggression) * speed;
   const population = pixelCount * CONFIG.POPULATION_PER_PIXEL;
   const foodThreshold = population * 0.5;
   const currentFood = Number.isFinite(c.food) ? c.food : 0;
@@ -2184,9 +2217,9 @@ async function renderMyCountry(body) {
     <div style="font-size:0.8rem;line-height:1.9;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between">
         <span style="color:var(--muted)">Production</span>
-        <span style="color:var(--green)">+${((pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farms * CONFIG.FOOD_PRODUCTION_PER_FARM) * speed).toFixed(1)}/hr</span>
+        <span style="color:var(--green)">+${((pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmFoodProd) * speed).toFixed(1)}/hr</span>
       </div>
-      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${(CONFIG.FOOD_PRODUCTION_PER_PIXEL * speed).toFixed(2)} (foraging)${farms > 0 ? ` + ${farms} farm${farms>1?'s':''} × ${(CONFIG.FOOD_PRODUCTION_PER_FARM * speed).toFixed(1)}` : ''}</div>
+      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${(CONFIG.FOOD_PRODUCTION_PER_PIXEL * speed).toFixed(2)} (foraging)${farms > 0 ? ` + farms ${(farmFoodProd * speed).toFixed(1)} food/hr total${farmInfraArr.some(f => (f.level||1) >= 2) ? ' (some upgraded ⭐)' : ''}` : ''}</div>
       <div style="display:flex;justify-content:space-between;margin-top:0.2rem">
         <span style="color:var(--muted)">Consumption</span>
         <span style="color:var(--red)">−${((pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + armyFoodCost) * speed).toFixed(1)}/hr</span>

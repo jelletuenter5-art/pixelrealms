@@ -39,7 +39,8 @@ const CONFIG = {
   ARMY_UPKEEP_PER_UNIT: 0.5,       // gold/hr per army unit (scales with barracks)
   BARRACKS_REGEN_PER_HOUR: 0.5,    // army units regenerated per hour per barracks built
   INFRA_COSTS: {
-    farm:     { gold: 100, effect: '+0.04 💰/px/hr income, nation-wide',           incomeBonus: 0.04 },
+    farm:     { gold: 100, effect: '+0.04 💰/px/hr income, nation-wide', incomeBonus: 0.04,
+                upgradeCost: 200, upgradedFoodPerHour: 10 },
     mine:     { gold: 120, effect: '+12 💰/hr flat + 0.02 💰/px/hr hybrid income', flatIncome: 12, pixelBonus: 0.02 },
     market:   { gold: 350, effect: '−0.0075 💰/px/hr upkeep · +0.004 war decay/hr (max 40)', upkeepReduction: 0.0075, maxCount: 40, decayBonus: 0.004 },
     barracks: { gold: 150, effect: '+20 army instantly · regenerates 0.5 army/hr per barracks up to cap', armyBonus: 20 },
