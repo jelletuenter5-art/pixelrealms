@@ -41,7 +41,7 @@ const CONFIG = {
   INFRA_COSTS: {
     farm:     { gold: 100, effect: '+0.04 💰/px/hr income, nation-wide',           incomeBonus: 0.04 },
     mine:     { gold: 120, effect: '+12 💰/hr flat + 0.02 💰/px/hr hybrid income', flatIncome: 12, pixelBonus: 0.02 },
-    market:   { gold: 250, effect: '−0.015 💰/px/hr upkeep · +0.002 war decay/hr (max 20)', upkeepReduction: 0.015, maxCount: 20, decayBonus: 0.002 },
+    market:   { gold: 350, effect: '−0.0075 💰/px/hr upkeep · +0.004 war decay/hr (max 40)', upkeepReduction: 0.0075, maxCount: 40, decayBonus: 0.004 },
     barracks: { gold: 150, effect: '+20 army instantly · regenerates 0.5 army/hr per barracks up to cap', armyBonus: 20 },
     wall:     { gold: 80,  effect: '+50% defense when this tile is attacked',      defenseBonus: 0.5 },
     harbor:   { gold: 180, effect: 'Deploy boats to unclaimed or enemy tiles across water · 10💰/hr upkeep', upkeepPerHour: 10 },
