@@ -342,6 +342,7 @@
       <div id="createRealmMsg" style="margin-top:0.5rem; font-size:0.85rem"></div>
     </div>
     <hr style="border-color:var(--border); margin-bottom:1.5rem">
+    <div id="adminAccountCount" style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;margin-bottom:1.5rem;font-size:0.85rem;color:var(--muted)">👤 Total accounts: <span style="color:var(--text);font-weight:600">Loading…</span></div>
     <h3 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:1rem">🌍 All Games</h3>
     <div id="adminGamesList"><div style="color:var(--muted)">Loading…</div></div>
     <hr style="border-color:var(--border); margin:1.5rem 0">
@@ -1175,6 +1176,10 @@ async function deleteEventRealm(gameId) {
 
 // ── ADMIN ─────────────────────────────────────────
 async function loadAdminGames() {
+  const { count } = await sb.from('profiles').select('*', { count: 'exact', head: true });
+  const countEl = document.getElementById('adminAccountCount');
+  if (countEl) countEl.innerHTML = `👤 Total accounts: <span style="color:var(--text);font-weight:600">${count ?? '—'}</span>`;
+
   const { data: games } = await sb.from('games').select('*').order('created_at', { ascending: false });
   const list = document.getElementById('adminGamesList');
   if (!games?.length) { list.innerHTML = '<div style="color:var(--muted)">No games found.</div>'; return; }
