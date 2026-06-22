@@ -506,6 +506,26 @@ async function loadMyGames() {
   const THREE_DAYS = 3 * 24 * 3600 * 1000;
   const now = Date.now();
 
+  // Sync current_players from actual alive country count for My Games
+  const myGameIds = [...new Set(countries.map(c => c.game_id))];
+  if (myGameIds.length) {
+    const { data: allCounts } = await sb.from('countries')
+      .select('game_id')
+      .in('game_id', myGameIds)
+      .eq('is_alive', true);
+    const countMap = {};
+    (allCounts || []).forEach(r => { countMap[r.game_id] = (countMap[r.game_id] || 0) + 1; });
+    for (const c of countries) {
+      if (c.games) {
+        const real = countMap[c.game_id] || 0;
+        if (real !== c.games.current_players) {
+          c.games.current_players = real;
+          sb.from('games').update({ current_players: real }).eq('id', c.game_id);
+        }
+      }
+    }
+  }
+
   // Auto-archive eliminated countries inactive for 3+ days
   // Also delete finished games past their delete_at time
   for (const c of countries) {
@@ -610,6 +630,24 @@ async function loadOpenGames() {
     .select('*')
     .eq('is_open', true)
     .in('category', ['small', 'medium', 'big']);
+
+  // Sync current_players from actual alive country count
+  if (data?.length) {
+    const ids = data.map(g => g.id);
+    const { data: counts } = await sb.from('countries')
+      .select('game_id')
+      .in('game_id', ids)
+      .eq('is_alive', true);
+    const countMap = {};
+    (counts || []).forEach(r => { countMap[r.game_id] = (countMap[r.game_id] || 0) + 1; });
+    for (const g of data) {
+      const real = countMap[g.id] || 0;
+      g.current_players = real;
+      if (real !== (g.current_players ?? 0)) {
+        sb.from('games').update({ current_players: real }).eq('id', g.id);
+      }
+    }
+  }
 
   openGames = {};
   (data || []).forEach(g => { openGames[g.category] = g; });
@@ -1041,6 +1079,17 @@ async function loadEventGames() {
   const section = document.getElementById('eventRealmsSection');
   const grid = document.getElementById('eventGamesGrid');
   if (!data?.length) { section.style.display = 'none'; return; }
+  // Sync current_players from real alive country count
+  if (data.length) {
+    const ids = data.map(g => g.id);
+    const { data: counts } = await sb.from('countries').select('game_id').in('game_id', ids).eq('is_alive', true);
+    const countMap = {};
+    (counts || []).forEach(r => { countMap[r.game_id] = (countMap[r.game_id] || 0) + 1; });
+    for (const g of data) {
+      const real = countMap[g.id] || 0;
+      if (real !== g.current_players) { g.current_players = real; sb.from('games').update({ current_players: real }).eq('id', g.id); }
+    }
+  }
   section.style.display = '';
   grid.innerHTML = data.map(g => {
     const full = g.current_players >= g.max_players;
