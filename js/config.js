@@ -21,8 +21,8 @@ const CONFIG = {
   FOOD_CONSUMPTION_PER_PIXEL: 0.2,   // base food/hr per pixel
   FOOD_CONSUMPTION_PER_ARMY: 0.1,    // food/hr per army unit at peace — rises with war aggression
   FOOD_AGGRESSION_PER_ATTACK: 0.05,  // added to per-pixel food rate per attack (win or loss)
-  FOOD_AGGRESSION_DECAY: 0.03,       // base war aggression decay per real hour (boosted by markets)
-  MARKET_DECAY_BONUS: 0.001,         // additional decay per market owned
+  FOOD_AGGRESSION_DECAY: 0.06,       // base war aggression decay per real hour (boosted by markets)
+  MARKET_DECAY_BONUS: 0.002,         // additional decay per market owned
   // Terrain multipliers for mine flat income (pixel bonus unaffected)
   MINE_TERRAIN_MULT: { mountain: 1.8, hill: 1.3, grass: 0.9, desert: 0.5, water: 0 },
   // Terrain multipliers for farm income
@@ -41,7 +41,7 @@ const CONFIG = {
   INFRA_COSTS: {
     farm:     { gold: 100, effect: '+0.04 💰/px/hr income, nation-wide',           incomeBonus: 0.04 },
     mine:     { gold: 120, effect: '+12 💰/hr flat + 0.02 💰/px/hr hybrid income', flatIncome: 12, pixelBonus: 0.02 },
-    market:   { gold: 250, effect: '−0.015 💰/px/hr upkeep · +0.001 war decay/hr (max 20)', upkeepReduction: 0.015, maxCount: 20, decayBonus: 0.001 },
+    market:   { gold: 250, effect: '−0.015 💰/px/hr upkeep · +0.002 war decay/hr (max 20)', upkeepReduction: 0.015, maxCount: 20, decayBonus: 0.002 },
     barracks: { gold: 150, effect: '+20 army instantly · regenerates 0.5 army/hr per barracks up to cap', armyBonus: 20 },
     wall:     { gold: 80,  effect: '+50% defense when this tile is attacked',      defenseBonus: 0.5 },
     harbor:   { gold: 180, effect: 'Deploy boats to unclaimed or enemy tiles across water · 10💰/hr upkeep', upkeepPerHour: 10 },

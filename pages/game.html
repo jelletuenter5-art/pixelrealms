@@ -428,7 +428,7 @@
       </div>
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
         <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🏪 Market <span style="color:var(--gold);font-weight:400">250g</span></div>
-        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">−0.015 💰/px/hr territory upkeep (max 20) · +0.001 war aggression decay/hr per market</div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">−0.015 💰/px/hr territory upkeep (max 20) · +0.002 war aggression decay/hr per market</div>
         <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">20 markets fully cancels territory upkeep · also speeds up recovery from war</div>
       </div>
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
@@ -2662,7 +2662,7 @@ function showAttackPreview(tx, ty) {
       <div style="font-weight:600;color:var(--text);margin-bottom:0.2rem">🍞 Food impact (win or lose)</div>
       <div>Army rate: ${curArmyRate} → <span style="color:var(--red)">${newArmyRate}/unit</span> (+${CONFIG.FOOD_AGGRESSION_PER_ATTACK.toFixed(2)})</div>
       <div>New food balance: <span style="color:${foodBalAfter >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBalAfter >= 0 ? '+' : ''}${foodBalAfter.toFixed(1)}/hr</span></div>
-      <div style="color:var(--muted);font-size:0.7rem">Decays −${(CONFIG.FOOD_AGGRESSION_DECAY + myMarkets * CONFIG.MARKET_DECAY_BONUS).toFixed(3)}/hr${myMarkets > 0 ? ` (base 0.03 + ${myMarkets} mkt)` : ''}</div>
+      <div style="color:var(--muted);font-size:0.7rem">Decays −${(CONFIG.FOOD_AGGRESSION_DECAY + myMarkets * CONFIG.MARKET_DECAY_BONUS).toFixed(3)}/hr${myMarkets > 0 ? ` (base 0.06 + ${myMarkets} mkt)` : ''}</div>
     </div>
   `;
 
