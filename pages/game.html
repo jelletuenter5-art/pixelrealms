@@ -409,7 +409,7 @@
 
     <div class="section-label">🌱 Expanding Your Territory</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      You earn <strong>1 expansion token per hour</strong> (max 24 stacked) — shown as 🎯 in the top bar. In speed-boosted worlds, tokens accrue proportionally faster.
+      You earn <strong>1 expansion token per hour</strong> (max 24 stacked) — shown as 🎯 in the top bar.
       Switch to <strong>Expand</strong> mode and click any unclaimed tile directly next to your territory to claim it for 1 token.
       Water tiles cannot be claimed on foot. You can also <strong>buy tokens</strong> for 1,000 💰 each when you need to expand faster.
     </p>
@@ -496,11 +496,6 @@
     </p>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
       Each attack raises your <strong>war aggression</strong>, which increases your army's food consumption. Aggression decays over time (faster with markets). Keep an eye on the <strong>War Aggression</strong> section in My Realm — it shows your current status, the progress bar, and your estimated time to peace. Sustained wars without enough food can cripple your economy, so plan your campaigns carefully.
-    </p>
-
-    <div class="section-label">⚡ Speed Worlds</div>
-    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Some event realms run at a <strong>speed multiplier</strong> (shown as ⚡ 2× etc. on the world card and in the game topbar). In a 2× world, everything happens twice as fast — tokens accrue in 30 minutes instead of an hour, income and upkeep tick at double rate, food is produced and consumed faster, war aggression decays quicker, boats travel at double speed, and army regenerates twice as fast. All displayed stats in My Realm already show the multiplied values, so what you see is what you get.
     </p>
 
     <div class="section-label">🤝 Trade</div>
@@ -597,8 +592,11 @@ function calcTradingPostIncome(tradingPostInfra, pixelData, borderNations) {
   }, 0);
 }
 
-function calcFoodBalance(farmCount, pixelCount, armySize, aggression = 0) {
-  const production = pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmCount * CONFIG.FOOD_PRODUCTION_PER_FARM;
+function calcFoodBalance(farmInfraOrCount, pixelCount, armySize, aggression = 0) {
+  const farmFood = Array.isArray(farmInfraOrCount)
+    ? calcFarmFoodProduction(farmInfraOrCount)
+    : farmInfraOrCount * CONFIG.FOOD_PRODUCTION_PER_FARM;
+  const production = pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmFood;
   const armyRate = CONFIG.FOOD_CONSUMPTION_PER_ARMY + (aggression || 0);
   const consumption = pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + (armySize || 0) * armyRate;
   return production - consumption;
@@ -2220,28 +2218,27 @@ async function renderMyCountry(body) {
     </div>
 
     <div class="section-label">🍞 Food</div>
-    <div style="font-size:0.8rem;line-height:1.9;margin-bottom:0.75rem">
+    <div style="font-size:0.8rem;line-height:1.8;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">Production</span>
+        <span style="color:var(--muted)">🌱 Production</span>
         <span style="color:var(--green)">+${((pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmFoodProd) * speed).toFixed(1)}/hr</span>
       </div>
-      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${(CONFIG.FOOD_PRODUCTION_PER_PIXEL * speed).toFixed(2)} (foraging)${farms > 0 ? ` + farms ${(farmFoodProd * speed).toFixed(1)} food/hr total${farmInfraArr.some(f => (f.level||1) >= 2) ? ' (some upgraded ⭐)' : ''}` : ''}</div>
-      <div style="display:flex;justify-content:space-between;margin-top:0.2rem">
-        <span style="color:var(--muted)">Consumption</span>
+      <div style="display:flex;justify-content:space-between">
+        <span style="color:var(--muted)">🍖 Consumption</span>
         <span style="color:var(--red)">−${((pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + armyFoodCost) * speed).toFixed(1)}/hr</span>
       </div>
-      <div style="font-size:0.7rem;color:var(--muted)">${pixelCount} px × ${(CONFIG.FOOD_CONSUMPTION_PER_PIXEL * speed).toFixed(2)} + ${displayArmy} army × ${(armyFoodRate * speed).toFixed(2)}${aggression > 0 ? ` <span style="color:var(--red)">(war: +${aggression.toFixed(2)}/unit, −${((CONFIG.FOOD_AGGRESSION_DECAY + markets * CONFIG.MARKET_DECAY_BONUS) * speed).toFixed(3)}/hr${markets > 0 ? ` · ${markets}mkt` : ''})</span>` : ''}</div>
-      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem">
+      ${aggression > 0 ? `<div style="font-size:0.7rem;color:var(--red);margin-bottom:0.1rem">War: +${(aggression * speed).toFixed(2)} food/unit/hr · decay −${((CONFIG.FOOD_AGGRESSION_DECAY + markets * CONFIG.MARKET_DECAY_BONUS) * speed).toFixed(3)}/hr${markets > 0 ? ` (${markets} markets)` : ''}</div>` : ''}
+      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:0.2rem;padding-top:0.2rem">
         <span style="font-weight:600">Balance</span>
         <span style="font-weight:700;color:${foodBal >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBal >= 0 ? '+' : ''}${foodBal.toFixed(1)}/hr ${foodBal >= 0 ? '✓' : '⚠'}</span>
-
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--muted);margin-top:0.15rem">
-        <span>🔒 Cap (pop + farms×20)</span><span>${foodCap}</span>
+      <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--muted);margin-top:0.1rem">
+        <span>Stored</span><span>${currentFood.toFixed(0)} / ${foodCap} cap</span>
       </div>
-      ${currentFood >= foodCap ? `<div style="font-size:0.72rem;color:var(--gold);margin-top:0.1rem;padding:0.3rem 0.5rem;background:rgba(245,158,11,0.08);border-radius:5px">⚠ Food at cap — build more farms or expand to raise it.</div>` : ''}
-      ${foodMult < 1 ? `<div style="font-size:0.72rem;color:var(--red);margin-top:0.1rem;padding:0.3rem 0.5rem;background:rgba(239,68,68,0.08);border-radius:5px">⚠ Food reserves low (${currentFood.toFixed(1)} / ${foodThreshold.toFixed(0)} needed): income −${((1-foodMult)*100).toFixed(0)}%. Stock up food before going to war!</div>` : ''}
-      ${foodBal < 0 ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:0.1rem">Need ${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM)} more farm${Math.ceil(-foodBal / CONFIG.FOOD_PRODUCTION_PER_FARM) !== 1 ? 's' : ''} to break even.</div>` : ''}
+      ${farms > 0 && farmInfraArr.some(f => (f.level||1) >= 2) ? `<div style="font-size:0.7rem;color:#f59e0b;margin-top:0.1rem">⭐ ${farmInfraArr.filter(f=>(f.level||1)>=2).length} upgraded farm${farmInfraArr.filter(f=>(f.level||1)>=2).length!==1?'s':''}</div>` : ''}
+      ${currentFood >= foodCap ? `<div style="font-size:0.72rem;color:var(--gold);margin-top:0.25rem;padding:0.3rem 0.5rem;background:rgba(245,158,11,0.08);border-radius:5px">⚠ Food at cap — build more farms or expand.</div>` : ''}
+      ${foodMult < 1 ? `<div style="font-size:0.72rem;color:var(--red);margin-top:0.25rem;padding:0.3rem 0.5rem;background:rgba(239,68,68,0.08);border-radius:5px">⚠ Low reserves (${currentFood.toFixed(0)} / ${foodThreshold.toFixed(0)} needed) — income −${((1-foodMult)*100).toFixed(0)}%</div>` : ''}
+      ${foodBal < 0 ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:0.1rem">Need ${Math.ceil(-foodBal / (CONFIG.FOOD_PRODUCTION_PER_FARM * speed))} more farm${Math.ceil(-foodBal / (CONFIG.FOOD_PRODUCTION_PER_FARM * speed)) !== 1 ? 's' : ''} to break even.</div>` : ''}
     </div>
 
     <div class="section-label">⚔️ War Aggression</div>
