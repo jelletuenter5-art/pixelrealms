@@ -1183,6 +1183,13 @@ async function loadAdminGames() {
   const { data: games } = await sb.from('games').select('*').order('created_at', { ascending: false });
   const list = document.getElementById('adminGamesList');
   if (!games?.length) { list.innerHTML = '<div style="color:var(--muted)">No games found.</div>'; return; }
+
+  // Sync real player count from actual non-ghost countries
+  const ids = games.map(g => g.id);
+  const { data: allC } = await sb.from('countries').select('game_id, pixel_count, pixels_lost').in('game_id', ids);
+  const countMap = {};
+  (allC || []).filter(r => (r.pixel_count || 0) + (r.pixels_lost || 0) > 0).forEach(r => { countMap[r.game_id] = (countMap[r.game_id] || 0) + 1; });
+  for (const g of games) { g.current_players = countMap[g.id] || 0; }
   const statusColor = { waiting: 'var(--muted)', active: 'var(--green)', finished: 'var(--gold)' };
   list.innerHTML = games.map(g => {
     const color = statusColor[g.status] || 'var(--muted)';
