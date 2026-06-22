@@ -2585,9 +2585,8 @@ function chatMsgHtml(m) {
   const c = engine.countries[m.country_id] || {};
   // Treat as admin if flagged, or if there's no matching country and no country_id (pre-migration fallback)
   const isAdmin = !!m.is_admin || (!m.country_id && !c.name && !!m.player_name);
-  const adminIcon = m.admin_icon || '🛡️';
   const nation = isAdmin
-    ? `${adminIcon} ${escapeHtml(m.player_name || 'Admin')}`
+    ? `🛡️ ${escapeHtml(m.player_name || 'Admin')}`
     : (c.name ? `${c.flag_emoji || ''}${c.name}` : (m.player_name || 'Unknown'));
   const userLabel = !isAdmin && m.player_name ? ` <span style="color:var(--muted);font-weight:400;font-size:0.85em">(${escapeHtml(m.player_name)})</span>` : '';
   const adminBadge = isAdmin ? ` <span style="background:rgba(245,158,11,0.2);color:var(--gold);font-size:0.7em;font-weight:700;border-radius:4px;padding:0 4px;vertical-align:middle">ADMIN</span>` : '';
@@ -2639,7 +2638,6 @@ async function sendChat() {
     player_name: profile.username,
     content,
     is_admin: isAdminSpec || undefined,
-    admin_icon: isAdminSpec ? (currentProfile?.admin_icon || '🛡️') : undefined,
     created_at: new Date().toISOString(),
   };
   const chatDiv = document.getElementById('chatMsgs');
@@ -2654,10 +2652,7 @@ async function sendChat() {
     player_name: profile.username,
     content,
   };
-  if (isAdminSpec) {
-    msgRow.is_admin = true;
-    msgRow.admin_icon = currentProfile?.admin_icon || '🛡️';
-  }
+  if (isAdminSpec) msgRow.is_admin = true;
   await sb.from('messages').insert(msgRow);
 }
 
