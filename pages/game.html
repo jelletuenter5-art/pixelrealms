@@ -373,14 +373,23 @@
 </div>
 
 <!-- Manage building modal -->
-<div id="manageBuildingModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:310;align-items:center;justify-content:center">
-  <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.5rem;max-width:380px;width:90%">
-    <h3 style="font-family:'Cinzel',serif;margin-bottom:0.5rem" id="manageBuildingTitle"></h3>
-    <p style="font-size:0.82rem;color:var(--muted);margin-bottom:0.4rem" id="manageBuildingCoords"></p>
-    <p style="font-size:0.82rem;color:var(--muted);margin-bottom:1.25rem" id="manageBuildingEffect"></p>
-    <div style="display:flex;gap:0.5rem">
-      <button class="btn" style="background:#ef444422;border:1px solid #ef4444;color:#ef4444" id="manageBuildingDelete">🗑 Delete permanently</button>
-      <button class="btn-xs" onclick="closeManageBuildingModal()">Close</button>
+<div id="manageBuildingModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:310;align-items:center;justify-content:center" onclick="if(event.target===this)closeManageBuildingModal()">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:1.5rem;max-width:340px;width:90%">
+    <div style="display:flex;align-items:center;gap:0.85rem;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
+      <div id="manageBuildingIcon" style="font-size:2rem;width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:var(--panel2);flex-shrink:0"></div>
+      <div>
+        <div style="font-family:'Cinzel',serif;font-weight:700;font-size:1rem" id="manageBuildingTitle"></div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:0.15rem" id="manageBuildingCoords"></div>
+      </div>
+    </div>
+    <p style="font-size:0.82rem;color:var(--muted);margin-bottom:1.25rem;line-height:1.5" id="manageBuildingEffect"></p>
+    <div style="display:flex;flex-direction:column;gap:0.5rem">
+      <button class="btn" id="manageBuildingUpgrade" style="display:none"></button>
+      <button class="btn" id="manageBuildingFortify" style="display:none"></button>
+      <div style="display:flex;gap:0.5rem;margin-top:0.25rem">
+        <button class="btn" style="flex:1;background:#ef444418;border:1px solid #ef444460;color:#ef4444;font-size:0.8rem" id="manageBuildingDelete">🗑 Delete</button>
+        <button class="btn" style="flex:0 0 auto;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:0.8rem" onclick="closeManageBuildingModal()">✕ Close</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1487,22 +1496,26 @@ function openManageBuilding(x, y) {
   if (!infra) return;
   const cost = CONFIG.INFRA_COSTS[infra.type];
   const typeLabel = infra.type === 'trading_post' ? 'Trading Post' : infra.type === 'wall' ? 'Fortification' : infra.type.charAt(0).toUpperCase() + infra.type.slice(1);
-  document.getElementById('manageBuildingTitle').textContent = `${INFRA_ICONS[infra.type] || '🏗️'} ${typeLabel}${wall ? ' · 🧱 Fortified' : ''}`;
   const tile = mapData?.[y]?.[x];
   const terrain = tile?.terrain || 'grass';
   const terrainLabel = terrain.charAt(0).toUpperCase() + terrain.slice(1);
-  document.getElementById('manageBuildingCoords').textContent = `Location: (${x}, ${y}) · ${terrainLabel}`;
-  const mngSpd = engine.speed || 1;
   const farmLevel = infra.level || 1;
+  const isUpgraded = infra.type === 'farm' && farmLevel >= 2;
+  const iconEl = document.getElementById('manageBuildingIcon');
+  iconEl.textContent = INFRA_ICONS[infra.type] || '🏗️';
+  iconEl.style.border = isUpgraded ? '2px solid #f59e0b' : '1px solid var(--border)';
+  iconEl.style.boxShadow = isUpgraded ? '0 0 8px rgba(245,158,11,0.4)' : 'none';
+  document.getElementById('manageBuildingTitle').textContent = `${typeLabel}${isUpgraded ? ' ⭐' : ''}${wall ? ' · 🧱' : ''}`;
+  document.getElementById('manageBuildingCoords').textContent = `(${x}, ${y}) · ${terrainLabel}${wall ? ' · Fortified' : ''}`;
+  const mngSpd = engine.speed || 1;
   let effectText = cost?.effect || '';
   if (infra.type === 'farm') {
     const terrMult = CONFIG.FARM_TERRAIN_MULT[terrain] ?? 1.0;
     const c = engine.country;
     const pixelCount = c?.pixel_count ?? 0;
     const goldIncome = (CONFIG.INFRA_COSTS.farm.incomeBonus * terrMult * pixelCount * mngSpd).toFixed(1);
-    const foodRate = farmLevel >= 2 ? CONFIG.INFRA_COSTS.farm.upgradedFoodPerHour : CONFIG.FOOD_PRODUCTION_PER_FARM;
-    const lvlLabel = farmLevel >= 2 ? ' ⭐ Upgraded' : '';
-    effectText = `+${goldIncome}g/hr income (${terrMult}x ${terrainLabel}) · +${(foodRate * mngSpd).toFixed(1)} food/hr${lvlLabel}`;
+    const foodRate = isUpgraded ? CONFIG.INFRA_COSTS.farm.upgradedFoodPerHour : CONFIG.FOOD_PRODUCTION_PER_FARM;
+    effectText = `+${goldIncome}g/hr income (${terrMult}x ${terrainLabel}) · +${(foodRate * mngSpd).toFixed(1)} food/hr${isUpgraded ? ' · Upgraded' : ''}`;
   } else if (infra.type === 'mine') {
     const terrMult = CONFIG.MINE_TERRAIN_MULT[terrain] ?? 1.0;
     const c = engine.country;
@@ -1512,34 +1525,22 @@ function openManageBuilding(x, y) {
     const pixBonus = Math.max(0, CONFIG.INFRA_COSTS.mine.pixelBonus - idx * 0.002) * (c?.pixel_count ?? 0) * mngSpd;
     effectText = `~${(flatIncome + pixBonus).toFixed(1)}g/hr (${terrMult}x ${terrainLabel} · mine #${idx + 1})`;
   }
-  // Append fortification status
-  if (wall) effectText += ' · 🧱 Tile is fortified (+50% defense)';
+  if (wall) effectText += ' · Tile is fortified (+50% defense)';
   document.getElementById('manageBuildingEffect').textContent = effectText;
 
   const deleteBtn = document.getElementById('manageBuildingDelete');
-  deleteBtn.textContent = 'Delete Building';
   deleteBtn.onclick = async () => {
     closeManageBuildingModal();
     await deleteBuilding(infra.id, infra.type, x, y);
   };
 
   // Upgrade button — shown for farms at level 1 only
-  let upgradeBtn = document.getElementById('manageBuildingUpgrade');
-  if (!upgradeBtn) {
-    upgradeBtn = document.createElement('button');
-    upgradeBtn.id = 'manageBuildingUpgrade';
-    upgradeBtn.className = 'btn';
-    upgradeBtn.style.cssText = 'margin-top:0.5rem;width:100%';
-    deleteBtn.parentNode.insertBefore(upgradeBtn, deleteBtn);
-  }
+  const upgradeBtn = document.getElementById('manageBuildingUpgrade');
   if (infra.type === 'farm' && farmLevel < 2) {
     const upgCost = CONFIG.INFRA_COSTS.farm.upgradeCost;
     const canAffordUpg = (engine.country?.gold || 0) >= upgCost;
-    upgradeBtn.innerHTML = `⭐ Upgrade Farm → 10 food/hr <span style="color:${canAffordUpg?'var(--gold)':'var(--red)'}">💰 ${upgCost}g</span>`;
-    upgradeBtn.style.background = canAffordUpg ? 'rgba(245,158,11,0.15)' : '#374151';
-    upgradeBtn.style.border = `1px solid ${canAffordUpg ? 'rgba(245,158,11,0.5)' : '#4b5563'}`;
-    upgradeBtn.style.color = canAffordUpg ? 'var(--gold)' : 'var(--muted)';
-    upgradeBtn.style.cursor = canAffordUpg ? 'pointer' : 'not-allowed';
+    upgradeBtn.innerHTML = `⭐ Upgrade Farm → ${CONFIG.INFRA_COSTS.farm.upgradedFoodPerHour * mngSpd} food/hr &nbsp;·&nbsp; 💰 ${upgCost}g`;
+    upgradeBtn.style.cssText = `width:100%;background:${canAffordUpg?'rgba(245,158,11,0.15)':'#1f2937'};border:1px solid ${canAffordUpg?'rgba(245,158,11,0.5)':'#374151'};color:${canAffordUpg?'var(--gold)':'var(--muted)'};cursor:${canAffordUpg?'pointer':'not-allowed'};border-radius:8px;padding:0.55rem 0.75rem;font-size:0.85rem`;
     upgradeBtn.onclick = async () => {
       if (!canAffordUpg) { showToast(`Need ${upgCost} gold`, 'error'); return; }
       closeManageBuildingModal();
@@ -1553,21 +1554,12 @@ function openManageBuilding(x, y) {
   }
 
   // Fortify button — only shown when not yet fortified; cannot be removed once built
-  let fortBtn = document.getElementById('manageBuildingFortify');
-  if (!fortBtn) {
-    fortBtn = document.createElement('button');
-    fortBtn.id = 'manageBuildingFortify';
-    fortBtn.className = 'btn';
-    fortBtn.style.cssText = 'margin-top:0.5rem;width:100%';
-    deleteBtn.parentNode.insertBefore(fortBtn, deleteBtn.nextSibling);
-  }
+  const fortBtn = document.getElementById('manageBuildingFortify');
   if (!wall) {
     const fortCost = CONFIG.INFRA_COSTS.wall.gold;
     const canAffordFort = (engine.country?.gold || 0) >= fortCost;
-    fortBtn.textContent = canAffordFort ? `Fortify Tile (${fortCost}g)` : `Fortify (need ${fortCost}g)`;
-    fortBtn.style.background = canAffordFort ? 'var(--green)' : '#374151';
-    fortBtn.style.color = canAffordFort ? '#000' : 'var(--muted)';
-    fortBtn.style.cursor = canAffordFort ? 'pointer' : 'not-allowed';
+    fortBtn.textContent = canAffordFort ? `🧱 Fortify Tile · ${fortCost}g` : `🧱 Fortify (need ${fortCost}g)`;
+    fortBtn.style.cssText = `width:100%;background:${canAffordFort?'rgba(34,197,94,0.15)':'#1f2937'};border:1px solid ${canAffordFort?'rgba(34,197,94,0.5)':'#374151'};color:${canAffordFort?'var(--green)':'var(--muted)'};cursor:${canAffordFort?'pointer':'not-allowed'};border-radius:8px;padding:0.55rem 0.75rem;font-size:0.85rem`;
     fortBtn.onclick = async () => {
       if (!canAffordFort) { showToast(`Need ${fortCost} gold`, 'error'); return; }
       closeManageBuildingModal();
