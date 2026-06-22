@@ -1553,12 +1553,16 @@ function toggleAudio() {
   const muted = AudioEngine.toggleMute();
   document.getElementById('muteBtn').textContent = muted ? '🔇' : '🔊';
 }
-function _unlockAudio() {
-  AudioEngine.unlock();
+async function _unlockAudio() {
+  await AudioEngine.unlock();
   document.getElementById('muteBtn').textContent = AudioEngine.isMuted() ? '🔇' : '🔊';
   document.removeEventListener('click', _unlockAudio);
+  document.removeEventListener('keydown', _unlockAudio);
+  document.removeEventListener('pointerdown', _unlockAudio);
 }
 document.addEventListener('click', _unlockAudio);
+document.addEventListener('keydown', _unlockAudio);
+document.addEventListener('pointerdown', _unlockAudio);
 // Set initial icon
 document.getElementById('muteBtn').textContent = AudioEngine.isMuted() ? '🔇' : '🔊';
 

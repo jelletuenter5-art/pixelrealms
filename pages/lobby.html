@@ -466,13 +466,17 @@ function toggleLobbyAudio() {
   const btn = document.getElementById('lobbyMuteBtn');
   if (btn) btn.innerHTML = (muted ? '🔇' : '🔊') + ' <span class="label">Music</span>';
 }
-function _unlockLobbyAudio() {
-  AudioEngine.unlock();
+async function _unlockLobbyAudio() {
+  await AudioEngine.unlock();
   const btn = document.getElementById('lobbyMuteBtn');
   if (btn) btn.innerHTML = (AudioEngine.isMuted() ? '🔇' : '🔊') + ' <span class="label">Music</span>';
   document.removeEventListener('click', _unlockLobbyAudio);
+  document.removeEventListener('keydown', _unlockLobbyAudio);
+  document.removeEventListener('pointerdown', _unlockLobbyAudio);
 }
 document.addEventListener('click', _unlockLobbyAudio);
+document.addEventListener('keydown', _unlockLobbyAudio);
+document.addEventListener('pointerdown', _unlockLobbyAudio);
 document.addEventListener('DOMContentLoaded', () => {
   const btn = document.getElementById('lobbyMuteBtn');
   if (btn) btn.innerHTML = (AudioEngine.isMuted() ? '🔇' : '🔊') + ' <span class="label">Music</span>';

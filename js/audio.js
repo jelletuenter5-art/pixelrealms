@@ -103,7 +103,7 @@ const AudioEngine = (() => {
         osc.type = 'sine';
         osc.frequency.value = freqs[idx] * 2; // upper octave
         g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(0.035, t + 0.04);
+        g.gain.linearRampToValueAtTime(0.018, t + 0.04);
         g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
         osc.connect(g);
         g.connect(musicGain);
@@ -134,7 +134,7 @@ const AudioEngine = (() => {
     osc.frequency.value = freq;
     osc.detune.value = (Math.random() - 0.5) * 8; // tiny human pitch wobble
     g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.022, t + 0.08);
+    g.gain.linearRampToValueAtTime(0.012, t + 0.08);
     g.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
     osc.connect(g);
     g.connect(musicGain);
