@@ -341,7 +341,8 @@
     <div id="chatFooter" style="display:none">
       <div class="chat-input-row">
         <input class="chat-input" type="text" id="chatInput" placeholder="Say something…" maxlength="200"
-          onkeydown="if(event.key==='Enter') sendChat()">
+          onkeydown="if(event.key==='Enter') sendChat()"
+          onfocus="if(SPECTATE&&currentProfile?.is_admin)this.placeholder='Message as Admin…'">
         <button class="chat-send" onclick="sendChat()">→</button>
       </div>
     </div>
@@ -709,9 +710,10 @@ let lastMousePos = null;
     const layout = document.getElementById('appLayout');
     layout.parentNode.insertBefore(specBanner, layout);
     layout.style.height = 'calc(100dvh - 24px)';
-    // Replace right panel tabs — only show Admin tab for admins
+    // Replace right panel tabs — only show Admin/Chat tabs for admins
     document.querySelector('.right-panel .panel-tabs').innerHTML = `
       <button class="panel-tab active" data-tab="spectate" onclick="switchRightTab('spectate')">👁️ Stats</button>
+      ${isAdminSpectate ? `<button class="panel-tab" data-tab="chat" onclick="switchRightTab('chat')">Chat<span class="notif-dot" id="chatNotifDot"></span></button>` : ''}
       ${isAdminSpectate ? `<button class="panel-tab" data-tab="admin" id="adminTabBtn" onclick="switchRightTab('admin')">🛠️ Admin</button>` : ''}
       <button onclick="closePanels()" style="margin-left:auto;background:transparent;border:none;color:var(--muted);font-size:1rem;cursor:pointer;padding:0 0.75rem;line-height:1" title="Close panel">✕</button>
     `;
@@ -2098,7 +2100,8 @@ function switchRightTab(tab) {
   document.querySelectorAll('.right-panel .panel-tab').forEach((t) => {
     t.classList.toggle('active', t.dataset.tab === tab);
   });
-  document.getElementById('chatFooter').style.display = tab === 'chat' ? 'block' : 'none';
+  const isAdminSpec = SPECTATE && !!currentProfile?.is_admin;
+  document.getElementById('chatFooter').style.display = (tab === 'chat' && (!SPECTATE || isAdminSpec)) ? 'block' : 'none';
   if (tab === 'chat') {
     document.getElementById('chatNotifDot')?.classList.remove('show');
     document.getElementById('rightToggleNotifDot')?.classList.remove('show');
@@ -2580,8 +2583,14 @@ async function renderChat(body) {
 
 function chatMsgHtml(m) {
   const c = engine.countries[m.country_id] || {};
-  const nation = c.name ? `${c.flag_emoji || ''}${c.name}` : (m.player_name || 'Unknown');
-  const userLabel = m.player_name ? ` <span style="color:var(--muted);font-weight:400;font-size:0.85em">(${escapeHtml(m.player_name)})</span>` : '';
+  const isAdmin = !!m.is_admin;
+  const nation = isAdmin
+    ? `🛡️ ${escapeHtml(m.player_name || 'Admin')}`
+    : (c.name ? `${c.flag_emoji || ''}${c.name}` : (m.player_name || 'Unknown'));
+  const userLabel = !isAdmin && m.player_name ? ` <span style="color:var(--muted);font-weight:400;font-size:0.85em">(${escapeHtml(m.player_name)})</span>` : '';
+  const adminBadge = isAdmin ? ` <span style="background:rgba(245,158,11,0.2);color:var(--gold);font-size:0.7em;font-weight:700;border-radius:4px;padding:0 4px;vertical-align:middle">ADMIN</span>` : '';
+  const senderColor = isAdmin ? 'var(--gold)' : (c.color || 'var(--green)');
+  const msgBorder = isAdmin ? 'border-left:2px solid var(--gold);' : '';
   const timestamp = m.created_at ? (() => {
     const d = new Date(m.created_at);
     const now = new Date();
@@ -2592,9 +2601,9 @@ function chatMsgHtml(m) {
     const mon = d.toLocaleString([], { month: 'short' });
     return `${day} ${mon} · ${hm}`;
   })() : '';
-  return `<div class="chat-msg">
-    <div class="sender" style="color:${c.color || 'var(--green)'}">
-      ${nation}${userLabel}
+  return `<div class="chat-msg" style="${msgBorder}">
+    <div class="sender" style="color:${senderColor}">
+      ${nation}${userLabel}${adminBadge}
     </div>
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem">
       <div class="body" style="flex:1">${escapeHtml(m.content)}</div>
@@ -2616,16 +2625,18 @@ async function cancelBoat(boatId) {
 async function sendChat() {
   const input = document.getElementById('chatInput');
   const content = input.value.trim();
-  if (!content || !engine.country) return;
+  const isAdminSpec = SPECTATE && !!currentProfile?.is_admin;
+  if (!content || (!engine.country && !isAdminSpec)) return;
   input.value = '';
 
   const { data: profile } = await sb.from('profiles').select('username').eq('id', currentUser.id).single();
 
   // Optimistic append so sender sees message immediately
   const optimistic = {
-    country_id: engine.country.id,
+    country_id: engine.country?.id || null,
     player_name: profile.username,
     content,
+    is_admin: isAdminSpec || undefined,
     created_at: new Date().toISOString(),
   };
   const chatDiv = document.getElementById('chatMsgs');
@@ -2634,12 +2645,14 @@ async function sendChat() {
     chatDiv.scrollTop = chatDiv.scrollHeight;
   }
 
-  await sb.from('messages').insert({
+  const msgRow = {
     game_id: GAME_ID,
-    country_id: engine.country.id,
+    country_id: engine.country?.id || null,
     player_name: profile.username,
     content,
-  });
+  };
+  if (isAdminSpec) msgRow.is_admin = true;
+  await sb.from('messages').insert(msgRow);
 }
 
 // ── REALTIME ──────────────────────────────────────────
@@ -2669,7 +2682,10 @@ function setupRealtime() {
     renderMap();
   });
   engine.subscribeToMessages(m => {
-    const isOwn = engine.country && m.country_id === engine.country.id;
+    const isAdminSpec = SPECTATE && !!currentProfile?.is_admin;
+    const isOwn = isAdminSpec
+      ? (m.is_admin && m.player_name === currentProfile?.username)
+      : (engine.country && m.country_id === engine.country.id);
     // Own messages are shown optimistically in sendChat — skip realtime echo
     if (isOwn) return;
     const panelOpen = document.querySelector('.right-panel')?.classList.contains('open');
