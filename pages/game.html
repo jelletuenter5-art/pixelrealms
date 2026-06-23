@@ -2781,7 +2781,7 @@ const CHAT_BLOCKLIST = [
   // irl solicitation
   'your address','send address','phone number','whatsapp me','snap me','doxx',
 ];
-const _CHAT_REGEXES = CHAT_BLOCKLIST.map(w => new RegExp(w.startsWith('\\b') || w.endsWith('\\b') ? w : `\\b${w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`, 'gi'));
+const _CHAT_REGEXES = CHAT_BLOCKLIST.map(w => new RegExp(w.startsWith('\\b') || w.endsWith('\\b') ? w : `\\b${w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\w*\\b`, 'gi'));
 
 function filterContent(text) {
   let out = text;
