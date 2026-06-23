@@ -2006,15 +2006,18 @@ async function renderTrade(body) {
     const outgoing = t.from_country_id === engine.country.id;
     const other = outgoing ? t.to_country : t.from_country;
     const statusColor = { accepted:'var(--green)', rejected:'var(--red)', cancelled:'var(--muted)' }[t.status] || 'var(--muted)';
-    const statusIcon = { accepted:'✅', rejected:'✕', cancelled:'⊘' }[t.status] || '';
-    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:0.45rem 0;border-bottom:1px solid rgba(45,55,72,0.5)">
-      <div style="font-size:0.8rem">
-        <span style="color:${other?.color}">●</span> ${other?.name}
-        <span style="color:var(--muted);font-size:0.72rem;margin-left:0.3rem">${outgoing ? '↑ sent' : '↓ received'}</span>
+    const statusLabel = { accepted:'Accepted', rejected:'Declined', cancelled:'Cancelled' }[t.status] || t.status;
+    const dirIcon = outgoing ? '↑' : '↓';
+    const dirLabel = outgoing ? 'Sent to' : 'Received from';
+    return `<div style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:0.55rem 0.7rem;margin-bottom:0.4rem;display:flex;align-items:center;gap:0.6rem">
+      <span style="font-size:0.8rem;color:var(--muted);min-width:0.6rem">${dirIcon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:0.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="color:${other?.color}">●</span> ${other?.name}</div>
+        <div style="font-size:0.7rem;color:var(--muted)">${dirLabel}</div>
       </div>
-      <div style="text-align:right">
-        <span style="font-weight:600;font-size:0.82rem">💰 ${t.gold_offered}g</span>
-        <span style="display:block;font-size:0.7rem;color:${statusColor}">${statusIcon} ${t.status}</span>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-weight:700;font-size:0.85rem;color:var(--gold)">💰 ${t.gold_offered}g</div>
+        <div style="font-size:0.7rem;color:${statusColor};font-weight:600">${statusLabel}</div>
       </div>
     </div>`;
   }).join('') || '<div style="color:var(--muted);font-size:0.82rem;padding:0.5rem 0">No history yet</div>';
@@ -2028,6 +2031,7 @@ async function renderTrade(body) {
         <span style="color:var(--muted);font-size:0.75rem;margin-left:auto">proposes ceasefire</span>
       </div>
       <div style="font-size:0.85rem;margin-bottom:0.5rem">☮️ <strong style="color:var(--green)">${o.hours}h</strong> ceasefire for <strong style="color:var(--gold)">💰 ${o.gold_offered}g</strong></div>
+      ${o.message ? `<div style="font-size:0.8rem;color:var(--text);background:var(--panel);border-radius:6px;padding:0.35rem 0.5rem;margin-bottom:0.5rem;border-left:2px solid var(--green);font-style:italic">"${escapeHtml(o.message)}"</div>` : ''}
       <div style="display:flex;gap:0.5rem">
         <button onclick="acceptCeasefireOffer('${o.id}','${o.from_country_id}',${o.gold_offered},${o.hours})" style="flex:1;padding:0.45rem;border-radius:7px;border:none;background:linear-gradient(135deg,#166534,#15803d);color:#fff;font-weight:700;cursor:pointer;font-size:0.82rem">☮️ Accept</button>
         <button onclick="declineCeasefireOffer('${o.id}')" style="padding:0.45rem 0.75rem;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:0.82rem">✕</button>
@@ -2072,16 +2076,20 @@ async function renderTrade(body) {
       </select>
       <input type="number" id="cfGold" placeholder="💰 Gold to offer" min="0" style="width:100%;font-size:0.85rem;margin-bottom:0.5rem">
       <input type="number" id="cfHours" placeholder="⏱ Duration in hours (e.g. 2)" min="0.5" step="0.5" style="width:100%;font-size:0.85rem;margin-bottom:0.5rem">
+      <input type="text" id="cfMessage" placeholder="Message (optional)" maxlength="200" style="width:100%;font-size:0.82rem;margin-bottom:0.5rem;background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:0.45rem 0.6rem;color:var(--text)">
       <button onclick="sendCeasefireOffer()" style="width:100%;padding:0.55rem;border-radius:7px;border:none;background:linear-gradient(135deg,#166534,#15803d);color:#fff;font-weight:700;cursor:pointer;font-size:0.85rem">☮️ Send Ceasefire Offer</button>
       <div style="font-size:0.72rem;color:var(--muted);margin-top:0.4rem">The other nation must accept. Gold transfers on acceptance.</div>
     </div>
 
     ${(sent?.length || sentCeasefires?.length) ? `<div class="section-label">⏳ Your Pending Offers</div>
       ${sentHtml}
-      ${(sentCeasefires||[]).map(o=>`<div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:0.65rem 0.75rem;margin-bottom:0.4rem;display:flex;align-items:center;justify-content:space-between">
-        <div><div style="font-size:0.78rem;color:var(--muted)">Ceasefire offer to</div><div style="font-weight:600;font-size:0.85rem"><span style="color:${o.to_country?.color}">●</span> ${o.to_country?.name}</div></div>
-        <div style="text-align:right"><div style="color:var(--green);font-weight:700">☮️ ${o.hours}h · 💰${o.gold_offered}g</div>
-        <button onclick="cancelCeasefireOffer('${o.id}')" style="font-size:0.72rem;padding:0.2rem 0.5rem;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;margin-top:0.25rem">Cancel</button></div>
+      ${(sentCeasefires||[]).map(o=>`<div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:0.65rem 0.75rem;margin-bottom:0.4rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${o.message?'0.35rem':'0'}">
+          <div><div style="font-size:0.78rem;color:var(--muted)">Ceasefire offer to</div><div style="font-weight:600;font-size:0.85rem"><span style="color:${o.to_country?.color}">●</span> ${o.to_country?.name}</div></div>
+          <div style="text-align:right"><div style="color:var(--green);font-weight:700">☮️ ${o.hours}h · 💰${o.gold_offered}g</div>
+          <button onclick="cancelCeasefireOffer('${o.id}')" style="font-size:0.72rem;padding:0.2rem 0.5rem;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;margin-top:0.25rem">Cancel</button></div>
+        </div>
+        ${o.message ? `<div style="font-size:0.75rem;color:var(--muted);font-style:italic;border-top:1px solid var(--border);padding-top:0.3rem">"${escapeHtml(o.message)}"</div>` : ''}
       </div>`).join('')}` : ''}
 
     <div class="section-label" style="margin-top:0.75rem">📜 History</div>
@@ -2093,6 +2101,7 @@ async function sendCeasefireOffer() {
   const targetId = document.getElementById('cfTarget').value;
   const gold = parseInt(document.getElementById('cfGold').value) || 0;
   const hours = parseFloat(document.getElementById('cfHours').value);
+  const message = document.getElementById('cfMessage').value.trim();
   if (!targetId) { showToast('Choose a nation', 'error'); return; }
   if (!hours || hours < 0.5) { showToast('Minimum 0.5 hours', 'error'); return; }
   if (gold < 0 || gold > engine.country.gold) { showToast('Invalid gold amount', 'error'); return; }
@@ -2103,6 +2112,7 @@ async function sendCeasefireOffer() {
     gold_offered: gold,
     hours,
     status: 'pending',
+    ...(message ? { message } : {}),
   });
   if (error) { showToast('Failed to send offer: ' + (error.message || error.code || JSON.stringify(error)), 'error'); console.error('ceasefire insert error', error); return; }
   showToast('☮️ Ceasefire offer sent!', 'ok');
