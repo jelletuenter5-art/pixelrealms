@@ -822,10 +822,14 @@ let lastMousePos = null;
     document.getElementById('eliminatedModal').style.display = 'flex';
   }
 
-  // If this player is the last one standing and game isn't finished yet, trigger win
+  // If this player is the last one standing and game isn't finished yet, trigger win.
+  // Require at least one other nation to have existed (alive or eliminated) so a
+  // freshly joined solo player doesn't immediately see the victory screen.
   if (!SPECTATE && engine.country?.is_alive && engine.game?.status !== 'finished') {
-    const aliveNations = Object.values(engine.countries).filter(c => c.is_alive);
-    if (aliveNations.length === 1 && aliveNations[0].id === engine.country.id) {
+    const allNations = Object.values(engine.countries);
+    const aliveNations = allNations.filter(c => c.is_alive);
+    const othersExisted = allNations.some(c => c.id !== engine.country.id);
+    if (aliveNations.length === 1 && aliveNations[0].id === engine.country.id && othersExisted) {
       engine._finishGame(engine.country);
     }
   }
