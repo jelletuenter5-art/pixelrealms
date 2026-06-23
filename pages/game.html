@@ -432,7 +432,7 @@
         <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🌾 Farm <span style="color:var(--gold);font-weight:400">100g</span></div>
         <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+0.04 💰/px/hr income nation-wide · +5 food/hr</div>
         <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Terrain: grass 1.5× · hill 1.0× · mountain 0.5× · desert 0.3×</div>
-        <div style="font-size:0.72rem;color:#f59e0b;margin-top:0.25rem">⭐ Upgradeable for 200g → doubles food to 10/hr. Upgraded farms show a gold ring on the map.</div>
+        <div style="font-size:0.72rem;color:#f59e0b;margin-top:0.25rem">⭐ Upgradeable for 200g → triples food to 15/hr. Upgraded farms show a gold ring on the map.</div>
       </div>
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
         <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">⛏️ Mine <span style="color:var(--gold);font-weight:400">120g</span></div>
@@ -469,8 +469,17 @@
     <div class="section-label">💰 Economy</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
       Each pixel earns <strong>1.5 💰/hr</strong> base income. Buildings like mines, farms, and trading posts add to this.
-      Your costs are: <strong>0.3 💰/px/hr</strong> territory upkeep (reduced by markets), <strong>0.5 💰/hr per army unit</strong>, and <strong>10 💰/hr per border pixel</strong> — each of your tiles touching an enemy tile adds upkeep, so compact empires cost less to defend than sprawling ones.
-      Border upkeep is capped at your gross income, so being surrounded can never trap you in an inescapable spiral.
+      Territory upkeep scales with your size — small nations pay much less to get started:
+    </p>
+    <div style="background:var(--panel2);border-radius:8px;padding:0.5rem 0.75rem;margin-bottom:0.5rem;font-size:0.78rem;line-height:1.8;color:var(--muted)">
+      <div>≤15 pixels → <strong style="color:var(--text)">0.05 💰/px/hr</strong></div>
+      <div>16–40 pixels → <strong style="color:var(--text)">0.15 💰/px/hr</strong></div>
+      <div>41–80 pixels → <strong style="color:var(--text)">0.22 💰/px/hr</strong></div>
+      <div>81+ pixels → <strong style="color:var(--text)">0.30 💰/px/hr</strong></div>
+    </div>
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
+      Markets reduce territory upkeep further. Other costs: <strong>0.5 💰/hr per army unit</strong> and <strong>10 💰/hr per border pixel</strong> — tiles touching an enemy add upkeep, so compact empires are cheaper to defend.
+      Border upkeep is capped at your gross income so you can never get trapped in an inescapable spiral.
       Check <strong>My Realm → Balance</strong> to see your live net gold/hr. Gold never drops below 0.
     </p>
 
@@ -503,9 +512,14 @@
       Each attack raises your <strong>war aggression</strong>, which increases your army's food consumption. Aggression decays over time (faster with markets). Keep an eye on the <strong>War Aggression</strong> section in My Realm — it shows your current status, the progress bar, and your estimated time to peace. Sustained wars without enough food can cripple your economy, so plan your campaigns carefully.
     </p>
 
-    <div class="section-label">🤝 Trade</div>
+    <div class="section-label">💬 Chat</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Open the <strong>Trade</strong> tab to send gold to another nation. You can attach a message to your offer — useful for proposing alliances, buying peace, or coordinating with allies. The recipient can accept or decline.
+      Open the <strong>Chat</strong> tab to talk with other players in real time. Messages show your nation name and color. If a message breaks the rules, tap 🚩 to report it to the admin.
+    </p>
+
+    <div class="section-label">🤝 Trade &amp; Ceasefires</div>
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
+      Open the <strong>Trade</strong> tab to send gold to another nation, or propose a <strong>ceasefire</strong>. Set the duration and gold offer yourself — the other nation must accept. While a ceasefire is active, neither side can attack the other. Other nations are not affected.
     </p>
 
     <button class="btn btn-primary btn-full" onclick="closeTutorial()">Got it!</button>
