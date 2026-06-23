@@ -2837,7 +2837,7 @@ function chatMsgHtml(m) {
     const mon = d.toLocaleString([], { month: 'short' });
     return `${day} ${mon} · ${hm}`;
   })() : '';
-  const isOwnMsg = m.player_id === currentUser?.id;
+  const isOwnMsg = m.player_id === currentUser?.id || (!m.player_id && m.player_name === currentProfile?.username);
   const deleteBtn = (m.id && (currentProfile?.is_admin || isOwnMsg))
     ? `<button onclick="deleteChatMsg('${m.id}', this)" style="flex-shrink:0;background:transparent;border:none;color:var(--muted);font-size:0.75rem;cursor:pointer;padding:0;line-height:1;opacity:0.5" title="Delete message">🗑</button>`
     : '';
@@ -2928,20 +2928,6 @@ async function sendChat() {
 
   const { data: profile } = await sb.from('profiles').select('username').eq('id', currentUser.id).single();
 
-  // Optimistic append so sender sees message immediately
-  const optimistic = {
-    country_id: engine.country?.id || null,
-    player_name: profile.username,
-    content,
-    is_admin: isAdminSpec || undefined,
-    created_at: new Date().toISOString(),
-  };
-  const chatDiv = document.getElementById('chatMsgs');
-  if (chatDiv && rightTab === 'chat') {
-    chatDiv.insertAdjacentHTML('beforeend', chatMsgHtml(optimistic));
-    chatDiv.scrollTop = chatDiv.scrollHeight;
-  }
-
   const msgRow = {
     game_id: GAME_ID,
     country_id: engine.country?.id || null,
@@ -2949,7 +2935,14 @@ async function sendChat() {
     content,
   };
   if (isAdminSpec) msgRow.is_admin = true;
-  await sb.from('messages').insert(msgRow);
+  const { data: inserted } = await sb.from('messages').insert(msgRow).select().single();
+
+  // Append the real row (with id + player_id) so delete button works immediately
+  const chatDiv = document.getElementById('chatMsgs');
+  if (chatDiv && rightTab === 'chat') {
+    chatDiv.insertAdjacentHTML('beforeend', chatMsgHtml(inserted || { ...msgRow, created_at: new Date().toISOString() }));
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+  }
 }
 
 // ── REALTIME ──────────────────────────────────────────
