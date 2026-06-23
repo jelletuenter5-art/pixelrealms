@@ -293,7 +293,7 @@
   <div class="left-panel">
     <div class="panel-tabs">
       <button class="panel-tab active" onclick="switchLeftTab('nations')">Nations</button>
-      <button class="panel-tab" onclick="switchLeftTab('events')">Events</button>
+      <button class="panel-tab" onclick="switchLeftTab('events')">Events<span class="notif-dot" id="eventsNotifDot"></span></button>
       <button class="panel-tab" onclick="switchLeftTab('trade')">Diplomacy<span class="notif-dot" id="tradeNotifDot"></span></button>
     </div>
     <div class="panel-body" id="leftPanelBody">
@@ -1784,22 +1784,31 @@ function switchLeftTab(tab) {
     t.classList.toggle('active', ['nations','events','trade'][i] === tab);
   });
   if (tab === 'trade') updateTradeNotif(false);
+  if (tab === 'events') { document.getElementById('eventsNotifDot')?.classList.remove('show'); document.getElementById('leftToggleNotifDot')?.classList.remove('show'); }
   renderLeftPanel();
 }
 
-// ── TRADE NOTIFICATIONS ─────────────────────────────────
+// ── NOTIFICATIONS ─────────────────────────────────
 function updateTradeNotif(show) {
   document.getElementById('tradeNotifDot')?.classList.toggle('show', show);
-  document.getElementById('leftToggleNotifDot')?.classList.toggle('show', show);
+  if (show) document.getElementById('leftToggleNotifDot')?.classList.add('show');
+}
+
+function updateEventsNotif() {
+  if (leftTab !== 'events') {
+    document.getElementById('eventsNotifDot')?.classList.add('show');
+    document.getElementById('leftToggleNotifDot')?.classList.add('show');
+  }
 }
 
 async function checkPendingTrades() {
   if (!engine.country) return;
-  const { count } = await sb.from('trades')
-    .select('id', { count: 'exact', head: true })
-    .eq('to_country_id', engine.country.id)
-    .eq('status', 'pending');
-  updateTradeNotif((count || 0) > 0 && leftTab !== 'trade');
+  const [tradesRes, cfRes] = await Promise.all([
+    sb.from('trades').select('id', { count: 'exact', head: true }).eq('to_country_id', engine.country.id).eq('status', 'pending'),
+    sb.from('ceasefire_offers').select('id', { count: 'exact', head: true }).eq('to_country_id', engine.country.id).eq('status', 'pending'),
+  ]);
+  const hasPending = ((tradesRes.count || 0) + (cfRes.count || 0)) > 0;
+  updateTradeNotif(hasPending && leftTab !== 'trade');
 }
 
 function renderLeftPanel() {
@@ -2876,6 +2885,7 @@ function setupRealtime() {
   });
   engine.subscribeToEvents(e => {
     if (leftTab === 'events') renderLeftPanel();
+    else updateEventsNotif();
   });
   engine.subscribeToCountries(c => {
     // Keep cache fresh for spectate mode
@@ -2917,6 +2927,17 @@ function setupRealtime() {
     if (leftTab === 'trade') renderLeftPanel();
     checkPendingTrades();
   });
+
+  // Ceasefire offers realtime
+  sb.channel(`ceasefire:${GAME_ID}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'ceasefire_offers', filter: `game_id=eq.${GAME_ID}` }, () => {
+      if (leftTab === 'trade') renderLeftPanel();
+      checkPendingTrades();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'ceasefires', filter: `game_id=eq.${GAME_ID}` }, () => {
+      if (leftTab === 'trade') renderLeftPanel();
+    })
+    .subscribe();
   engine.subscribeToInfra(i => {
     renderMap();
     if (rightTab === 'infra') renderRightPanel();

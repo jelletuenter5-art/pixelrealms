@@ -420,35 +420,35 @@ window.addEventListener('resize', adjustMainPadding);
 
   if (profile?.is_admin) {
     document.getElementById('adminTab').style.display = '';
-    // Admin red dot: new open feedback since last view
-    const lastAdminView = parseInt(localStorage.getItem('pr_last_admin_view') || '0');
-    const { count: newFeedback } = await sb.from('feedback').select('id', { count: 'exact', head: true })
-      .eq('status', 'open').gte('created_at', new Date(lastAdminView).toISOString());
-    if (newFeedback) document.getElementById('adminDot')?.classList.add('show');
+    // Admin dot: new reports OR new open feedback since last_seen_admin (cross-device via DB)
+    const lastAdminView = profile.last_seen_admin;
+    const [{ count: newReports }, { count: newFeedback }] = await Promise.all([
+      sb.from('reports').select('id', { count: 'exact', head: true }).gte('created_at', lastAdminView || '1970-01-01'),
+      sb.from('feedback').select('id', { count: 'exact', head: true }).eq('status', 'open').gte('created_at', lastAdminView || '1970-01-01'),
+    ]);
+    if ((newReports || 0) + (newFeedback || 0) > 0) document.getElementById('adminDot')?.classList.add('show');
   }
 
-  // Issues red dot: new admin message in feedback_messages since last view
-  const lastFeedbackView = parseInt(localStorage.getItem('pr_last_feedback_view') || '0');
-  if (lastFeedbackView > 0) {
+  // Issues dot: new admin reply since last_seen_feedback (cross-device via DB)
+  const lastFeedbackView = profile.last_seen_feedback;
+  if (lastFeedbackView) {
     const myTickets = await sb.from('feedback').select('id').eq('user_id', currentUser.id);
     const myIds = (myTickets.data || []).map(t => t.id);
     if (myIds.length) {
       const { data: newAdminMsgs } = await sb.from('feedback_messages').select('id')
-        .in('feedback_id', myIds).eq('sender', 'admin')
-        .gte('created_at', new Date(lastFeedbackView).toISOString()).limit(1);
+        .in('feedback_id', myIds).eq('sender', 'admin').gte('created_at', lastFeedbackView).limit(1);
       if (newAdminMsgs?.length) document.getElementById('feedbackDot')?.classList.add('show');
     }
   }
 
-  // Updates red dot: only show if user has visited Updates tab before and there's something newer
-  const lastUpdatesView = parseInt(localStorage.getItem('pr_last_updates_view') || '0');
-  if (lastUpdatesView === 0) {
-    // First ever visit — set baseline so we don't spam the dot on every login
-    localStorage.setItem('pr_last_updates_view', Date.now());
-  } else {
+  // Updates dot: new update since last_seen_updates (cross-device via DB)
+  if (profile.last_seen_updates) {
     const { data: newUpdates } = await sb.from('game_updates').select('id')
-      .gte('created_at', new Date(lastUpdatesView).toISOString()).limit(1);
+      .gte('created_at', profile.last_seen_updates).limit(1);
     if (newUpdates?.length) document.getElementById('updatesDot')?.classList.add('show');
+  } else {
+    // First ever visit — set baseline silently, no dot
+    await sb.from('profiles').update({ last_seen_updates: new Date().toISOString() }).eq('id', currentUser.id);
   }
 
   initSettings();
@@ -525,10 +525,11 @@ function showSection(id, ev) {
   document.getElementById(id).classList.add('active');
   if (ev?.currentTarget) ev.currentTarget.classList.add('active');
   else if (ev?.target) ev.target.closest('.page-tab')?.classList.add('active');
-  // Clear notif dots
-  if (id === 'feedback') { localStorage.setItem('pr_last_feedback_view', Date.now()); document.getElementById('feedbackDot')?.classList.remove('show'); loadMyFeedback(); }
-  if (id === 'admin') { localStorage.setItem('pr_last_admin_view', Date.now()); document.getElementById('adminDot')?.classList.remove('show'); loadAdminFeedback(); loadAdminGames(); loadAdminReports(); }
-  if (id === 'updates') { localStorage.setItem('pr_last_updates_view', Date.now()); document.getElementById('updatesDot')?.classList.remove('show'); loadUpdates(); }
+  // Clear notif dots and persist last-seen timestamp to DB (cross-device)
+  const now = new Date().toISOString();
+  if (id === 'feedback') { document.getElementById('feedbackDot')?.classList.remove('show'); sb.from('profiles').update({ last_seen_feedback: now }).eq('id', currentUser.id); loadMyFeedback(); }
+  if (id === 'admin') { document.getElementById('adminDot')?.classList.remove('show'); sb.from('profiles').update({ last_seen_admin: now }).eq('id', currentUser.id); loadAdminFeedback(); loadAdminGames(); loadAdminReports(); }
+  if (id === 'updates') { document.getElementById('updatesDot')?.classList.remove('show'); sb.from('profiles').update({ last_seen_updates: now }).eq('id', currentUser.id); loadUpdates(); }
   if (id === 'archived') loadArchivedGames();
 }
 
