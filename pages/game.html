@@ -2600,8 +2600,9 @@ async function buyExpansionToken() {
   if (c.gold < cost) { showToast(`Need ${cost} gold to buy a token.`, 'error'); return; }
   const currentTokens = engine.getLivePending();
   if (currentTokens >= CONFIG.MAX_STACK) { showToast('Already at max tokens!', 'error'); return; }
+  const storedPending = engine.country.pending_pixels;
   const { data, error } = await sb.from('countries')
-    .update({ gold: c.gold - cost, pending_pixels: Math.min(CONFIG.MAX_STACK, currentTokens + 1) })
+    .update({ gold: c.gold - cost, pending_pixels: Math.min(CONFIG.MAX_STACK, storedPending + 1) })
     .eq('id', c.id).select().single();
   if (error) { showToast('Purchase failed.', 'error'); return; }
   engine.country = data;
