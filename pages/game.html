@@ -1836,6 +1836,19 @@ async function renderEvents(body) {
 async function renderTrade(body) {
   if (!engine.country) { body.innerHTML = '<div style="color:var(--muted)">Join the game first</div>'; return; }
 
+  // Ceasefire data
+  const { data: ceasefireOffers } = await sb.from('ceasefire_offers')
+    .select('*, from_country:from_country_id(name, color, flag_emoji)')
+    .eq('to_country_id', engine.country.id).eq('status', 'pending');
+  const { data: sentCeasefires } = await sb.from('ceasefire_offers')
+    .select('*, to_country:to_country_id(name, color, flag_emoji)')
+    .eq('from_country_id', engine.country.id).eq('status', 'pending');
+  const now = new Date().toISOString();
+  const { data: activeCeasefires } = await sb.from('ceasefires')
+    .select('*, nation_a_country:nation_a(name, color, flag_emoji), nation_b_country:nation_b(name, color, flag_emoji)')
+    .or(`nation_a.eq.${engine.country.id},nation_b.eq.${engine.country.id}`)
+    .gt('expires_at', now);
+
   const { data: pending } = await sb.from('trades')
     .select('*, from_country:from_country_id(name, color)')
     .eq('to_country_id', engine.country.id)
@@ -1900,10 +1913,40 @@ async function renderTrade(body) {
     </div>`;
   }).join('') || '<div style="color:var(--muted);font-size:0.82rem;padding:0.5rem 0">No history yet</div>';
 
-  body.innerHTML = `
-    ${(pending?.length) ? `<div class="section-label" style="color:var(--gold)">🔔 Incoming Offers (${pending.length})</div>${pendingHtml}` : ''}
+  // Ceasefire incoming offers HTML
+  const cfOfferHtml = (ceasefireOffers || []).map(o => `
+    <div style="background:var(--panel2);border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:0.75rem;margin-bottom:0.5rem">
+      <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.5rem">
+        <div style="width:10px;height:10px;border-radius:2px;background:${o.from_country?.color};flex-shrink:0"></div>
+        <span style="font-weight:600;font-size:0.88rem">${o.from_country?.flag_emoji||''} ${o.from_country?.name}</span>
+        <span style="color:var(--muted);font-size:0.75rem;margin-left:auto">proposes ceasefire</span>
+      </div>
+      <div style="font-size:0.85rem;margin-bottom:0.5rem">☮️ <strong style="color:var(--green)">${o.hours}h</strong> ceasefire for <strong style="color:var(--gold)">💰 ${o.gold_offered}g</strong></div>
+      <div style="display:flex;gap:0.5rem">
+        <button onclick="acceptCeasefireOffer('${o.id}','${o.from_country_id}',${o.gold_offered},${o.hours})" style="flex:1;padding:0.45rem;border-radius:7px;border:none;background:linear-gradient(135deg,#166534,#15803d);color:#fff;font-weight:700;cursor:pointer;font-size:0.82rem">☮️ Accept</button>
+        <button onclick="declineCeasefireOffer('${o.id}')" style="padding:0.45rem 0.75rem;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:0.82rem">✕</button>
+      </div>
+    </div>`).join('');
 
-    <div class="section-label" style="margin-top:0.75rem">💸 Send Gold</div>
+  // Active ceasefires HTML
+  const activeCfHtml = (activeCeasefires || []).map(cf => {
+    const partner = cf.nation_a === engine.country.id ? cf.nation_b_country : cf.nation_a_country;
+    const minsLeft = Math.ceil((new Date(cf.expires_at) - Date.now()) / 60000);
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0;border-bottom:1px solid rgba(45,55,72,0.5);font-size:0.8rem">
+      <span><span style="color:${partner?.color}">●</span> ${partner?.flag_emoji||''} ${partner?.name}</span>
+      <span style="color:var(--green)">☮️ ${minsLeft} min left</span>
+    </div>`;
+  }).join('');
+
+  const countriesForCf = Object.values(engine.countries).filter(c => c.id !== engine.country.id && c.is_alive);
+
+  body.innerHTML = `
+    ${(ceasefireOffers?.length) ? `<div class="section-label" style="color:var(--green)">☮️ Ceasefire Offers (${ceasefireOffers.length})</div>${cfOfferHtml}` : ''}
+    ${(pending?.length) ? `<div class="section-label" style="color:var(--gold)">🔔 Gold Offers (${pending.length})</div>${pendingHtml}` : ''}
+
+    ${activeCeasefires?.length ? `<div class="section-label">🕊️ Active Ceasefires</div><div style="margin-bottom:0.75rem">${activeCfHtml}</div>` : ''}
+
+    <div class="section-label" style="margin-top:0.25rem">💸 Send Gold</div>
     <div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:0.75rem;margin-bottom:0.75rem">
       <select id="tradeTarget" style="width:100%;margin-bottom:0.6rem;font-size:0.85rem;background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:0.5rem;color:var(--text)">
         <option value="">Choose nation…</option>
@@ -1912,14 +1955,88 @@ async function renderTrade(body) {
       <input type="number" id="tradeAmount" placeholder="Amount of gold to send" min="1" max="${engine.country.gold}" style="width:100%;font-size:0.85rem;margin-bottom:0.5rem">
       <input type="text" id="tradeMessage" placeholder="Message (optional)" maxlength="200" style="width:100%;font-size:0.82rem;margin-bottom:0.5rem;background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:0.45rem 0.6rem;color:var(--text)">
       <button onclick="sendTrade()" style="width:100%;padding:0.55rem;border-radius:7px;border:none;background:linear-gradient(135deg,#92400e,#b45309);color:#fff;font-weight:700;cursor:pointer;font-size:0.85rem">Send Offer</button>
-      <div id="tradeGoldDisplay" style="font-size:0.72rem;color:var(--muted);margin-top:0.4rem">You have 💰 ${Math.floor(engine.country.gold)} gold</div>
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:0.4rem">You have 💰 ${Math.floor(engine.country.gold)} gold</div>
     </div>
 
-    ${sent?.length ? `<div class="section-label">⏳ Your Pending Offers (${sent.length})</div>${sentHtml}` : ''}
+    <div class="section-label">☮️ Propose Ceasefire</div>
+    <div style="background:var(--panel2);border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:0.75rem;margin-bottom:0.75rem">
+      <select id="cfTarget" style="width:100%;margin-bottom:0.6rem;font-size:0.85rem;background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:0.5rem;color:var(--text)">
+        <option value="">Choose nation…</option>
+        ${countriesForCf.map(c => `<option value="${c.id}">${c.flag_emoji||''} ${c.name}</option>`).join('')}
+      </select>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem">
+        <input type="number" id="cfGold" placeholder="Gold to offer" min="0" style="font-size:0.85rem">
+        <input type="number" id="cfHours" placeholder="Hours" min="0.5" step="0.5" style="font-size:0.85rem">
+      </div>
+      <button onclick="sendCeasefireOffer()" style="width:100%;padding:0.55rem;border-radius:7px;border:none;background:linear-gradient(135deg,#166534,#15803d);color:#fff;font-weight:700;cursor:pointer;font-size:0.85rem">☮️ Send Ceasefire Offer</button>
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:0.4rem">The other nation must accept. Gold transfers on acceptance.</div>
+    </div>
+
+    ${(sent?.length || sentCeasefires?.length) ? `<div class="section-label">⏳ Your Pending Offers</div>
+      ${sentHtml}
+      ${(sentCeasefires||[]).map(o=>`<div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:0.65rem 0.75rem;margin-bottom:0.4rem;display:flex;align-items:center;justify-content:space-between">
+        <div><div style="font-size:0.78rem;color:var(--muted)">Ceasefire offer to</div><div style="font-weight:600;font-size:0.85rem"><span style="color:${o.to_country?.color}">●</span> ${o.to_country?.name}</div></div>
+        <div style="text-align:right"><div style="color:var(--green);font-weight:700">☮️ ${o.hours}h · 💰${o.gold_offered}g</div>
+        <button onclick="cancelCeasefireOffer('${o.id}')" style="font-size:0.72rem;padding:0.2rem 0.5rem;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;margin-top:0.25rem">Cancel</button></div>
+      </div>`).join('')}` : ''}
 
     <div class="section-label" style="margin-top:0.75rem">📜 History</div>
     ${historyHtml}
   `;
+}
+
+async function sendCeasefireOffer() {
+  const targetId = document.getElementById('cfTarget').value;
+  const gold = parseInt(document.getElementById('cfGold').value) || 0;
+  const hours = parseFloat(document.getElementById('cfHours').value);
+  if (!targetId) { showToast('Choose a nation', 'error'); return; }
+  if (!hours || hours < 0.5) { showToast('Minimum 0.5 hours', 'error'); return; }
+  if (gold < 0 || gold > engine.country.gold) { showToast('Invalid gold amount', 'error'); return; }
+  const { error } = await sb.from('ceasefire_offers').insert({
+    game_id: GAME_ID,
+    from_country_id: engine.country.id,
+    to_country_id: targetId,
+    gold_offered: gold,
+    hours,
+    status: 'pending',
+  });
+  if (error) { showToast('Failed to send offer', 'error'); return; }
+  showToast('☮️ Ceasefire offer sent!', 'ok');
+  renderLeftPanel();
+}
+
+async function acceptCeasefireOffer(offerId, fromCountryId, gold, hours) {
+  const offerer = engine.countries[fromCountryId];
+  if (!offerer) { showToast('Nation not found', 'error'); return; }
+  if (!confirm(`Accept ${hours}h ceasefire with ${offerer.name} for 💰 ${gold}g?`)) return;
+  const expiresAt = new Date(Date.now() + hours * 3600000).toISOString();
+  // Transfer gold
+  if (gold > 0) {
+    if ((offerer.gold || 0) < gold) { showToast(`${offerer.name} no longer has enough gold`, 'error'); return; }
+    await sb.from('countries').update({ gold: Math.max(0, (offerer.gold || 0) - gold) }).eq('id', fromCountryId);
+    const newGold = (engine.country.gold || 0) + gold;
+    await sb.from('countries').update({ gold: newGold }).eq('id', engine.country.id);
+    engine.country.gold = newGold;
+  }
+  // Create ceasefire record
+  await sb.from('ceasefires').insert({ game_id: GAME_ID, nation_a: fromCountryId, nation_b: engine.country.id, expires_at: expiresAt, gold_paid: gold });
+  // Mark offer accepted
+  await sb.from('ceasefire_offers').update({ status: 'accepted' }).eq('id', offerId);
+  showToast(`☮️ Ceasefire active for ${hours}h!`, 'ok');
+  updateTopBar();
+  renderLeftPanel();
+}
+
+async function declineCeasefireOffer(offerId) {
+  await sb.from('ceasefire_offers').update({ status: 'declined' }).eq('id', offerId);
+  showToast('Ceasefire declined', 'ok');
+  renderLeftPanel();
+}
+
+async function cancelCeasefireOffer(offerId) {
+  await sb.from('ceasefire_offers').update({ status: 'cancelled' }).eq('id', offerId);
+  showToast('Offer cancelled', 'ok');
+  renderLeftPanel();
 }
 
 async function acceptTrade(id) {
@@ -2014,7 +2131,9 @@ async function spectateCountry(id, fromClick = false) {
   const tradingPostIncomeSp = calcTradingPostIncome(tradingPostInfraSp, engine.pixelData, borderSp.nations) * spSpeed;
   const grossIncomeSp = (baseIncomeSp + farmIncomeSp + mineIncomeSp + tradingPostIncomeSp) * foodMultSp;
   const incomePerHr = grossIncomeSp.toFixed(1);
-  const pixelUpkeepSp = Math.max(0, c.army_upkeep_per_pixel * c.pixel_count * spSpeed);
+  const baseUpkeepRateSp = calcTierUpkeepRate(c.pixel_count);
+  const effectiveUpkeepRateSp = Math.max(0.02, baseUpkeepRateSp - markets * CONFIG.INFRA_COSTS.market.upkeepReduction);
+  const pixelUpkeepSp = Math.max(0, effectiveUpkeepRateSp * c.pixel_count * spSpeed);
   const armyUpkeepSp = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT * spSpeed;
   const harborsSp = myInfra.filter(i => i.type === 'harbor').length;
   const harborUpkeepSp = harborsSp * CONFIG.INFRA_COSTS.harbor.upkeepPerHour * spSpeed;
@@ -2053,8 +2172,8 @@ async function spectateCountry(id, fromClick = false) {
     </div>
     <div class="section-label">📉 Upkeep</div>
     <div style="font-size:0.78rem;line-height:1.75;margin-bottom:0.75rem">
-      <div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">🗺️ Territory (${c.pixel_count} px)</span><span style="color:var(--red);white-space:nowrap">−${(0.3 * c.pixel_count * spSpeed).toFixed(1)} 💰/hr</span></div>
-      ${markets > 0 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">🏪 ${markets} market${markets>1?'s':''} savings</span><span style="color:var(--green);white-space:nowrap">+${(Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, 0.3) * c.pixel_count * spSpeed).toFixed(1)} 💰/hr</span></div>` : ''}
+      <div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">🗺️ Territory (${c.pixel_count} px)</span><span style="color:var(--red);white-space:nowrap">−${pixelUpkeepSp.toFixed(1)} 💰/hr</span></div>
+      ${markets > 0 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">🏪 ${markets} market${markets>1?'s':''} savings</span><span style="color:var(--green);white-space:nowrap">+${(Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, baseUpkeepRateSp) * c.pixel_count * spSpeed).toFixed(1)} 💰/hr</span></div>` : ''}
       <div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">⚔️ Army (${c.army_size} units)</span><span style="color:var(--red);white-space:nowrap">−${armyUpkeepSp.toFixed(1)} 💰/hr</span></div>
       ${borderSp.nations > 0 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">🚧 Border (${borderSp.borderPixels} px)</span><span style="color:var(--red);white-space:nowrap">−${borderCostDispSp.toFixed(1)} 💰/hr</span></div>` : ''}
       ${harborsSp > 0 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">⚓ Harbours (${harborsSp})</span><span style="color:var(--red);white-space:nowrap">−${harborUpkeepSp.toFixed(1)} 💰/hr</span></div>` : ''}
@@ -2171,8 +2290,9 @@ async function renderMyCountry(body) {
   const baseIncome = CONFIG.BASE_INCOME_PER_PIXEL * pixelCount * speed;
   const grossIncome = (baseIncome + farmIncome + mineIncome + tradingPostIncome) * foodMult;
   const incomePerHr = grossIncome.toFixed(1);
-  const rawTerritoryUpkeep = 0.3 * pixelCount * speed;
-  const marketSavings = Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, 0.3) * pixelCount * speed;
+  const baseUpkeepRate = calcTierUpkeepRate(pixelCount);
+  const rawTerritoryUpkeep = baseUpkeepRate * pixelCount * speed;
+  const marketSavings = Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, baseUpkeepRate) * pixelCount * speed;
   const pixelUpkeep = Math.max(0, rawTerritoryUpkeep - marketSavings);
   const armyUnitUpkeep = armySize * CONFIG.ARMY_UPKEEP_PER_UNIT * speed;
   const harborsCount = myInfra.filter(i => i.type === 'harbor').length;
@@ -2601,8 +2721,11 @@ function chatMsgHtml(m) {
     const mon = d.toLocaleString([], { month: 'short' });
     return `${day} ${mon} · ${hm}`;
   })() : '';
-  const deleteBtn = (currentProfile?.is_admin && m.id)
-    ? `<button onclick="deleteChatMsg('${m.id}', this)" style="flex-shrink:0;background:transparent;border:none;color:var(--muted);font-size:0.75rem;cursor:pointer;padding:0 0 0 0.25rem;line-height:1;opacity:0.5" title="Delete message">🗑</button>`
+  const deleteBtn = (SPECTATE && currentProfile?.is_admin && m.id)
+    ? `<button onclick="deleteChatMsg('${m.id}', this)" style="flex-shrink:0;background:transparent;border:none;color:var(--muted);font-size:0.75rem;cursor:pointer;padding:0;line-height:1;opacity:0.5" title="Delete message">🗑</button>`
+    : '';
+  const reportBtn = (!isAdmin && m.id)
+    ? `<button onclick="reportMessage('${m.id}',${JSON.stringify(m.content)},${JSON.stringify(m.player_name||'')},'${m.country_id||''}')" style="flex-shrink:0;background:transparent;border:none;color:var(--muted);font-size:0.7rem;cursor:pointer;padding:0;line-height:1;opacity:0.35" title="Report message">🚩</button>`
     : '';
   return `<div class="chat-msg" style="${msgBorder}">
     <div class="sender" style="color:${senderColor}">
@@ -2612,7 +2735,7 @@ function chatMsgHtml(m) {
       <div class="body" style="flex:1">${escapeHtml(m.content)}</div>
       <div style="display:flex;align-items:center;gap:0.25rem;flex-shrink:0">
         ${timestamp ? `<span style="color:var(--muted);font-size:0.7rem;white-space:nowrap;margin-top:0.1rem">${timestamp}</span>` : ''}
-        ${deleteBtn}
+        ${reportBtn}${deleteBtn}
       </div>
     </div>
   </div>`;
@@ -2630,6 +2753,40 @@ function escapeHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// ── CHAT FILTER ────────────────────────────────────────
+const CHAT_BLOCKLIST = [
+  // slurs & hate speech
+  'nigger','nigga','faggot','kike','spic','chink','wetback','tranny','retard','coon','beaner',
+  // drugs
+  'cocaine','heroin','fentanyl','methamphetamine','\\bmeth\\b','mdma','ecstasy','ketamine',
+  'buy drugs','sell drugs','drug deal','weed dealer','plug for','buying weed',
+  // sexual
+  'onlyfans','send nudes','nude pics','sex for','dick pic','pussy','child porn','csam','\\bcp\\b',
+  // violence / threats
+  'kill yourself','\\bkys\\b','i will kill','shoot you','bomb','school shooting',
+  // irl solicitation
+  'your address','send address','phone number','whatsapp me','snap me','doxx',
+];
+const _CHAT_REGEXES = CHAT_BLOCKLIST.map(w => new RegExp(w.startsWith('\\b') || w.endsWith('\\b') ? w : `\\b${w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`, 'gi'));
+
+function filterContent(text) {
+  let out = text;
+  for (const re of _CHAT_REGEXES) out = out.replace(re, m => '*'.repeat(m.length));
+  return out;
+}
+
+async function reportMessage(msgId, content, senderName, countryId) {
+  if (!confirm('Report this message to the admin?')) return;
+  await sb.from('reports').insert({
+    game_id: GAME_ID,
+    message_id: msgId,
+    content,
+    sender_name: senderName,
+    country_id: countryId || null,
+  });
+  showToast('Message reported', 'ok');
+}
+
 async function cancelBoat(boatId) {
   const res = await engine.cancelBoat(boatId);
   showToast(res.msg, res.ok ? 'ok' : 'error');
@@ -2638,7 +2795,8 @@ async function cancelBoat(boatId) {
 
 async function sendChat() {
   const input = document.getElementById('chatInput');
-  const content = input.value.trim();
+  const raw = input.value.trim();
+  const content = filterContent(raw);
   const isAdminSpec = SPECTATE && !!currentProfile?.is_admin;
   if (!content || (!engine.country && !isAdminSpec)) return;
   input.value = '';

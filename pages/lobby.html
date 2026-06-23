@@ -353,6 +353,9 @@
     <h3 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:1rem">🌍 All Games</h3>
     <div id="adminGamesList"><div style="color:var(--muted)">Loading…</div></div>
     <hr style="border-color:var(--border); margin:1.5rem 0">
+    <h3 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:1rem; color:var(--red)">🚩 Reported Messages</h3>
+    <div id="adminReportsList"><div style="color:var(--muted)">Loading…</div></div>
+    <hr style="border-color:var(--border); margin:1.5rem 0">
     <h3 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:1rem; color:var(--muted)">Player Issues</h3>
     <div id="adminFeedbackList"><div style="color:var(--muted)">Loading…</div></div>
   </div>
@@ -510,7 +513,7 @@ function showSection(id, ev) {
   else if (ev?.target) ev.target.closest('.page-tab')?.classList.add('active');
   // Clear notif dots
   if (id === 'feedback') { localStorage.setItem('pr_last_feedback_view', Date.now()); document.getElementById('feedbackDot')?.classList.remove('show'); loadMyFeedback(); }
-  if (id === 'admin') { localStorage.setItem('pr_last_admin_view', Date.now()); document.getElementById('adminDot')?.classList.remove('show'); loadAdminFeedback(); loadAdminGames(); }
+  if (id === 'admin') { localStorage.setItem('pr_last_admin_view', Date.now()); document.getElementById('adminDot')?.classList.remove('show'); loadAdminFeedback(); loadAdminGames(); loadAdminReports(); }
   if (id === 'updates') { localStorage.setItem('pr_last_updates_view', Date.now()); document.getElementById('updatesDot')?.classList.remove('show'); loadUpdates(); }
   if (id === 'archived') loadArchivedGames();
 }
@@ -1249,6 +1252,81 @@ async function loadAdminGames() {
       </div>
     </div>`;
   }).join('');
+}
+
+// ── REPORTS ───────────────────────────────────────────
+async function loadAdminReports() {
+  const list = document.getElementById('adminReportsList');
+  if (!list) return;
+  list.innerHTML = '<div style="color:var(--muted);font-size:0.85rem">Loading…</div>';
+  const { data, error } = await sb.from('reports')
+    .select('*, games(name)')
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error || !data?.length) {
+    list.innerHTML = `<div style="color:var(--muted);font-size:0.85rem">${error ? error.message : 'No reports yet.'}</div>`;
+    return;
+  }
+  list.innerHTML = data.map(r => {
+    const time = new Date(r.created_at).toLocaleString();
+    const gameName = r.games?.name || r.game_id || '—';
+    return `<div style="background:var(--panel);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:0.85rem;margin-bottom:0.6rem">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;margin-bottom:0.5rem">
+        <div>
+          <span style="font-weight:700;color:var(--text)">${escapeHtmlLobby(r.sender_name || 'Unknown')}</span>
+          <span style="font-size:0.72rem;color:var(--muted);margin-left:0.5rem">${time}</span>
+          <span style="font-size:0.72rem;color:var(--muted);margin-left:0.5rem">in <strong>${escapeHtmlLobby(gameName)}</strong></span>
+        </div>
+        <div style="display:flex;gap:0.4rem;flex-shrink:0">
+          <button onclick="deleteReportedMessage('${r.message_id}','${r.id}')" style="font-size:0.72rem;padding:0.2rem 0.5rem;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer">🗑 Msg</button>
+          <button onclick="banUser('${escapeHtmlLobby(r.sender_name || '')}','${r.id}')" style="font-size:0.72rem;padding:0.2rem 0.5rem;border-radius:5px;border:none;background:var(--red);color:#fff;cursor:pointer">🔨 Ban</button>
+          <button onclick="dismissReport('${r.id}')" style="font-size:0.72rem;padding:0.2rem 0.5rem;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer">✓ Dismiss</button>
+        </div>
+      </div>
+      <div style="font-size:0.82rem;background:var(--panel2);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text);word-break:break-word">"${escapeHtmlLobby(r.content || '')}"</div>
+    </div>`;
+  }).join('');
+}
+
+async function deleteReportedMessage(messageId, reportId) {
+  if (!messageId || messageId === 'null') { dismissReport(reportId); return; }
+  if (!confirm('Delete this message from the game?')) return;
+  await sb.from('messages').delete().eq('id', messageId);
+  await dismissReport(reportId);
+}
+
+async function dismissReport(reportId) {
+  await sb.from('reports').delete().eq('id', reportId);
+  loadAdminReports();
+}
+
+async function banUser(username, reportId) {
+  if (!username) { alert('No username found on this report.'); return; }
+  if (!confirm(`⚠️ PERMANENTLY BAN "${username}"?\n\nThis will:\n• Delete their account and all data\n• Post a ban announcement in all their active games\n\nThis cannot be undone.`)) return;
+
+  // Find profile
+  const { data: profile } = await sb.from('profiles').select('id').eq('username', username).maybeSingle();
+  if (!profile) { alert(`User "${username}" not found — they may have already been deleted.`); await dismissReport(reportId); return; }
+
+  // Find active countries to post ban events
+  const { data: activeCountries } = await sb.from('countries')
+    .select('id, name, game_id').eq('player_id', profile.id).eq('is_alive', true);
+
+  for (const country of (activeCountries || [])) {
+    await sb.from('events').insert({
+      game_id: country.game_id,
+      type: 'ban',
+      message: `🔨 ${country.name} was banned by an admin.`,
+    });
+    // Eliminate their nation
+    await sb.from('countries').update({ is_alive: false, surrendered_at: new Date().toISOString() }).eq('id', country.id);
+  }
+
+  // Delete profile (cascade handles associated data)
+  await sb.from('profiles').delete().eq('id', profile.id);
+  await dismissReport(reportId);
+  alert(`"${username}" has been banned.`);
+  loadAdminReports();
 }
 
 async function loadAdminFeedback() {

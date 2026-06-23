@@ -386,6 +386,17 @@ create policy "update boats" on boats for update using (true);`);
     const defender = this.countries[pixel.country_id];
     if (!defender) return { ok: false, msg: 'Defender not found.' };
 
+    // Check active ceasefire
+    const { data: ceasefireActive } = await sb.from('ceasefires')
+      .select('id, expires_at')
+      .or(`and(nation_a.eq.${this.country.id},nation_b.eq.${defender.id}),and(nation_a.eq.${defender.id},nation_b.eq.${this.country.id})`)
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle();
+    if (ceasefireActive) {
+      const minsLeft = Math.ceil((new Date(ceasefireActive.expires_at) - Date.now()) / 60000);
+      return { ok: false, msg: `☮️ Ceasefire with ${defender.name} — ${minsLeft} min remaining.` };
+    }
+
     // Combat formula
     const wall = this.wallData[key];
     const wallBonus = wall ? CONFIG.INFRA_COSTS.wall.defenseBonus : 0;
@@ -1103,6 +1114,14 @@ function calcFoodBalance(farmInfraOrCount, pixelCount, armySize, aggression = 0)
   return production - consumption;
 }
 
+// Tiered territory upkeep — small nations pay far less to ease early game
+function calcTierUpkeepRate(pixelCount) {
+  if (pixelCount <= 15) return 0.05;
+  if (pixelCount <= 40) return 0.15;
+  if (pixelCount <= 80) return 0.22;
+  return 0.30;
+}
+
 async function tickIncome(engine) {
   if (!engine.country) return;
   const c = engine.country;
@@ -1111,8 +1130,10 @@ async function tickIncome(engine) {
   const farmInfra = myInfra.filter(i => i.type === 'farm');
   const tradingPostInfra = myInfra.filter(i => i.type === 'trading_post');
 
+  const markets = myInfra.filter(i => i.type === 'market').length;
   const incomePerPx = c.income_per_pixel || CONFIG.BASE_INCOME_PER_PIXEL;
-  const upkeepPerPx = c.army_upkeep_per_pixel || 0.3;
+  const baseUpkeepRate = calcTierUpkeepRate(c.pixel_count);
+  const effectiveUpkeepRate = Math.max(0.02, baseUpkeepRate - markets * CONFIG.INFRA_COSTS.market.upkeepReduction);
   const baseIncome = incomePerPx * c.pixel_count;
   const farmIncome = calcFarmIncome(farmInfra, c.pixel_count, engine.pixelData);
   const mineIncome = calcMineIncome(mineInfra, c.pixel_count, engine.pixelData);
@@ -1128,7 +1149,7 @@ async function tickIncome(engine) {
     : 1;
 
   const hourlyIncome = (baseIncome + farmIncome + mineIncome + tradingPostIncome) * foodMult;
-  const pixelUpkeep = Math.max(0, upkeepPerPx * c.pixel_count);
+  const pixelUpkeep = Math.max(0, effectiveUpkeepRate * c.pixel_count);
   const armyUpkeep = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
   const harborCount = myInfra.filter(i => i.type === 'harbor').length;
   const harborUpkeep = harborCount * CONFIG.INFRA_COSTS.harbor.upkeepPerHour;
@@ -1157,8 +1178,7 @@ async function tickIncome(engine) {
   }
 
   // War aggression decays — base rate boosted by markets owned
-  const marketCount = myInfra.filter(i => i.type === 'market').length;
-  const effectiveDecay = CONFIG.FOOD_AGGRESSION_DECAY + marketCount * CONFIG.MARKET_DECAY_BONUS;
+  const effectiveDecay = CONFIG.FOOD_AGGRESSION_DECAY + markets * CONFIG.MARKET_DECAY_BONUS;
   const newAggression = Math.max(0, Math.round((aggression - effectiveDecay * tickHours) * 100000) / 100000);
   if (newAggression !== aggression) {
     const { error } = await sb.from('countries').update({ food_aggression: newAggression }).eq('id', c.id);
