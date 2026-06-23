@@ -321,6 +321,11 @@
 <script>
 // Check if already logged in
 (async () => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('banned')) {
+    const el = document.getElementById('loginError');
+    if (el) { el.textContent = '🔨 Your account has been permanently banned.'; el.style.display = 'block'; }
+  }
   const { data } = await sb.auth.getSession();
   if (data.session) window.location.href = 'lobby.html';
 })();

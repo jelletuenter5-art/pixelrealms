@@ -665,6 +665,13 @@ let lastMousePos = null;
   if (!session) { window.location.href = 'index.html'; return; }
   currentUser = session.user;
 
+  const { data: banCheck } = await sb.from('banned_users').select('id').eq('auth_id', currentUser.id).maybeSingle();
+  if (banCheck) {
+    await sb.auth.signOut();
+    window.location.href = 'index.html?banned=1';
+    return;
+  }
+
   const { data: profileData } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
   currentProfile = profileData;
   if (currentProfile?.is_admin) {

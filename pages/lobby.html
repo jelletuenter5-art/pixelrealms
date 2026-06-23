@@ -392,6 +392,13 @@ window.addEventListener('resize', adjustMainPadding);
   if (!session) { window.location.href = 'index.html'; return; }
   currentUser = session.user;
 
+  const { data: banCheck } = await sb.from('banned_users').select('id').eq('auth_id', currentUser.id).maybeSingle();
+  if (banCheck) {
+    await sb.auth.signOut();
+    window.location.href = 'index.html?banned=1';
+    return;
+  }
+
   let { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
   if (!profile) {
     // Self-heal: profile row wasn't created at signup time for some reason
@@ -1302,10 +1309,13 @@ async function dismissReport(reportId) {
 
 async function banUser(username, reportId) {
   if (!username) { alert('No username found on this report.'); return; }
-  if (!confirm(`⚠️ PERMANENTLY BAN "${username}"?\n\nThis will:\n• Delete their account, all messages, pixels, and buildings\n• Post a ban announcement in all their games\n\nThis cannot be undone.`)) return;
+  if (!confirm(`⚠️ PERMANENTLY BAN "${username}"?\n\nThis will:\n• Block them from ever logging in again\n• Delete all their messages, pixels, and buildings\n• Post a ban announcement in all their games\n\nThis cannot be undone.`)) return;
 
   const { data: profile } = await sb.from('profiles').select('id').eq('username', username).maybeSingle();
   if (!profile) { alert(`User "${username}" not found — they may have already been deleted.`); await dismissReport(reportId); return; }
+
+  // Block their auth account from re-logging in
+  await sb.from('banned_users').upsert({ auth_id: profile.id, username }, { onConflict: 'auth_id' });
 
   const { data: countries } = await sb.from('countries').select('id, name, game_id').eq('player_id', profile.id);
 
@@ -1321,9 +1331,7 @@ async function banUser(username, reportId) {
     await sb.from('countries').delete().eq('id', country.id);
   }
 
-  const { error: delErr } = await sb.from('profiles').delete().eq('id', profile.id);
-  if (delErr) { alert('Ban partially failed — could not delete profile: ' + delErr.message); return; }
-
+  await sb.from('profiles').delete().eq('id', profile.id);
   await dismissReport(reportId);
   alert(`"${username}" has been permanently banned and all their data deleted.`);
   loadAdminReports();
