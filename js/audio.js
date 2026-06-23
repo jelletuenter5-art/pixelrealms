@@ -52,11 +52,35 @@ const AudioEngine = (() => {
     if (music.paused) music.play().catch(() => {});
   }
 
+  const victory = new Audio('../assets/victory.mp3');
+  victory.loop = false;
+  victory.volume = muted ? 0 : 0.7;
+
+  function playVictory() {
+    music.pause();
+    victory.currentTime = 0;
+    victory.volume = muted ? 0 : 0.7;
+    victory.play().catch(() => {});
+  }
+
+  function stopVictory() {
+    victory.pause();
+    victory.currentTime = 0;
+    music.play().catch(() => {});
+  }
+
+  function replayVictory() {
+    victory.currentTime = 0;
+    victory.volume = muted ? 0 : 0.7;
+    victory.play().catch(() => {});
+  }
+
   function toggleMute() {
     muted = !muted;
     localStorage.setItem('pr_muted', muted);
     music.volume = muted ? 0 : 0.5;
-    if (sfxGain) sfxGain.gain.setTargetAtTime(muted ? 0 : 0.65, ctx.currentTime, 0.1);
+    victory.volume = muted ? 0 : 0.7;
+    if (sfxGain) sfxGain.gain.setTargetAtTime(muted ? 0 : 0.65, ctx?.currentTime ?? 0, 0.1);
     return muted;
   }
 
@@ -145,5 +169,5 @@ const AudioEngine = (() => {
     osc.stop(t + 0.35);
   }
 
-  return { unlock, toggleMute, isMuted, playExpand, playBuild, playAttack };
+  return { unlock, toggleMute, isMuted, playExpand, playBuild, playAttack, playVictory, stopVictory, replayVictory };
 })();
