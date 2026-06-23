@@ -2012,7 +2012,7 @@ async function sendCeasefireOffer() {
     hours,
     status: 'pending',
   });
-  if (error) { showToast('Failed to send offer', 'error'); return; }
+  if (error) { showToast('Failed to send offer: ' + (error.message || error.code || JSON.stringify(error)), 'error'); console.error('ceasefire insert error', error); return; }
   showToast('☮️ Ceasefire offer sent!', 'ok');
   renderLeftPanel();
 }
