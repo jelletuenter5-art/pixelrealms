@@ -1990,16 +1990,15 @@ async function renderTrade(body) {
     </div>`).join('') || '<div style="color:var(--muted);font-size:0.82rem;padding:0.5rem 0">No incoming offers</div>';
 
   const sentHtml = (sent || []).map(t => `
-    <div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:0.65rem 0.75rem;margin-bottom:0.4rem;display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-size:0.78rem;color:var(--muted)">Awaiting response from</div>
-        <div style="font-weight:600;font-size:0.85rem"><span style="color:${t.to_country?.color}">●</span> ${t.to_country?.name}</div>
+    <div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:0.65rem 0.75rem;margin-bottom:0.4rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${t.message?'0.35rem':'0'}">
+        <div><div style="font-size:0.78rem;color:var(--muted)">Gold offer to</div><div style="font-weight:600;font-size:0.85rem"><span style="color:${t.to_country?.color}">●</span> ${t.to_country?.name}</div></div>
+        <div style="text-align:right">
+          <div style="color:var(--gold);font-weight:700">💰 ${t.gold_offered}g</div>
+          <button onclick="cancelTrade('${t.id}')" style="font-size:0.72rem;padding:0.2rem 0.5rem;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;margin-top:0.25rem">Cancel</button>
+        </div>
       </div>
-      <div style="text-align:right">
-        <div style="color:var(--gold);font-weight:700">💰 ${t.gold_offered}g</div>
-        ${t.message ? (() => { const msg = escapeHtml(t.message); const short = msg.length > 40 ? msg.slice(0, 40) + '…' : msg; const hasMore = msg.length > 40; return `<div style="font-size:0.7rem;color:var(--muted);font-style:italic;margin-top:0.15rem;max-width:140px"><span id="smsg-short-${t.id}">"${short}"${hasMore ? ` <button onclick="document.getElementById('smsg-short-${t.id}').style.display='none';document.getElementById('smsg-full-${t.id}').style.display='block'" style="font-size:0.65rem;padding:0 0.3rem;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-style:normal">more</button>` : ''}</span>${hasMore ? `<span id="smsg-full-${t.id}" style="display:none;white-space:normal;word-break:break-word">"${msg}" <button onclick="document.getElementById('smsg-full-${t.id}').style.display='none';document.getElementById('smsg-short-${t.id}').style.display='inline'" style="font-size:0.65rem;padding:0 0.3rem;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-style:normal">less</button></span>` : ''}</div>`; })() : ''}
-        <button onclick="cancelTrade('${t.id}')" style="font-size:0.72rem;padding:0.2rem 0.5rem;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;margin-top:0.25rem">Cancel</button>
-      </div>
+      ${t.message ? `<div style="font-size:0.75rem;color:var(--muted);font-style:italic;border-top:1px solid var(--border);padding-top:0.3rem">"${escapeHtml(t.message)}"</div>` : ''}
     </div>`).join('') || '<div style="color:var(--muted);font-size:0.82rem;padding:0.25rem 0">No outgoing offers</div>';
 
   const historyHtml = (history || []).map(t => {
