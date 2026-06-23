@@ -399,6 +399,13 @@ window.addEventListener('resize', adjustMainPadding);
     return;
   }
 
+  // Realtime kick if banned while online
+  sb.channel('ban-watch-lobby')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'banned_users', filter: `auth_id=eq.${currentUser.id}` }, async () => {
+      await sb.auth.signOut();
+      window.location.href = 'index.html?banned=1';
+    }).subscribe();
+
   let { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
   if (!profile) {
     // Self-heal: profile row wasn't created at signup time for some reason
@@ -1315,7 +1322,8 @@ async function banUser(username, reportId) {
   if (!profile) { alert(`User "${username}" not found — they may have already been deleted.`); await dismissReport(reportId); return; }
 
   // Block their auth account from re-logging in
-  await sb.from('banned_users').upsert({ auth_id: profile.id, username }, { onConflict: 'auth_id' });
+  const { error: banErr } = await sb.from('banned_users').upsert({ auth_id: profile.id, username }, { onConflict: 'auth_id' });
+  if (banErr) { alert('Failed to add to banned list: ' + banErr.message + '\nBan aborted.'); return; }
 
   const { data: countries } = await sb.from('countries').select('id, name, game_id').eq('player_id', profile.id);
 

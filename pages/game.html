@@ -672,6 +672,13 @@ let lastMousePos = null;
     return;
   }
 
+  // Realtime kick if banned while online in-game
+  sb.channel('ban-watch-game')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'banned_users', filter: `auth_id=eq.${currentUser.id}` }, async () => {
+      await sb.auth.signOut();
+      window.location.href = 'index.html?banned=1';
+    }).subscribe();
+
   const { data: profileData } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
   currentProfile = profileData;
   if (currentProfile?.is_admin) {
