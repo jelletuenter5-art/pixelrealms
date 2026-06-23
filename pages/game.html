@@ -947,42 +947,13 @@ function initCanvas() {
   offsetX = (canvas.width - totalW * scale) / 2;
   offsetY = (canvas.height - totalH * scale) / 2;
 
-  // Expand drag state
-  let expandDragActive = false;
-  let lastExpandTile = null;
-
-  function clientToTile(cx, cy) {
-    const rect = canvas.getBoundingClientRect();
-    const ps = CONFIG.PIXEL_SIZE * scale;
-    const tx = Math.floor((cx - rect.left - offsetX) / ps);
-    const ty = Math.floor((cy - rect.top  - offsetY) / ps);
-    return { tx, ty };
-  }
-
   // Mouse events
   canvas.addEventListener('mousedown', e => {
-    if (currentMode === 'expand') {
-      expandDragActive = true;
-      const { tx, ty } = clientToTile(e.clientX, e.clientY);
-      lastExpandTile = `${tx},${ty}`;
-      // Still handle the initial click tile via handleClick; no panning in expand mode
-      return;
-    }
     isDragging = false;
     dragStart = { x: e.clientX, y: e.clientY, ox: offsetX, oy: offsetY };
   });
   canvas.addEventListener('mousemove', e => {
     lastMousePos = { x: e.clientX, y: e.clientY };
-    if (expandDragActive && currentMode === 'expand') {
-      const { tx, ty } = clientToTile(e.clientX, e.clientY);
-      const key = `${tx},${ty}`;
-      if (key !== lastExpandTile) {
-        lastExpandTile = key;
-        engine.expandTo(tx, ty);
-      }
-      showTooltip(e);
-      return;
-    }
     if (dragStart) {
       const dx = e.clientX - dragStart.x, dy = e.clientY - dragStart.y;
       if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
@@ -995,19 +966,11 @@ function initCanvas() {
     showTooltip(e);
   });
   canvas.addEventListener('mouseup', e => {
-    if (expandDragActive) {
-      expandDragActive = false;
-      lastExpandTile = null;
-      if (!isDragging) handleClick(e);
-      return;
-    }
     if (!isDragging) handleClick(e);
     dragStart = null;
     isDragging = false;
   });
   canvas.addEventListener('mouseleave', () => {
-    expandDragActive = false;
-    lastExpandTile = null;
     dragStart = null;
     document.getElementById('pixelTooltip').style.display = 'none';
   });
@@ -1031,26 +994,16 @@ function initCanvas() {
     if (e.touches.length === 2) {
       lastDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
       wasPinch = true;
-      expandDragActive = false;
-      lastExpandTile = null;
       dragStart = null;
     } else {
       wasPinch = false;
-      if (currentMode === 'expand') {
-        expandDragActive = true;
-        const { tx, ty } = clientToTile(e.touches[0].clientX, e.touches[0].clientY);
-        lastExpandTile = `${tx},${ty}`;
-      } else {
-        dragStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, ox: offsetX, oy: offsetY };
-      }
+      dragStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, ox: offsetX, oy: offsetY };
     }
   });
   canvas.addEventListener('touchmove', e => {
     e.preventDefault();
     if (e.touches.length === 2) {
       wasPinch = true;
-      expandDragActive = false;
-      lastExpandTile = null;
       const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
       const factor = dist / lastDist;
       const newScale = Math.max(0.3, Math.min(6, scale * factor));
@@ -1063,13 +1016,6 @@ function initCanvas() {
       scale = newScale;
       lastDist = dist;
       renderMap();
-    } else if (expandDragActive && currentMode === 'expand') {
-      const { tx, ty } = clientToTile(e.touches[0].clientX, e.touches[0].clientY);
-      const key = `${tx},${ty}`;
-      if (key !== lastExpandTile) {
-        lastExpandTile = key;
-        engine.expandTo(tx, ty);
-      }
     } else if (dragStart) {
       offsetX = dragStart.ox + e.touches[0].clientX - dragStart.x;
       offsetY = dragStart.oy + e.touches[0].clientY - dragStart.y;
@@ -1078,16 +1024,6 @@ function initCanvas() {
     }
   }, { passive: false });
   canvas.addEventListener('touchend', e => {
-    if (expandDragActive) {
-      expandDragActive = false;
-      lastExpandTile = null;
-      if (!wasPinch && e.changedTouches.length === 1) {
-        e.preventDefault();
-        handleClick({ clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY });
-      }
-      if (e.touches.length === 0) wasPinch = false;
-      return;
-    }
     if (!wasPinch && !isDragging && dragStart && e.changedTouches.length === 1) {
       e.preventDefault(); // stop browser generating a synthetic click that would hit modal backdrops
       handleClick({ clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY });
