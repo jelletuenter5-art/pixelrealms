@@ -1361,7 +1361,7 @@ function renderCountryLabels(x0, y0, x1, y1, ps) {
   ctx.textBaseline = 'middle';
   for (const [id, c] of Object.entries(centroids)) {
     const country = engine.countries[id];
-    if (!country || c.n < 2) continue;
+    if (!country || c.n < 1) continue;
 
     const cx = c.sx / c.n, cy = c.sy / c.n;
     const sx = offsetX + (cx + 0.5) * ps;
