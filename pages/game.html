@@ -294,7 +294,7 @@
     <div class="panel-tabs">
       <button class="panel-tab active" onclick="switchLeftTab('nations')">Nations</button>
       <button class="panel-tab" onclick="switchLeftTab('events')">Events</button>
-      <button class="panel-tab" onclick="switchLeftTab('trade')">Trade<span class="notif-dot" id="tradeNotifDot"></span></button>
+      <button class="panel-tab" onclick="switchLeftTab('trade')">Diplomacy<span class="notif-dot" id="tradeNotifDot"></span></button>
     </div>
     <div class="panel-body" id="leftPanelBody">
       <div style="color:var(--muted)">Loading…</div>
@@ -1829,7 +1829,7 @@ async function renderNations(body) {
 async function renderEvents(body) {
   const { data } = await sb.from('game_events')
     .select('*').eq('game_id', GAME_ID)
-    .in('type', ['attack', 'eliminated', 'join', 'trade', 'inactive'])
+    .in('type', ['eliminated', 'join', 'trade', 'inactive', 'ban'])
     .order('created_at', { ascending: false }).limit(50);
 
   if (!data?.length) { body.innerHTML = '<div style="color:var(--muted)">No events yet</div>'; return; }
@@ -1974,14 +1974,12 @@ async function renderTrade(body) {
 
     <div class="section-label">☮️ Propose Ceasefire</div>
     <div style="background:var(--panel2);border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:0.75rem;margin-bottom:0.75rem">
-      <select id="cfTarget" style="width:100%;margin-bottom:0.6rem;font-size:0.85rem;background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:0.5rem;color:var(--text)">
+      <select id="cfTarget" style="width:100%;margin-bottom:0.5rem;font-size:0.85rem;background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:0.5rem;color:var(--text)">
         <option value="">Choose nation…</option>
         ${countriesForCf.map(c => `<option value="${c.id}">${c.flag_emoji||''} ${c.name}</option>`).join('')}
       </select>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem">
-        <input type="number" id="cfGold" placeholder="Gold to offer" min="0" style="font-size:0.85rem">
-        <input type="number" id="cfHours" placeholder="Hours" min="0.5" step="0.5" style="font-size:0.85rem">
-      </div>
+      <input type="number" id="cfGold" placeholder="💰 Gold to offer" min="0" style="width:100%;font-size:0.85rem;margin-bottom:0.5rem">
+      <input type="number" id="cfHours" placeholder="⏱ Duration in hours (e.g. 2)" min="0.5" step="0.5" style="width:100%;font-size:0.85rem;margin-bottom:0.5rem">
       <button onclick="sendCeasefireOffer()" style="width:100%;padding:0.55rem;border-radius:7px;border:none;background:linear-gradient(135deg,#166534,#15803d);color:#fff;font-weight:700;cursor:pointer;font-size:0.85rem">☮️ Send Ceasefire Offer</button>
       <div style="font-size:0.72rem;color:var(--muted);margin-top:0.4rem">The other nation must accept. Gold transfers on acceptance.</div>
     </div>
