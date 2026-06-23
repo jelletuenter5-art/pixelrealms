@@ -843,8 +843,6 @@ const { data } = await sb.from('boats').select('*')
   // ── Win condition & cleanup ───────────────────────────────
   async _checkWinCondition() {
     const all = Object.values(this.countries);
-    if (all.length < 2) return; // need at least 2 nations for a "win"
-
     const alive = all.filter(c => c.is_alive);
     if (alive.length !== 1) return;
 
@@ -884,9 +882,12 @@ const { data } = await sb.from('boats').select('*')
     await this._logEvent('eliminated', winMsg);
 
     // Let connected clients show a victory screen before the data is wiped
+    const gameOverPayload = { winnerName: winner.name, winnerId: winner.player_id, permanent: isAdminCreated };
     await sb.channel(`gameover:${this.gameId}`).send({
-      type: 'broadcast', event: 'gameover', payload: { winnerName: winner.name, winnerId: winner.player_id, permanent: isAdminCreated }
+      type: 'broadcast', event: 'gameover', payload: gameOverPayload
     });
+    // Supabase broadcast doesn't echo to sender, so fire locally too
+    if (this._onGameOver) this._onGameOver(gameOverPayload);
 
     // Admin-created event realms stay permanently — no replacement needed
     if (isAdminCreated) return;
@@ -1014,6 +1015,7 @@ const { data } = await sb.from('boats').select('*')
   }
 
   subscribeToGameOver(onGameOver) {
+    this._onGameOver = onGameOver;
     const sub = sb.channel(`gameover:${this.gameId}`)
       .on('broadcast', { event: 'gameover' }, payload => onGameOver(payload.payload))
       .subscribe();

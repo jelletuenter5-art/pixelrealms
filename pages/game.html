@@ -822,6 +822,14 @@ let lastMousePos = null;
     document.getElementById('eliminatedModal').style.display = 'flex';
   }
 
+  // If this player is the last one standing and game isn't finished yet, trigger win
+  if (!SPECTATE && engine.country?.is_alive && engine.game?.status !== 'finished') {
+    const aliveNations = Object.values(engine.countries).filter(c => c.is_alive);
+    if (aliveNations.length === 1 && aliveNations[0].id === engine.country.id) {
+      engine._finishGame(engine.country);
+    }
+  }
+
   if (!SPECTATE && spawnSelectionMode) {
     document.getElementById('spawnBanner').style.display = 'flex';
     document.querySelector('.mode-bar').style.display = 'none';
