@@ -623,8 +623,19 @@ const { data } = await sb.from('boats').select('*')
     (data || []).forEach(b => { this.boatData[b.id] = b; });
 
     const sub = sb.channel(`boats:${this.gameId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'boats', filter: `game_id=eq.${this.gameId}` }, payload => {
-        if (payload.new) this.boatData[payload.new.id] = payload.new;
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'boats', filter: `game_id=eq.${this.gameId}` }, async payload => {
+        if (!payload.new) return;
+        // path may be stripped from realtime payload if large — re-fetch to be safe
+        if (!payload.new.path || !payload.new.path.length) {
+          const { data } = await sb.from('boats').select('*').eq('id', payload.new.id).single();
+          if (data) this.boatData[data.id] = data;
+        } else {
+          this.boatData[payload.new.id] = payload.new;
+        }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'boats', filter: `game_id=eq.${this.gameId}` }, payload => {
+        if (payload.new?.status !== 'sailing') delete this.boatData[payload.new.id];
+        else if (payload.new) this.boatData[payload.new.id] = payload.new;
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'boats', filter: `game_id=eq.${this.gameId}` }, payload => {
         if (payload.old?.id) delete this.boatData[payload.old.id];
