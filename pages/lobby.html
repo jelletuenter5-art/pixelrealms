@@ -430,8 +430,15 @@ window.addEventListener('resize', adjustMainPadding);
     document.getElementById('adminTab').style.display = '';
   }
 
-  // Load user_prefs for cross-device notification timestamps
+  // Load user_prefs for cross-device notification timestamps + archived games
   const { data: userPrefs } = await sb.from('user_prefs').select('*').eq('user_id', currentUser.id).maybeSingle();
+
+  // Merge DB archived_games into localStorage so archive state is cross-device
+  if (userPrefs?.archived_games?.length) {
+    const local = JSON.parse(localStorage.getItem('pr_archived_games') || '[]');
+    const merged = [...new Set([...local, ...userPrefs.archived_games])];
+    localStorage.setItem('pr_archived_games', JSON.stringify(merged));
+  }
 
   // Helper: pick the most recent of localStorage and DB values
   function lastSeen(key, dbVal) {
@@ -610,7 +617,9 @@ async function loadMyGames() {
       archivedGames.add(c.game_id);
     }
   }
-  localStorage.setItem('pr_archived_games', JSON.stringify([...archivedGames]));
+  const archivedArr = [...archivedGames];
+  localStorage.setItem('pr_archived_games', JSON.stringify(archivedArr));
+  sb.from('user_prefs').upsert({ user_id: currentUser.id, archived_games: archivedArr }, { onConflict: 'user_id' });
 
   const active = countries.filter(c => c.games && !archivedGames.has(c.game_id));
   if (!active.length) {
@@ -657,6 +666,7 @@ function archiveGame(gameId, ev) {
   const arr = JSON.parse(localStorage.getItem('pr_archived_games') || '[]');
   if (!arr.includes(gameId)) arr.push(gameId);
   localStorage.setItem('pr_archived_games', JSON.stringify(arr));
+  sb.from('user_prefs').upsert({ user_id: currentUser.id, archived_games: arr }, { onConflict: 'user_id' });
   loadMyGames();
   loadArchivedGames();
 }
@@ -693,8 +703,9 @@ async function loadArchivedGames() {
 }
 
 function unarchiveGame(gameId) {
-  const arr = JSON.parse(localStorage.getItem('pr_archived_games') || '[]');
-  localStorage.setItem('pr_archived_games', JSON.stringify(arr.filter(id => id !== gameId)));
+  const arr = JSON.parse(localStorage.getItem('pr_archived_games') || '[]').filter(id => id !== gameId);
+  localStorage.setItem('pr_archived_games', JSON.stringify(arr));
+  sb.from('user_prefs').upsert({ user_id: currentUser.id, archived_games: arr }, { onConflict: 'user_id' });
   loadArchivedGames();
   loadMyGames();
 }
