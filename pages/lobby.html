@@ -1328,7 +1328,7 @@ async function banUser(username, reportId) {
   const { data: countries } = await sb.from('countries').select('id, name, game_id').eq('player_id', profile.id);
 
   for (const country of (countries || [])) {
-    await sb.from('events').insert({
+    await sb.from('game_events').insert({
       game_id: country.game_id,
       type: 'ban',
       message: `🔨 ${country.name} was permanently banned by an admin.`,
