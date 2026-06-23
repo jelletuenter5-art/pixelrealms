@@ -120,6 +120,9 @@
     gap: 0.5rem; padding: 0.9rem 1rem; border-bottom: 1px solid rgba(45,55,72,0.4);
     align-items: center; transition: background 0.15s; }
   .lb-row:hover { background: var(--panel); border-radius: 8px; }
+  .lb-sort-btn { background:var(--panel2);border:1px solid var(--border);border-radius:20px;padding:0.3rem 0.85rem;font-size:0.8rem;color:var(--muted);cursor:pointer;transition:all 0.15s }
+  .lb-sort-btn:hover { border-color:var(--gold);color:var(--text) }
+  .lb-sort-active { background:rgba(245,158,11,0.15);border-color:var(--gold) !important;color:var(--gold) !important;font-weight:600 }
   .rank { font-family: 'Cinzel', serif; font-weight: 700; font-size: 1.1rem; color: var(--muted); }
   .rank.gold { color: #fbbf24; }
   .rank.silver { color: #cbd5e1; }
@@ -250,14 +253,12 @@
 
   <!-- LEADERBOARD -->
   <div id="leaderboard" class="section">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:1rem">
-      <h2 style="font-family:'Cinzel',serif;margin:0">Hall of Conquerors</h2>
-      <select id="lbSortSelect" onchange="setLbSort(this.value)" style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:0.35rem 0.6rem;font-size:0.82rem;color:var(--text);cursor:pointer">
-        <option value="wins">👑 Most Wins</option>
-        <option value="kills">⚔️ Most Kills</option>
-        <option value="pixels">🗺️ Most Pixels</option>
-        <option value="games">🎮 Most Games</option>
-      </select>
+    <h2 style="font-family:'Cinzel',serif;margin-bottom:1rem">Hall of Conquerors</h2>
+    <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:1.25rem">
+      <button id="lbSort-wins"   onclick="setLbSort('wins')"   class="lb-sort-btn lb-sort-active">👑 Wins</button>
+      <button id="lbSort-kills"  onclick="setLbSort('kills')"  class="lb-sort-btn">⚔️ Kills</button>
+      <button id="lbSort-pixels" onclick="setLbSort('pixels')" class="lb-sort-btn">🗺️ Pixels</button>
+      <button id="lbSort-games"  onclick="setLbSort('games')"  class="lb-sort-btn">🎮 Games</button>
     </div>
     <div class="lb-header">
       <div>Rank</div>
@@ -968,8 +969,8 @@ let _lbCache = null;
 
 function setLbSort(key) {
   lbSortBy = key;
-  const sel = document.getElementById('lbSortSelect');
-  if (sel) sel.value = key;
+  document.querySelectorAll('.lb-sort-btn').forEach(b => b.classList.remove('lb-sort-active'));
+  document.getElementById(`lbSort-${key}`)?.classList.add('lb-sort-active');
   if (_lbCache) renderLeaderboard(_lbCache);
 }
 
@@ -1001,8 +1002,8 @@ async function loadLeaderboard() {
   }));
 
   renderLeaderboard(_lbCache);
-  const sel = document.getElementById('lbSortSelect');
-  if (sel) sel.value = lbSortBy;
+  document.querySelectorAll('.lb-sort-btn').forEach(b => b.classList.remove('lb-sort-active'));
+  document.getElementById(`lbSort-${lbSortBy}`)?.classList.add('lb-sort-active');
 }
 
 function renderLeaderboard(players) {
