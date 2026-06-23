@@ -563,6 +563,7 @@ function showSection(id, ev) {
   if (id === 'admin') { document.getElementById('adminDot')?.classList.remove('show'); localStorage.setItem('pr_ls_admin', now); sb.from('user_prefs').upsert({ user_id: currentUser.id, last_seen_admin: now }, { onConflict: 'user_id' }); loadAdminFeedback(); loadAdminGames(); loadAdminReports(); }
   if (id === 'updates') { document.getElementById('updatesDot')?.classList.remove('show'); localStorage.setItem('pr_ls_updates', now); sb.from('user_prefs').upsert({ user_id: currentUser.id, last_seen_updates: now }, { onConflict: 'user_id' }); loadUpdates(); }
   if (id === 'archived') loadArchivedGames();
+  if (id === 'leaderboard') loadLeaderboard();
 }
 
 // ── MY GAMES ──────────────────────────────────────
@@ -997,7 +998,11 @@ async function loadLeaderboard() {
     totalGames: (p.games_played || 0) + (liveGames[p.id] || 0),
   }));
 
+  // Always render with current sort (default: wins)
   renderLeaderboard(_lbCache);
+  // Ensure the active button reflects current sort
+  document.querySelectorAll('.lb-sort-btn').forEach(b => b.classList.remove('lb-sort-active'));
+  document.getElementById(`lbSort-${lbSortBy}`)?.classList.add('lb-sort-active');
 }
 
 function renderLeaderboard(players) {
