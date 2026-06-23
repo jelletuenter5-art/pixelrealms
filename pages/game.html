@@ -2737,7 +2737,7 @@ function chatMsgHtml(m) {
     ? `<button onclick="deleteChatMsg('${m.id}', this)" style="flex-shrink:0;background:transparent;border:none;color:var(--muted);font-size:0.75rem;cursor:pointer;padding:0;line-height:1;opacity:0.5" title="Delete message">🗑</button>`
     : '';
   const reportBtn = (!isAdmin && m.id)
-    ? `<button onclick="reportMessage('${m.id}',${JSON.stringify(m.content)},${JSON.stringify(m.player_name||'')},'${m.country_id||''}')" style="flex-shrink:0;background:transparent;border:none;color:var(--muted);font-size:0.7rem;cursor:pointer;padding:0;line-height:1;opacity:0.35" title="Report message">🚩</button>`
+    ? `<button onclick="reportMessage(this)" data-msg-id="${m.id}" data-content="${escapeHtml(m.content||'')}" data-sender="${escapeHtml(m.player_name||'')}" data-country="${m.country_id||''}" style="flex-shrink:0;background:transparent;border:none;color:var(--muted);font-size:0.7rem;cursor:pointer;padding:0;line-height:1;opacity:0.35" title="Report message">🚩</button>`
     : '';
   return `<div class="chat-msg" style="${msgBorder}">
     <div class="sender" style="color:${senderColor}">
@@ -2789,7 +2789,11 @@ function filterContent(text) {
   return out;
 }
 
-async function reportMessage(msgId, content, senderName, countryId) {
+async function reportMessage(btn) {
+  const msgId = btn.dataset.msgId;
+  const content = btn.dataset.content;
+  const senderName = btn.dataset.sender;
+  const countryId = btn.dataset.country;
   const preview = content.length > 80 ? content.slice(0, 80) + '…' : content;
   if (!confirm(`Report this message from ${senderName || 'unknown'}?\n\n"${preview}"\n\nThis will be sent to the admin for review.`)) return;
   const { error } = await sb.from('reports').insert({
