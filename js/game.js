@@ -482,17 +482,6 @@ create policy "update boats" on boats for update using (true);`);
 
     this.country.army_size = newAttackerArmy;
 
-    // Log attack
-    await sb.from('attacks').insert({
-      game_id: this.gameId,
-      attacker_id: this.country.id,
-      defender_id: defender.id,
-      pixel_x: x, pixel_y: y,
-      success,
-      attacker_losses: attackerLoss,
-      defender_losses: defenderLoss,
-    });
-
     const msg = success
       ? `⚔️ Victory! Captured (${x},${y}). Lost ${attackerLoss} troops. 🍞 Food rate +${aggressionGained.toFixed(2)}/px`
       : `❌ Failed attack on (${x},${y}). Lost ${attackerLoss} troops. 🍞 Food rate +${aggressionGained.toFixed(2)}/px`;
