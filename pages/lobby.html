@@ -1302,30 +1302,30 @@ async function dismissReport(reportId) {
 
 async function banUser(username, reportId) {
   if (!username) { alert('No username found on this report.'); return; }
-  if (!confirm(`⚠️ PERMANENTLY BAN "${username}"?\n\nThis will:\n• Delete their account and all data\n• Post a ban announcement in all their active games\n\nThis cannot be undone.`)) return;
+  if (!confirm(`⚠️ PERMANENTLY BAN "${username}"?\n\nThis will:\n• Delete their account, all messages, pixels, and buildings\n• Post a ban announcement in all their games\n\nThis cannot be undone.`)) return;
 
-  // Find profile
   const { data: profile } = await sb.from('profiles').select('id').eq('username', username).maybeSingle();
   if (!profile) { alert(`User "${username}" not found — they may have already been deleted.`); await dismissReport(reportId); return; }
 
-  // Find active countries to post ban events
-  const { data: activeCountries } = await sb.from('countries')
-    .select('id, name, game_id').eq('player_id', profile.id).eq('is_alive', true);
+  const { data: countries } = await sb.from('countries').select('id, name, game_id').eq('player_id', profile.id);
 
-  for (const country of (activeCountries || [])) {
+  for (const country of (countries || [])) {
     await sb.from('events').insert({
       game_id: country.game_id,
       type: 'ban',
-      message: `🔨 ${country.name} was banned by an admin.`,
+      message: `🔨 ${country.name} was permanently banned by an admin.`,
     });
-    // Eliminate their nation
-    await sb.from('countries').update({ is_alive: false, surrendered_at: new Date().toISOString() }).eq('id', country.id);
+    await sb.from('messages').delete().eq('country_id', country.id);
+    await sb.from('infrastructure').delete().eq('country_id', country.id);
+    await sb.from('pixels').delete().eq('country_id', country.id);
+    await sb.from('countries').delete().eq('id', country.id);
   }
 
-  // Delete profile (cascade handles associated data)
-  await sb.from('profiles').delete().eq('id', profile.id);
+  const { error: delErr } = await sb.from('profiles').delete().eq('id', profile.id);
+  if (delErr) { alert('Ban partially failed — could not delete profile: ' + delErr.message); return; }
+
   await dismissReport(reportId);
-  alert(`"${username}" has been banned.`);
+  alert(`"${username}" has been permanently banned and all their data deleted.`);
   loadAdminReports();
 }
 
