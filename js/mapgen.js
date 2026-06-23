@@ -146,13 +146,14 @@ class MapGenerator {
 
   // Find a random spawn point (grass or hill, away from water)
   findSpawn(map, existingSpawns = []) {
+    const border = Math.max(1, Math.floor(Math.min(this.width, this.height) * 0.1));
+    const minSep = Math.max(3, Math.floor(Math.min(this.width, this.height) * 0.2));
     const candidates = [];
-    for (let y = 2; y < this.height - 2; y++) {
-      for (let x = 2; x < this.width - 2; x++) {
+    for (let y = border; y < this.height - border; y++) {
+      for (let x = border; x < this.width - border; x++) {
         if (map[y][x].terrain === 'grass' || map[y][x].terrain === 'hill') {
-          // Must not be too close to existing spawns
           const tooClose = existingSpawns.some(s =>
-            Math.abs(s.x - x) < 10 && Math.abs(s.y - y) < 10
+            Math.abs(s.x - x) < minSep && Math.abs(s.y - y) < minSep
           );
           if (!tooClose) candidates.push({ x, y });
         }

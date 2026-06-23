@@ -330,11 +330,11 @@
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0.75rem">
         <div class="form-group" style="margin:0">
           <label>Map Width</label>
-          <input type="number" id="createRealmWidth" value="100" min="30" max="500">
+          <input type="number" id="createRealmWidth" value="100" min="10" max="500">
         </div>
         <div class="form-group" style="margin:0">
           <label>Map Height</label>
-          <input type="number" id="createRealmHeight" value="80" min="30" max="500">
+          <input type="number" id="createRealmHeight" value="80" min="10" max="500">
         </div>
         <div class="form-group" style="margin:0">
           <label>Max Players</label>
@@ -1193,7 +1193,7 @@ async function createEventRealm() {
   const speed = parseFloat(document.getElementById('createRealmSpeed').value) || 1;
   const msg = document.getElementById('createRealmMsg');
   if (!name) { msg.style.color = 'var(--red)'; msg.textContent = 'Realm name is required.'; return; }
-  if (width < 30 || height < 30 || maxPlayers < 2) { msg.style.color = 'var(--red)'; msg.textContent = 'Invalid dimensions or player count.'; return; }
+  if (width < 10 || height < 10 || maxPlayers < 2) { msg.style.color = 'var(--red)'; msg.textContent = 'Invalid dimensions or player count.'; return; }
   if (speed < 0.5 || speed > 20) { msg.style.color = 'var(--red)'; msg.textContent = 'Speed must be between 0.5 and 20.'; return; }
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = 'EV-';
