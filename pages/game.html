@@ -2790,15 +2790,17 @@ function filterContent(text) {
 }
 
 async function reportMessage(msgId, content, senderName, countryId) {
-  if (!confirm('Report this message to the admin?')) return;
-  await sb.from('reports').insert({
+  const preview = content.length > 80 ? content.slice(0, 80) + '…' : content;
+  if (!confirm(`Report this message from ${senderName || 'unknown'}?\n\n"${preview}"\n\nThis will be sent to the admin for review.`)) return;
+  const { error } = await sb.from('reports').insert({
     game_id: GAME_ID,
     message_id: msgId,
     content,
     sender_name: senderName,
-    country_id: countryId || null,
+    reporter_country_id: engine.country?.id || null,
   });
-  showToast('Message reported', 'ok');
+  if (error) { showToast('Report failed: ' + (error.message || error.code), 'error'); console.error('report error', error); return; }
+  showToast('Message reported to admin', 'ok');
 }
 
 async function cancelBoat(boatId) {
