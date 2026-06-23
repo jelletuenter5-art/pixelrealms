@@ -634,12 +634,13 @@ create policy "update boats" on boats for update using (true);`);
     (data || []).forEach(b => { this.boatData[b.id] = b; });
 
     const sub = sb.channel(`boats:${this.gameId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'boats', filter: `game_id=eq.${this.gameId}` }, payload => {
-        const b = payload.new || payload.old;
-        if (!b) return;
-        if (b.status === 'sailing') this.boatData[b.id] = b;
-        else delete this.boatData[b.id];
-      }).subscribe();
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'boats', filter: `game_id=eq.${this.gameId}` }, payload => {
+        if (payload.new) this.boatData[payload.new.id] = payload.new;
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'boats', filter: `game_id=eq.${this.gameId}` }, payload => {
+        if (payload.old?.id) delete this.boatData[payload.old.id];
+      })
+      .subscribe();
     this.realtimeSubs.push(sub);
   }
 
@@ -729,7 +730,7 @@ create policy "update boats" on boats for update using (true);`);
   async cancelBoat(boatId) {
     const boat = this.boatData?.[boatId];
     if (!boat || boat.country_id !== this.country?.id) return { ok: false, msg: 'Boat not found.' };
-    const { error } = await sb.from('boats').update({ status: 'cancelled' }).eq('id', boatId);
+    const { error } = await sb.from('boats').delete().eq('id', boatId);
     if (error) return { ok: false, msg: 'Failed to cancel boat.' };
     // Refund expansion token if it was an expand mission
     if (boat.mode === 'expand') {
@@ -758,7 +759,7 @@ create policy "update boats" on boats for update using (true);`);
           this.pixelData[key] = { ...targetPixel, country_id: this.country.id };
           await sb.from('countries').update({ pixel_count: this.country.pixel_count + 1 }).eq('id', this.country.id);
           this.country.pixel_count++;
-          await sb.from('boats').update({ status: 'arrived' }).eq('id', id);
+          await sb.from('boats').delete().eq('id', id);
           await this._logEvent('expand', `${this.country.name}'s boat landed and claimed (${x},${y})!`);
           showToast(`⛵ Boat landed! Claimed (${x},${y}).`, 'ok');
         } else {
@@ -766,7 +767,7 @@ create policy "update boats" on boats for update using (true);`);
           const newPending = Math.min(CONFIG.MAX_STACK, (this.country.pending_pixels || 0) + 1);
           await sb.from('countries').update({ pending_pixels: newPending }).eq('id', this.country.id);
           this.country.pending_pixels = newPending;
-          await sb.from('boats').update({ status: 'failed' }).eq('id', id);
+          await sb.from('boats').delete().eq('id', id);
           await this._logEvent('expand', `${this.country.name}'s boat arrived but (${x},${y}) was already taken. Token refunded.`);
           showToast(`⛵ Boat failed — tile was taken. Token refunded.`, 'error');
         }
@@ -798,7 +799,7 @@ create policy "update boats" on boats for update using (true);`);
             } else {
               showToast(`⛵ Boat attack failed on (${x},${y}). Lost ${attackerLoss} troops.`, 'error');
             }
-            await sb.from('boats').update({ status: 'arrived' }).eq('id', id);
+            await sb.from('boats').delete().eq('id', id);
             await this._logEvent('attack', `${this.country.name}'s boat attacked ${defender.name} at (${x},${y}) — ${success ? 'SUCCESS' : 'FAILED'}`);
             const defenderPixelsLeft = Math.max(0, defender.pixel_count - (success ? 1 : 0));
             if (defenderPixelsLeft <= 0) {
@@ -807,10 +808,10 @@ create policy "update boats" on boats for update using (true);`);
               await this._checkWinCondition();
             }
           } else {
-            await sb.from('boats').update({ status: 'failed' }).eq('id', id);
+            await sb.from('boats').delete().eq('id', id);
           }
         } else {
-          await sb.from('boats').update({ status: 'failed' }).eq('id', id);
+          await sb.from('boats').delete().eq('id', id);
           showToast(`⛵ Boat arrived but no enemy at (${x},${y}).`, 'error');
         }
       }
