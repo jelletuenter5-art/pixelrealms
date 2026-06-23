@@ -97,7 +97,7 @@ const AudioEngine = (() => {
       osc.type = 'sine';
       osc.frequency.value = freq;
       gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.18, t + 0.015);
+      gain.gain.linearRampToValueAtTime(0.07, t + 0.015);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
       osc.connect(gain);
       gain.connect(sfxGain);
