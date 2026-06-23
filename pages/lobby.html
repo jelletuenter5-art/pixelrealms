@@ -425,8 +425,17 @@ window.addEventListener('resize', adjustMainPadding);
   // Load user_prefs for cross-device notification timestamps
   const { data: userPrefs } = await sb.from('user_prefs').select('*').eq('user_id', currentUser.id).maybeSingle();
 
+  // Helper: pick the most recent of localStorage and DB values
+  function lastSeen(key, dbVal) {
+    const local = localStorage.getItem(key);
+    if (!local && !dbVal) return null;
+    if (!local) return dbVal;
+    if (!dbVal) return local;
+    return local > dbVal ? local : dbVal;
+  }
+
   if (profile?.is_admin) {
-    const lastAdminView = userPrefs?.last_seen_admin;
+    const lastAdminView = lastSeen('pr_ls_admin', userPrefs?.last_seen_admin);
     const [{ count: newReports }, { count: newFeedback }] = await Promise.all([
       sb.from('reports').select('id', { count: 'exact', head: true }).gte('created_at', lastAdminView || '1970-01-01'),
       sb.from('feedback').select('id', { count: 'exact', head: true }).eq('status', 'open').gte('created_at', lastAdminView || '1970-01-01'),
@@ -435,7 +444,7 @@ window.addEventListener('resize', adjustMainPadding);
   }
 
   // Issues dot: new admin reply since last_seen_feedback
-  const lastFeedbackView = userPrefs?.last_seen_feedback;
+  const lastFeedbackView = lastSeen('pr_ls_feedback', userPrefs?.last_seen_feedback);
   if (lastFeedbackView) {
     const myTickets = await sb.from('feedback').select('id').eq('user_id', currentUser.id);
     const myIds = (myTickets.data || []).map(t => t.id);
@@ -446,15 +455,17 @@ window.addEventListener('resize', adjustMainPadding);
     }
   }
 
-  // Updates dot: new update since last_seen_updates
-  if (userPrefs?.last_seen_updates) {
+  // Updates dot: new update since last time user saw it
+  const lastUpdatesView = lastSeen('pr_ls_updates', userPrefs?.last_seen_updates);
+  if (lastUpdatesView) {
     const { data: newUpdates } = await sb.from('game_updates').select('id')
-      .gt('created_at', userPrefs.last_seen_updates).limit(1);
+      .gt('created_at', lastUpdatesView).limit(1);
     if (newUpdates?.length) document.getElementById('updatesDot')?.classList.add('show');
   } else {
-    // First visit — set baseline silently so old updates don't trigger the dot
+    // First ever visit — set baseline so old updates don't trigger the dot
     const baseline = new Date().toISOString();
-    await sb.from('user_prefs').upsert({ user_id: currentUser.id, last_seen_updates: baseline }, { onConflict: 'user_id' });
+    localStorage.setItem('pr_ls_updates', baseline);
+    sb.from('user_prefs').upsert({ user_id: currentUser.id, last_seen_updates: baseline }, { onConflict: 'user_id' });
   }
 
   initSettings();
@@ -531,11 +542,11 @@ function showSection(id, ev) {
   document.getElementById(id).classList.add('active');
   if (ev?.currentTarget) ev.currentTarget.classList.add('active');
   else if (ev?.target) ev.target.closest('.page-tab')?.classList.add('active');
-  // Clear notif dots and persist last-seen timestamp to DB via user_prefs (cross-device)
+  // Clear notif dots — write to localStorage immediately (reliable) + DB for cross-device
   const now = new Date().toISOString();
-  if (id === 'feedback') { document.getElementById('feedbackDot')?.classList.remove('show'); sb.from('user_prefs').upsert({ user_id: currentUser.id, last_seen_feedback: now }, { onConflict: 'user_id' }); loadMyFeedback(); }
-  if (id === 'admin') { document.getElementById('adminDot')?.classList.remove('show'); sb.from('user_prefs').upsert({ user_id: currentUser.id, last_seen_admin: now }, { onConflict: 'user_id' }); loadAdminFeedback(); loadAdminGames(); loadAdminReports(); }
-  if (id === 'updates') { document.getElementById('updatesDot')?.classList.remove('show'); sb.from('user_prefs').upsert({ user_id: currentUser.id, last_seen_updates: now }, { onConflict: 'user_id' }); loadUpdates(); }
+  if (id === 'feedback') { document.getElementById('feedbackDot')?.classList.remove('show'); localStorage.setItem('pr_ls_feedback', now); sb.from('user_prefs').upsert({ user_id: currentUser.id, last_seen_feedback: now }, { onConflict: 'user_id' }); loadMyFeedback(); }
+  if (id === 'admin') { document.getElementById('adminDot')?.classList.remove('show'); localStorage.setItem('pr_ls_admin', now); sb.from('user_prefs').upsert({ user_id: currentUser.id, last_seen_admin: now }, { onConflict: 'user_id' }); loadAdminFeedback(); loadAdminGames(); loadAdminReports(); }
+  if (id === 'updates') { document.getElementById('updatesDot')?.classList.remove('show'); localStorage.setItem('pr_ls_updates', now); sb.from('user_prefs').upsert({ user_id: currentUser.id, last_seen_updates: now }, { onConflict: 'user_id' }); loadUpdates(); }
   if (id === 'archived') loadArchivedGames();
 }
 
