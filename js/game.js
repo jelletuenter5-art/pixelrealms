@@ -243,7 +243,7 @@ create policy "update boats" on boats for update using (true);`);
     const baseIncome = incomePerPx * this.country.pixel_count;
     const mineIncome = calcMineIncome(mineInfra, this.country.pixel_count, this.pixelData);
     const farmIncome = calcFarmIncome(farmInfra, this.country.pixel_count, this.pixelData);
-    const border = calcBorderUpkeep(this.pixelData, this.country.id);
+    const border = calcBorderUpkeep(this.pixelData, this.country.id, this.country.pixel_count);
     const tradingPostIncome = calcTradingPostIncome(tradingPostInfra, this.pixelData, border.nations);
     const currentAggression = Number.isFinite(this.country.food_aggression) ? this.country.food_aggression : 0;
     const foodBalance = calcFoodBalance(farmInfra, this.country.pixel_count, this.country.army_size, currentAggression);
@@ -1063,8 +1063,15 @@ function calcFarmIncome(farmInfra, pixelCount, pixelData) {
   }, 0);
 }
 
-// Returns number of unique neighboring nations (each costs BORDER_UPKEEP_PER_NATION g/hr)
-function calcBorderUpkeep(pixelData, myCountryId) {
+function calcBorderUpkeepRate(pixelCount) {
+  if (pixelCount <= 15) return 2;
+  if (pixelCount <= 40) return 5;
+  if (pixelCount <= 80) return 8;
+  return 10;
+}
+
+// Returns border pixel count, neighboring nations count, and gold/hr cost
+function calcBorderUpkeep(pixelData, myCountryId, myPixelCount) {
   let borderPixels = 0;
   const neighborNations = new Set();
   for (const [key, p] of Object.entries(pixelData)) {
@@ -1080,7 +1087,8 @@ function calcBorderUpkeep(pixelData, myCountryId) {
     }
     if (hasForeignNeighbor) borderPixels++;
   }
-  return { borderPixels, nations: neighborNations.size, cost: borderPixels * CONFIG.BORDER_UPKEEP_PER_NATION };
+  const rate = calcBorderUpkeepRate(myPixelCount ?? Object.values(pixelData).filter(p => p.country_id === myCountryId).length);
+  return { borderPixels, nations: neighborNations.size, cost: borderPixels * rate, rate };
 }
 
 // Returns food/hr balance (positive = surplus, negative = deficit)
@@ -1137,7 +1145,7 @@ async function tickIncome(engine) {
   const baseIncome = incomePerPx * c.pixel_count;
   const farmIncome = calcFarmIncome(farmInfra, c.pixel_count, engine.pixelData);
   const mineIncome = calcMineIncome(mineInfra, c.pixel_count, engine.pixelData);
-  const border = calcBorderUpkeep(engine.pixelData, c.id);
+  const border = calcBorderUpkeep(engine.pixelData, c.id, c.pixel_count);
   const tradingPostIncome = calcTradingPostIncome(tradingPostInfra, engine.pixelData, border.nations);
 
   const aggression = Number.isFinite(c.food_aggression) ? c.food_aggression : 0;

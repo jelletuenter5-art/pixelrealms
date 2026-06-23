@@ -584,7 +584,13 @@ function calcFarmIncome(farmInfra, pixelCount, pixelData) {
     return sum + CONFIG.INFRA_COSTS.farm.incomeBonus * terrainMult * pixelCount;
   }, 0);
 }
-function calcBorderUpkeep(pixelData, myCountryId) {
+function calcBorderUpkeepRate(pixelCount) {
+  if (pixelCount <= 15) return 2;
+  if (pixelCount <= 40) return 5;
+  if (pixelCount <= 80) return 8;
+  return 10;
+}
+function calcBorderUpkeep(pixelData, myCountryId, myPixelCount) {
   let borderPixels = 0;
   const neighborNations = new Set();
   for (const [key, p] of Object.entries(pixelData)) {
@@ -600,7 +606,8 @@ function calcBorderUpkeep(pixelData, myCountryId) {
     }
     if (hasForeignNeighbor) borderPixels++;
   }
-  return { borderPixels, nations: neighborNations.size, cost: borderPixels * CONFIG.BORDER_UPKEEP_PER_NATION };
+  const rate = calcBorderUpkeepRate(myPixelCount ?? Object.values(pixelData).filter(p => p.country_id === myCountryId).length);
+  return { borderPixels, nations: neighborNations.size, cost: borderPixels * rate, rate };
 }
 function calcTradingPostIncome(tradingPostInfra, pixelData, borderNations) {
   if (!tradingPostInfra || tradingPostInfra.length === 0) return 0;
@@ -1470,7 +1477,7 @@ function showBuildMenu() {
         extraNote = `−${(0.0075 * spd).toFixed(4)} 💰/px/hr upkeep · war decay → ${newDecay}/hr (${existingMarkets + 1}/${CONFIG.INFRA_COSTS.market.maxCount} markets)`;
       } else if (type === 'trading_post') {
         const terrMult = CONFIG.TRADING_POST_TERRAIN_MULT[terrain] ?? 0.9;
-        const border = calcBorderUpkeep(engine.pixelData, engine.country?.id);
+        const border = calcBorderUpkeep(engine.pixelData, engine.country?.id, engine.country?.pixel_count);
         const perPost = (info.flatIncome + border.nations * info.incomePerNation) * terrMult * spd;
         extraNote = `${terrainLabel}: +${perPost.toFixed(1)} 💰/hr · ${border.nations} neighbor${border.nations!==1?'s':''} now (${terrMult}x terrain)`;
       } else if (type === 'harbor') {
@@ -2151,7 +2158,7 @@ async function spectateCountry(id, fromClick = false) {
   const foodMultSp = (foodThresholdSp > 0 && currentFoodSp < foodThresholdSp)
     ? Math.max(0.2, currentFoodSp / foodThresholdSp)
     : 1;
-  const borderSp = calcBorderUpkeep(engine.pixelData, c.id);
+  const borderSp = calcBorderUpkeep(engine.pixelData, c.id, c.pixel_count);
   const baseIncomeSp = CONFIG.BASE_INCOME_PER_PIXEL * c.pixel_count * spSpeed;
   const tradingPostInfraSp = myInfra.filter(i => i.type === 'trading_post');
   const tradingPostIncomeSp = calcTradingPostIncome(tradingPostInfraSp, engine.pixelData, borderSp.nations) * spSpeed;
@@ -2298,7 +2305,7 @@ async function renderMyCountry(body) {
   const tradingPosts = tradingPostInfraArr.length;
   const mineIncome = calcMineIncome(mineInfraArr, pixelCount, engine.pixelData) * speed;
   const farmIncome = calcFarmIncome(farmInfraArr, pixelCount, engine.pixelData) * speed;
-  const border = calcBorderUpkeep(engine.pixelData, c.id);
+  const border = calcBorderUpkeep(engine.pixelData, c.id, c.pixel_count);
   const tradingPostIncome = calcTradingPostIncome(tradingPostInfraArr, engine.pixelData, border.nations) * speed;
   const aggression = Number.isFinite(c.food_aggression) ? c.food_aggression : 0;
   const farmFoodProd = calcFarmFoodProduction(farmInfraArr);
