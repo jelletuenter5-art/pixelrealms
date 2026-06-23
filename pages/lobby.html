@@ -444,11 +444,13 @@ window.addEventListener('resize', adjustMainPadding);
   // Updates dot: new update since last_seen_updates (cross-device via DB)
   if (profile.last_seen_updates) {
     const { data: newUpdates } = await sb.from('game_updates').select('id')
-      .gte('created_at', profile.last_seen_updates).limit(1);
+      .gt('created_at', profile.last_seen_updates).limit(1);
     if (newUpdates?.length) document.getElementById('updatesDot')?.classList.add('show');
   } else {
     // First ever visit — set baseline silently, no dot
-    await sb.from('profiles').update({ last_seen_updates: new Date().toISOString() }).eq('id', currentUser.id);
+    const baseline = new Date().toISOString();
+    await sb.from('profiles').update({ last_seen_updates: baseline }).eq('id', currentUser.id);
+    if (currentProfile) currentProfile.last_seen_updates = baseline;
   }
 
   initSettings();
@@ -527,9 +529,9 @@ function showSection(id, ev) {
   else if (ev?.target) ev.target.closest('.page-tab')?.classList.add('active');
   // Clear notif dots and persist last-seen timestamp to DB (cross-device)
   const now = new Date().toISOString();
-  if (id === 'feedback') { document.getElementById('feedbackDot')?.classList.remove('show'); sb.from('profiles').update({ last_seen_feedback: now }).eq('id', currentUser.id); loadMyFeedback(); }
-  if (id === 'admin') { document.getElementById('adminDot')?.classList.remove('show'); sb.from('profiles').update({ last_seen_admin: now }).eq('id', currentUser.id); loadAdminFeedback(); loadAdminGames(); loadAdminReports(); }
-  if (id === 'updates') { document.getElementById('updatesDot')?.classList.remove('show'); sb.from('profiles').update({ last_seen_updates: now }).eq('id', currentUser.id); loadUpdates(); }
+  if (id === 'feedback') { document.getElementById('feedbackDot')?.classList.remove('show'); sb.from('profiles').update({ last_seen_feedback: now }).eq('id', currentUser.id); if (currentProfile) currentProfile.last_seen_feedback = now; loadMyFeedback(); }
+  if (id === 'admin') { document.getElementById('adminDot')?.classList.remove('show'); sb.from('profiles').update({ last_seen_admin: now }).eq('id', currentUser.id); if (currentProfile) currentProfile.last_seen_admin = now; loadAdminFeedback(); loadAdminGames(); loadAdminReports(); }
+  if (id === 'updates') { document.getElementById('updatesDot')?.classList.remove('show'); sb.from('profiles').update({ last_seen_updates: now }).eq('id', currentUser.id); if (currentProfile) currentProfile.last_seen_updates = now; loadUpdates(); }
   if (id === 'archived') loadArchivedGames();
 }
 
