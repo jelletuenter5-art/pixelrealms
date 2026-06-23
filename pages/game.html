@@ -1859,7 +1859,7 @@ async function renderNations(body) {
 async function renderEvents(body) {
   const { data } = await sb.from('game_events')
     .select('*').eq('game_id', GAME_ID)
-    .in('type', ['eliminated', 'join', 'trade', 'inactive', 'ban'])
+    .in('type', ['eliminated', 'join', 'trade', 'inactive', 'ban', 'ceasefire'])
     .order('created_at', { ascending: false }).limit(50);
 
   if (!data?.length) { body.innerHTML = '<div style="color:var(--muted)">No events yet</div>'; return; }
@@ -2061,9 +2061,12 @@ async function acceptCeasefireOffer(offerId, fromCountryId, gold, hours) {
     engine.country.gold = newGold;
   }
   // Create ceasefire record
-  await sb.from('ceasefires').insert({ game_id: GAME_ID, nation_a: fromCountryId, nation_b: engine.country.id, expires_at: expiresAt, gold_paid: gold });
+  await sb.from('ceasefires').insert({ game_id: GAME_ID, nation_a: fromCountryId, nation_b: engine.country.id, expires_at: expiresAt });
   // Mark offer accepted
   await sb.from('ceasefire_offers').update({ status: 'accepted' }).eq('id', offerId);
+  // Log event
+  const goldStr = gold > 0 ? ` for 💰 ${gold}g` : '';
+  await sb.from('game_events').insert({ game_id: GAME_ID, type: 'ceasefire', message: `☮️ ${offerer.name} and ${engine.country.name} agreed to a ${hours}h ceasefire${goldStr}.` });
   showToast(`☮️ Ceasefire active for ${hours}h!`, 'ok');
   updateTopBar();
   renderLeftPanel();
@@ -2884,6 +2887,8 @@ function setupRealtime() {
     if (rightTab === 'country') renderRightPanel();
   });
   engine.subscribeToEvents(e => {
+    const notifTypes = ['eliminated', 'join', 'trade', 'inactive', 'ban', 'ceasefire'];
+    if (!notifTypes.includes(e.type)) return;
     if (leftTab === 'events') renderLeftPanel();
     else updateEventsNotif();
   });
