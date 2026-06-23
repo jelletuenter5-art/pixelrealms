@@ -2837,10 +2837,11 @@ function chatMsgHtml(m) {
     const mon = d.toLocaleString([], { month: 'short' });
     return `${day} ${mon} · ${hm}`;
   })() : '';
-  const deleteBtn = (SPECTATE && currentProfile?.is_admin && m.id)
+  const isOwnMsg = m.player_id === currentUser?.id;
+  const deleteBtn = (m.id && (currentProfile?.is_admin || isOwnMsg))
     ? `<button onclick="deleteChatMsg('${m.id}', this)" style="flex-shrink:0;background:transparent;border:none;color:var(--muted);font-size:0.75rem;cursor:pointer;padding:0;line-height:1;opacity:0.5" title="Delete message">🗑</button>`
     : '';
-  const reportBtn = (!isAdmin && m.id)
+  const reportBtn = (!isAdmin && !isOwnMsg && m.id)
     ? `<button onclick="reportMessage(this)" data-msg-id="${m.id}" data-content="${escapeHtml(m.content||'')}" data-sender="${escapeHtml(m.player_name||'')}" data-country="${m.country_id||''}" style="flex-shrink:0;background:transparent;border:none;color:var(--muted);font-size:0.75rem;cursor:pointer;padding:2px 4px;line-height:1;opacity:0.6" title="Report message">🚩</button>`
     : '';
   return `<div class="chat-msg" style="${msgBorder}">
