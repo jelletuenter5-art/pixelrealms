@@ -10,6 +10,34 @@ const AudioEngine = (() => {
   music.loop = true;
   music.volume = muted ? 0 : 0.5;
 
+  // Restore playback position so music feels continuous across page navigations
+  const DURATION_KEY = 'pr_music_duration';
+  const POS_KEY      = 'pr_music_pos';
+  const TS_KEY       = 'pr_music_ts';
+
+  music.addEventListener('loadedmetadata', () => {
+    const savedDuration = parseFloat(localStorage.getItem(DURATION_KEY) || '0');
+    const savedPos      = parseFloat(localStorage.getItem(POS_KEY) || '0');
+    const savedTs       = parseFloat(localStorage.getItem(TS_KEY) || '0');
+    const duration      = music.duration;
+    if (savedPos > 0 && duration > 0) {
+      const elapsed = savedTs > 0 ? (Date.now() - savedTs) / 1000 : 0;
+      music.currentTime = (savedPos + elapsed) % duration;
+    }
+    localStorage.setItem(DURATION_KEY, String(duration));
+  });
+
+  // Save position before leaving the page
+  window.addEventListener('beforeunload', () => {
+    if (!music.paused) {
+      localStorage.setItem(POS_KEY, String(music.currentTime));
+      localStorage.setItem(TS_KEY, String(Date.now()));
+    }
+  });
+
+  // Try to autoplay immediately (works if user already interacted on a previous page)
+  music.play().catch(() => {});
+
   function init() {
     if (ctx) return;
     ctx = new (window.AudioContext || window.webkitAudioContext)();
