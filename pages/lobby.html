@@ -113,10 +113,10 @@
   .btn-primary:hover { background: linear-gradient(135deg, #15803d, #16a34a); transform: translateY(-1px); }
 
   /* LEADERBOARD */
-  .lb-header { display: grid; grid-template-columns: 60px 1fr 120px 120px 100px 100px;
+  .lb-header { display: grid; grid-template-columns: 60px 1fr 100px 120px 100px 80px 100px;
     gap: 0.5rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em;
     color: var(--muted); padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
-  .lb-row { display: grid; grid-template-columns: 60px 1fr 120px 120px 100px 100px;
+  .lb-row { display: grid; grid-template-columns: 60px 1fr 100px 120px 100px 80px 100px;
     gap: 0.5rem; padding: 0.9rem 1rem; border-bottom: 1px solid rgba(45,55,72,0.4);
     align-items: center; transition: background 0.15s; }
   .lb-row:hover { background: var(--panel); border-radius: 8px; }
@@ -254,6 +254,7 @@
       <h2 style="font-family:'Cinzel',serif;margin:0">Hall of Conquerors</h2>
       <select id="lbSortSelect" onchange="setLbSort(this.value)" style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:0.35rem 0.6rem;font-size:0.82rem;color:var(--text);cursor:pointer">
         <option value="wins">👑 Most Wins</option>
+        <option value="kills">⚔️ Most Kills</option>
         <option value="pixels">🗺️ Most Pixels</option>
         <option value="games">🎮 Most Games</option>
       </select>
@@ -261,8 +262,9 @@
     <div class="lb-header">
       <div>Rank</div>
       <div>Ruler</div>
-      <div>Total Wins</div>
-      <div>Total Pixels</div>
+      <div>Wins</div>
+      <div>Kills</div>
+      <div>Pixels</div>
       <div>Games</div>
       <div>Joined</div>
     </div>
@@ -995,6 +997,7 @@ async function loadLeaderboard() {
     ...p,
     totalPixels: (p.total_pixels_ever || 0) + (livePixels[p.id] || 0),
     totalGames: (p.games_played || 0) + (liveGames[p.id] || 0),
+    totalKills: p.total_kills || 0,
   }));
 
   renderLeaderboard(_lbCache);
@@ -1004,7 +1007,8 @@ async function loadLeaderboard() {
 
 function renderLeaderboard(players) {
   const sortFns = {
-    wins:   (a, b) => b.total_wins - a.total_wins   || b.totalPixels - a.totalPixels,
+    wins:   (a, b) => b.total_wins - a.total_wins   || b.totalKills - a.totalKills || b.totalPixels - a.totalPixels,
+    kills:  (a, b) => b.totalKills - a.totalKills   || b.total_wins - a.total_wins,
     pixels: (a, b) => b.totalPixels - a.totalPixels  || b.total_wins - a.total_wins,
     games:  (a, b) => b.totalGames - a.totalGames    || b.total_wins - a.total_wins,
   };
@@ -1022,10 +1026,11 @@ function renderLeaderboard(players) {
   const rowHtml = (p, i, extra = '') => `<div class="lb-row" ${extra}>
     <div class="rank ${rankClass(i)}">${rankEmoji(i) || '#' + (i+1)}</div>
     <div class="lb-name">${p.avatar_emoji || '🙂'} ${p.username}</div>
-    <div class="lb-stat ${highlight('wins')}" data-label="Wins">${p.total_wins}</div>
-    <div class="lb-stat ${highlight('pixels')}" data-label="Pixels">${p.totalPixels.toLocaleString()}</div>
-    <div class="lb-stat ${highlight('games')}" data-label="Games">${p.totalGames}</div>
-    <div class="lb-stat" data-label="Joined">${new Date(p.created_at).toLocaleDateString()}</div>
+    <div class="lb-stat ${highlight('wins')}" data-label="Wins ">👑 ${p.total_wins}</div>
+    <div class="lb-stat ${highlight('kills')}" data-label="Kills ">⚔️ ${p.totalKills}</div>
+    <div class="lb-stat ${highlight('pixels')}" data-label="Pixels ">🗺️ ${p.totalPixels.toLocaleString()}</div>
+    <div class="lb-stat ${highlight('games')}" data-label="Games ">🎮 ${p.totalGames}</div>
+    <div class="lb-stat" data-label="Joined ">${new Date(p.created_at).toLocaleDateString()}</div>
   </div>`;
 
   let html = top10.map((p, i) => rowHtml(p, i)).join('');
