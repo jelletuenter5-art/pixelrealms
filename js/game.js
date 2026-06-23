@@ -618,7 +618,7 @@ create policy "update boats" on boats for update using (true);`);
 
   async loadBoats() {
     this.boatData = {};
-    const { data } = await sb.from('boats').select('*')
+const { data } = await sb.from('boats').select('*')
       .eq('game_id', this.gameId).eq('status', 'sailing');
     (data || []).forEach(b => { this.boatData[b.id] = b; });
 
@@ -719,8 +719,7 @@ create policy "update boats" on boats for update using (true);`);
   async cancelBoat(boatId) {
     const boat = this.boatData?.[boatId];
     if (!boat) return { ok: false, msg: 'Boat already arrived or not found.' };
-    const { error } = await sb.from('boats').delete().eq('id', boatId).eq('country_id', this.country?.id);
-    // If row is already gone (arrived while cancel was clicked), treat as success
+    const { error } = await sb.from('boats').update({ status: 'cancelled' }).eq('id', boatId).eq('country_id', this.country?.id);
     if (error) return { ok: false, msg: 'Failed to cancel boat.' };
     delete this.boatData[boatId];
     // Refund expansion token if it was an expand mission
