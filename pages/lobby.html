@@ -55,6 +55,29 @@
   .beta-banner { background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3);
     color: var(--gold); font-size: 0.8rem; text-align: center; padding: 0.6rem 1rem;
     border-radius: 8px; margin-bottom: 1rem; }
+  .tournament-banner {
+    background: linear-gradient(135deg, rgba(22,101,52,0.18), rgba(21,128,61,0.1));
+    border: 1px solid rgba(34,197,94,0.35);
+    border-radius: 10px; margin-bottom: 1rem;
+    padding: 0.6rem 1rem; display: flex; align-items: center; gap: 0.75rem;
+    flex-wrap: wrap; font-size: 0.8rem; line-height: 1.45; color: var(--text);
+  }
+  .tournament-banner .tb-icon { font-size: 1.15rem; flex-shrink: 0; }
+  .tournament-banner .tb-main { flex: 1; min-width: 0; }
+  .tournament-banner .tb-progress {
+    display: flex; align-items: center; gap: 0.5rem; margin-top: 0.3rem; flex-wrap: wrap;
+  }
+  .tournament-banner .tb-bar-wrap {
+    flex: 1; min-width: 80px; height: 5px; background: rgba(255,255,255,0.1);
+    border-radius: 99px; overflow: hidden;
+  }
+  .tournament-banner .tb-bar-fill {
+    height: 100%; background: var(--green); border-radius: 99px; transition: width 0.5s;
+  }
+  .tournament-banner a { color: var(--green); text-decoration: underline; white-space: nowrap; }
+  @media (max-width: 480px) {
+    .tournament-banner { font-size: 0.75rem; padding: 0.5rem 0.75rem; gap: 0.5rem; }
+  }
   .btn-sm { padding: 0.45rem 1rem; border-radius: 6px; border: 1px solid var(--border);
     background: transparent; color: var(--muted); cursor: pointer; font-size: 0.8rem;
     font-family: 'Inter', sans-serif; transition: all 0.2s; }
@@ -205,6 +228,19 @@
 </div>
 
 <div class="main">
+  <div class="tournament-banner" id="tournamentBanner">
+    <div class="tb-icon">🏆</div>
+    <div class="tb-main">
+      <strong style="color:var(--green)">Real Money Tournament — Coming Soon!</strong>
+      Win up to <strong style="color:var(--gold)">$50</strong> in our first ever PixelRealms event. The tournament starts once we reach <strong>125 active players</strong>.
+      Alt accounts won't count — only players who are genuinely active qualify.
+      <a href="https://discord.com/invite/rhFHYVXXSZ" target="_blank" rel="noopener">Join the Discord</a> to stay updated.
+      <div class="tb-progress">
+        <span id="tbCount" style="color:var(--green);font-weight:700;white-space:nowrap">… / 125 active players</span>
+        <div class="tb-bar-wrap"><div class="tb-bar-fill" id="tbBar" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
   <div class="beta-banner" style="display:none">
     🚧 <strong>Early Test Phase</strong> — found a bug or have feedback? Use the <strong>🎫 Issues</strong> tab! Join our <a href="https://discord.gg/rhFHYVXXSZ" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:underline">Discord</a> for updates.
   </div>
@@ -509,6 +545,7 @@ window.addEventListener('resize', adjustMainPadding);
   await loadLeaderboard();
   loadArchivedGames();
   loadUpdates();
+  loadTournamentBanner();
 })();
 
 async function logout() {
@@ -1476,6 +1513,21 @@ async function deleteFeedback(id) {
 }
 
 // ── UPDATES ───────────────────────────────────────────
+async function loadTournamentBanner() {
+  const cutoff = new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString();
+  const { data } = await sb.from('countries')
+    .select('player_id')
+    .gt('last_active', cutoff)
+    .not('player_id', 'is', null);
+  const unique = new Set((data || []).map(r => r.player_id)).size;
+  const TARGET = 125;
+  const pct = Math.min(100, Math.round((unique / TARGET) * 100));
+  const el = document.getElementById('tbCount');
+  const bar = document.getElementById('tbBar');
+  if (el) el.textContent = `${unique} / ${TARGET} active players`;
+  if (bar) bar.style.width = pct + '%';
+}
+
 async function loadUpdates() {
   const { data, error } = await sb.from('game_updates').select('*').order('created_at', { ascending: false });
   const list = document.getElementById('updatesList');
