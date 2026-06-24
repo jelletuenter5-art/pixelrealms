@@ -58,7 +58,7 @@
   .tournament-banner {
     background: linear-gradient(135deg, rgba(22,101,52,0.18), rgba(21,128,61,0.1));
     border: 1px solid rgba(34,197,94,0.35);
-    border-radius: 10px; margin-top: 0.75rem; margin-bottom: 1rem;
+    border-radius: 10px; margin-top: 1.25rem; margin-bottom: 1rem;
     padding: 0.6rem 1rem; display: flex; align-items: center; gap: 0.75rem;
     flex-wrap: wrap; font-size: 0.8rem; line-height: 1.45; color: var(--text);
   }
@@ -442,7 +442,7 @@ window.scrollTo(0, 0);
 function adjustMainPadding() {
   const tb = document.querySelector('.topbar');
   const main = document.querySelector('.main');
-  if (tb && main) main.style.paddingTop = tb.offsetHeight + 'px';
+  if (tb && main) main.style.paddingTop = (tb.offsetHeight + 16) + 'px';
 }
 // Run immediately, after first paint, and on resize/orientation change
 adjustMainPadding();
