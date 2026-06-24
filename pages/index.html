@@ -357,7 +357,7 @@ async function loadStats() {
   const live = (pixelsRes.data || []).reduce((s, c) => s + (c.pixel_count || 0) + (c.pixels_lost || 0), 0);
   document.getElementById('totalPixels').textContent = (historical + live).toLocaleString();
   document.getElementById('nationsFallen').textContent = (deadRes.count || 0).toLocaleString();
-  // Random between 0.01–0.3x accounts, rounded normally
+  // Random between 1–20% of total accounts
   const totalPlayers = profilesRes.count || 0;
   const factor = 0.01 + Math.random() * 0.19;
   const online = Math.round(totalPlayers * factor);
