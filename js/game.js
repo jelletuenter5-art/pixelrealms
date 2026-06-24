@@ -32,13 +32,27 @@ class GameEngine {
     return all;
   }
 
+  async _fetchAllInfra() {
+    const pageSize = 1000;
+    let all = [], from = 0;
+    while (true) {
+      const { data, error } = await sb.from('infrastructure').select('*')
+        .eq('game_id', this.gameId).range(from, from + pageSize - 1);
+      if (error || !data || data.length === 0) break;
+      all = all.concat(data);
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+    return all;
+  }
+
   async load() {
-    const [gameRes, countryRes, pixels, countriesRes, infraRes] = await Promise.all([
+    const [gameRes, countryRes, pixels, countriesRes, infraRows] = await Promise.all([
       sb.from('games').select('*').eq('id', this.gameId).single(),
       sb.from('countries').select('*').eq('game_id', this.gameId).eq('player_id', this.playerId).single(),
       this._fetchAllPixels(),
       sb.from('countries').select('*').eq('game_id', this.gameId).eq('is_alive', true),
-      sb.from('infrastructure').select('*').eq('game_id', this.gameId),
+      this._fetchAllInfra(),
     ]);
 
     this.game = gameRes.data;
@@ -59,8 +73,8 @@ class GameEngine {
     // can have both a regular building and a fortification simultaneously
     this.infraData = {};
     this.wallData = {};
-    console.log('[PixelRealms] infra load — rows:', infraRes.data?.length ?? 0, '| error:', infraRes.error?.message ?? 'none');
-    (infraRes.data || []).forEach(i => {
+    console.log('[PixelRealms] infra load — rows:', infraRows.length);
+    infraRows.forEach(i => {
       if (i.type === 'wall') this.wallData[`${i.pixel_x},${i.pixel_y}`] = i;
       else this.infraData[`${i.pixel_x},${i.pixel_y}`] = i;
     });
