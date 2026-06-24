@@ -493,7 +493,12 @@ create policy "update boats" on boats for update using (true);`);
         .eq('id', defender.id);
       this.countries[defender.id] = { ...defender, is_alive: false, pixel_count: defenderPixelsLeft, army_size: newDefenderArmy };
       await this._logEvent('eliminated', `${this.country.name} has eliminated ${defender.name}!`);
-      sb.rpc('increment_kills', { uid: this.playerId });
+      sb.from('profiles').select('id,total_kills').eq('id', this.playerId).single()
+        .then(({ data: p, error: e }) => {
+          if (e) { console.warn('[kills] select failed:', e.message); return; }
+          if (p) sb.from('profiles').update({ total_kills: (p.total_kills || 0) + 1 }).eq('id', this.playerId)
+            .then(({ error: ue }) => { if (ue) console.warn('[kills] update failed:', ue.message); });
+        });
       await this._checkWinCondition();
     } else {
       this.countries[defender.id] = { ...defender, pixel_count: defenderPixelsLeft, army_size: newDefenderArmy };
@@ -806,7 +811,12 @@ const { data } = await sb.from('boats').select('*')
               await sb.from('countries').update({ is_alive: false, surrendered_at: now.toISOString() }).eq('id', defender.id);
               this.countries[defender.id] = { ...defender, is_alive: false };
               await this._logEvent('eliminated', `${this.country.name} has eliminated ${defender.name}!`);
-              sb.rpc('increment_kills', { uid: this.playerId });
+              sb.from('profiles').select('id,total_kills').eq('id', this.playerId).single()
+        .then(({ data: p, error: e }) => {
+          if (e) { console.warn('[kills] select failed:', e.message); return; }
+          if (p) sb.from('profiles').update({ total_kills: (p.total_kills || 0) + 1 }).eq('id', this.playerId)
+            .then(({ error: ue }) => { if (ue) console.warn('[kills] update failed:', ue.message); });
+        });
               await this._checkWinCondition();
             }
           } else {

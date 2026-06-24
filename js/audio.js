@@ -41,6 +41,16 @@ const AudioEngine = (() => {
   // Try to autoplay immediately (works if user already interacted on a previous page)
   music.play().catch(() => {});
 
+  // Mobile: iOS/Android pause audio when the page goes to background or the screen locks.
+  // Resume as soon as the page becomes visible again and on any user touch.
+  function _tryResume() {
+    if (muted) return;
+    if (music.paused) music.play().catch(() => {});
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+  }
+  document.addEventListener('touchstart', _tryResume, { passive: true, capture: true });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') _tryResume(); });
+
   function init() {
     if (ctx) return;
     ctx = new (window.AudioContext || window.webkitAudioContext)();
