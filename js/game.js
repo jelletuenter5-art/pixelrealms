@@ -493,10 +493,7 @@ create policy "update boats" on boats for update using (true);`);
         .eq('id', defender.id);
       this.countries[defender.id] = { ...defender, is_alive: false, pixel_count: defenderPixelsLeft, army_size: newDefenderArmy };
       await this._logEvent('eliminated', `${this.country.name} has eliminated ${defender.name}!`);
-      // Credit kill to attacker's profile
-      sb.from('profiles').select('total_kills').eq('id', this.playerId).single().then(({ data: p }) => {
-        if (p) sb.from('profiles').update({ total_kills: (p.total_kills || 0) + 1 }).eq('id', this.playerId);
-      });
+      sb.rpc('increment_kills', { uid: this.playerId });
       await this._checkWinCondition();
     } else {
       this.countries[defender.id] = { ...defender, pixel_count: defenderPixelsLeft, army_size: newDefenderArmy };
@@ -809,9 +806,7 @@ const { data } = await sb.from('boats').select('*')
               await sb.from('countries').update({ is_alive: false, surrendered_at: now.toISOString() }).eq('id', defender.id);
               this.countries[defender.id] = { ...defender, is_alive: false };
               await this._logEvent('eliminated', `${this.country.name} has eliminated ${defender.name}!`);
-              sb.from('profiles').select('total_kills').eq('id', this.playerId).single().then(({ data: p }) => {
-                if (p) sb.from('profiles').update({ total_kills: (p.total_kills || 0) + 1 }).eq('id', this.playerId);
-              });
+              sb.rpc('increment_kills', { uid: this.playerId });
               await this._checkWinCondition();
             }
           } else {
