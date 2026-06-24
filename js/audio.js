@@ -37,8 +37,6 @@ const AudioEngine = (() => {
   }
   window.addEventListener('beforeunload', savePosition);
   window.addEventListener('pagehide', savePosition);
-  // Also save periodically so position is never more than 5s stale
-  setInterval(savePosition, 5000);
 
   // Try to autoplay immediately (works if user already interacted on a previous page)
   music.play().catch(() => {});

@@ -267,12 +267,18 @@ create policy "update boats" on boats for update using (true);`);
     const foodCap = this.country.pixel_count * CONFIG.POPULATION_PER_PIXEL + farmInfra.length * 20;
     const newFood = Math.min(foodCap, Math.max(0, Math.round((currentFood + foodBalance * scaledHours) * 100) / 100));
 
-    // Army regen offline — barracks regenerate up to their cap
+    // Army regen offline — barracks regenerate up to their cap; drain slowly if over cap
     const armyCap = barracksCount * CONFIG.INFRA_COSTS.barracks.armyBonus;
     const currentArmy = this.country.army_size || 0;
-    const newArmy = barracksCount > 0 && currentArmy < armyCap
-      ? Math.min(armyCap, Math.floor(currentArmy + barracksCount * CONFIG.BARRACKS_REGEN_PER_HOUR * scaledHours))
-      : currentArmy;
+    let newArmy;
+    if (barracksCount > 0 && currentArmy < armyCap) {
+      newArmy = Math.min(armyCap, Math.floor(currentArmy + barracksCount * CONFIG.BARRACKS_REGEN_PER_HOUR * scaledHours));
+    } else if (currentArmy > armyCap) {
+      // Drain at same regen rate until at cap
+      newArmy = Math.max(armyCap, Math.floor(currentArmy - barracksCount * CONFIG.BARRACKS_REGEN_PER_HOUR * scaledHours));
+    } else {
+      newArmy = currentArmy;
+    }
 
     // Food aggression decays offline — boosted by markets
     const marketsCount = myInfra.filter(i => i.type === 'market').length;

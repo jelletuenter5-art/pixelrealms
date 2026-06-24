@@ -2574,9 +2574,9 @@ async function renderMyCountry(body) {
     <div style="font-size:0.8rem;line-height:1.9;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between">
         <span style="color:var(--muted)">${barracksBuilt} barracks × 20 cap</span>
-        <span style="font-weight:600">${displayArmy} / ${armyCap}</span>
+        <span style="font-weight:600;${armySize > armyCap ? 'color:var(--red)' : ''}">${displayArmy} / ${armyCap}</span>
       </div>
-      ${armySize < armyCap ? `<div style="font-size:0.7rem;color:var(--green)">+${regenRate.toFixed(2)}/hr regenerating back to ${armyCap}</div>` : `<div style="font-size:0.7rem;color:var(--muted)">At full strength</div>`}
+      ${armySize > armyCap ? `<div style="font-size:0.7rem;color:var(--red)">Army exceeds cap — will reduce to ${armyCap} over time</div>` : armySize < armyCap ? `<div style="font-size:0.7rem;color:var(--green)">+${regenRate.toFixed(2)}/hr regenerating back to ${armyCap}</div>` : `<div style="font-size:0.7rem;color:var(--muted)">At full strength</div>`}
     </div>` : '';
     })()}
 
