@@ -1353,16 +1353,15 @@ async function deleteEventRealm(gameId) {
 // ── ADMIN ─────────────────────────────────────────
 async function loadAdminGames() {
   const cutoff = new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString();
-  const [{ count }, { data: activeData }] = await Promise.all([
-    sb.from('profiles').select('*', { count: 'exact', head: true }),
-    sb.from('countries').select('player_id').gt('last_active', cutoff).not('player_id', 'is', null),
-  ]);
-  const activeUnique = new Set((activeData || []).map(r => r.player_id)).size;
+  const countRes = await sb.from('profiles').select('*', { count: 'exact', head: true });
+  const activeRes = await sb.from('countries').select('player_id').gt('last_active', cutoff).not('player_id', 'is', null);
+  const totalCount = countRes.count ?? '—';
+  const activeUnique = new Set((activeRes.data || []).map(r => r.player_id)).size;
   const pct = Math.min(100, Math.round((activeUnique / 125) * 100));
   const totalEl = document.getElementById('adminTotalCount');
   const activeEl = document.getElementById('adminActiveCount');
   const barEl = document.getElementById('adminActiveBar');
-  if (totalEl) totalEl.textContent = count ?? '—';
+  if (totalEl) totalEl.textContent = totalCount;
   if (activeEl) activeEl.textContent = `${activeUnique} / 125`;
   if (barEl) barEl.style.width = pct + '%';
 
