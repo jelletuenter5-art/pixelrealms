@@ -405,10 +405,10 @@ create policy "update boats" on boats for update using (true);`);
 
     const success = attackPower > defensePower;
     const attackerLoss = success
-      ? Math.ceil(defensePower * 0.25)
-      : Math.ceil(attackPower * 0.35);
+      ? Math.ceil(defensePower * 0.35 + attackPower * 0.06)
+      : Math.ceil(attackPower * 0.45);
     const defenderLoss = success
-      ? Math.ceil(defensePower * 0.20)
+      ? Math.ceil(defensePower * 0.28)
       : Math.ceil(attackPower * 0.12);
 
     // Apply losses
@@ -782,8 +782,8 @@ const { data } = await sb.from('boats').select('*')
             const attackPower = this.country.army_size * (Math.random() * 0.4 + 0.8);
             const defensePower = defender.army_size * terrainDef * (Math.random() * 0.4 + 0.8);
             const success = attackPower > defensePower;
-            const attackerLoss = success ? Math.ceil(defensePower * 0.25) : Math.ceil(attackPower * 0.35);
-            const defenderLoss = success ? Math.ceil(defensePower * 0.20) : Math.ceil(attackPower * 0.12);
+            const attackerLoss = success ? Math.ceil(defensePower * 0.35 + attackPower * 0.06) : Math.ceil(attackPower * 0.45);
+            const defenderLoss = success ? Math.ceil(defensePower * 0.28) : Math.ceil(attackPower * 0.12);
             const newAttackerArmy = Math.max(1, this.country.army_size - attackerLoss);
             const newDefenderArmy = Math.max(1, defender.army_size - defenderLoss);
             await sb.from('countries').update({ army_size: newAttackerArmy }).eq('id', this.country.id);
