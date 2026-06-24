@@ -16,12 +16,13 @@ const AudioEngine = (() => {
   const TS_KEY       = 'pr_music_ts';
 
   music.addEventListener('loadedmetadata', () => {
-    const savedDuration = parseFloat(localStorage.getItem(DURATION_KEY) || '0');
-    const savedPos      = parseFloat(localStorage.getItem(POS_KEY) || '0');
-    const savedTs       = parseFloat(localStorage.getItem(TS_KEY) || '0');
-    const duration      = music.duration;
+    const savedPos = parseFloat(localStorage.getItem(POS_KEY) || '0');
+    const savedTs  = parseFloat(localStorage.getItem(TS_KEY) || '0');
+    const wasPlaying = localStorage.getItem('pr_music_playing') === '1';
+    const duration = music.duration;
     if (savedPos > 0 && duration > 0) {
-      const elapsed = savedTs > 0 ? (Date.now() - savedTs) / 1000 : 0;
+      // Only advance the clock if music was actually playing when we left
+      const elapsed = (wasPlaying && savedTs > 0) ? (Date.now() - savedTs) / 1000 : 0;
       music.currentTime = (savedPos + elapsed) % duration;
     }
     localStorage.setItem(DURATION_KEY, String(duration));
@@ -30,10 +31,11 @@ const AudioEngine = (() => {
   // Save position before leaving the page
   // pagehide is used on mobile (beforeunload is unreliable on iOS/Android)
   function savePosition() {
-    if (!music.paused) {
-      localStorage.setItem(POS_KEY, String(music.currentTime));
-      localStorage.setItem(TS_KEY, String(Date.now()));
-    }
+    // Always save currentTime — on mobile music may be paused (blocked autoplay)
+    // but currentTime is still the correct resume point
+    localStorage.setItem(POS_KEY, String(music.currentTime));
+    localStorage.setItem(TS_KEY, String(Date.now()));
+    localStorage.setItem('pr_music_playing', music.paused ? '0' : '1');
   }
   window.addEventListener('beforeunload', savePosition);
   window.addEventListener('pagehide', savePosition);
