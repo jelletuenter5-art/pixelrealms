@@ -2283,6 +2283,7 @@ async function spectateCountry(id, fromClick = false) {
   const incomePerHr = grossIncomeSp.toFixed(1);
   const baseUpkeepRateSp = calcTierUpkeepRate(c.pixel_count);
   const effectiveUpkeepRateSp = Math.max(0.02, baseUpkeepRateSp - markets * CONFIG.INFRA_COSTS.market.upkeepReduction);
+  const grossPixelUpkeepSp = baseUpkeepRateSp * c.pixel_count * spSpeed;
   const pixelUpkeepSp = Math.max(0, effectiveUpkeepRateSp * c.pixel_count * spSpeed);
   const armyUpkeepSp = c.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT * spSpeed;
   const harborsSp = myInfra.filter(i => i.type === 'harbor').length;
@@ -2322,8 +2323,8 @@ async function spectateCountry(id, fromClick = false) {
     </div>
     <div class="section-label">📉 Upkeep</div>
     <div style="font-size:0.78rem;line-height:1.75;margin-bottom:0.75rem">
-      <div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">🗺️ Territory (${c.pixel_count} px)</span><span style="color:var(--red);white-space:nowrap">−${pixelUpkeepSp.toFixed(1)} 💰/hr</span></div>
-      ${markets > 0 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">🏪 ${markets} market${markets>1?'s':''} savings</span><span style="color:var(--green);white-space:nowrap">+${(Math.min(markets * CONFIG.INFRA_COSTS.market.upkeepReduction, baseUpkeepRateSp) * c.pixel_count * spSpeed).toFixed(1)} 💰/hr</span></div>` : ''}
+      <div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">🗺️ Territory (${c.pixel_count} px)</span><span style="color:var(--red);white-space:nowrap">−${grossPixelUpkeepSp.toFixed(1)} 💰/hr</span></div>
+      ${markets > 0 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">🏪 ${markets} market${markets>1?'s':''} savings</span><span style="color:var(--green);white-space:nowrap">+${(grossPixelUpkeepSp - pixelUpkeepSp).toFixed(1)} 💰/hr</span></div>` : ''}
       <div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">⚔️ Army (${c.army_size} units)</span><span style="color:var(--red);white-space:nowrap">−${armyUpkeepSp.toFixed(1)} 💰/hr</span></div>
       ${borderSp.nations > 0 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">🚧 Border (${borderSp.borderPixels} px)</span><span style="color:var(--red);white-space:nowrap">−${borderCostDispSp.toFixed(1)} 💰/hr</span></div>` : ''}
       ${harborsSp > 0 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem"><span style="color:var(--muted);white-space:nowrap">⚓ Harbours (${harborsSp})</span><span style="color:var(--red);white-space:nowrap">−${harborUpkeepSp.toFixed(1)} 💰/hr</span></div>` : ''}
@@ -2571,7 +2572,7 @@ async function renderMyCountry(body) {
     <div style="font-size:0.8rem;line-height:1.75;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between;gap:0.5rem">
         <span style="color:var(--muted);white-space:nowrap">🗺️ Territory (${pixelCount} px)</span>
-        <span style="color:var(--red);white-space:nowrap">−${(0.3 * pixelCount * speed).toFixed(1)} 💰/hr</span>
+        <span style="color:var(--red);white-space:nowrap">−${rawTerritoryUpkeep.toFixed(1)} 💰/hr</span>
       </div>
       ${markets > 0 ? `<div style="display:flex;justify-content:space-between;gap:0.5rem">
         <span style="color:var(--muted);white-space:nowrap">🏪 ${markets} market${markets>1?'s':''} savings</span>

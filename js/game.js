@@ -125,7 +125,7 @@ create policy "update boats" on boats for update using (true);`);
 
     const correctPixelCount = myPixels.length;
     const correctIncome = CONFIG.BASE_INCOME_PER_PIXEL; // farms computed dynamically from terrain
-    const correctUpkeep = Math.max(0.02, 0.3 - markets * CONFIG.INFRA_COSTS.market.upkeepReduction);
+    const correctUpkeep = Math.max(0.02, calcTierUpkeepRate(correctPixelCount) - markets * CONFIG.INFRA_COSTS.market.upkeepReduction);
 
     const updates = {};
     // Correct pixel_count if actual pixels differ — also handles the case where
@@ -232,7 +232,8 @@ create policy "update boats" on boats for update using (true);`);
     const barracksCount = myInfra.filter(i => i.type === 'barracks').length;
 
     const incomePerPx = this.country.income_per_pixel || CONFIG.BASE_INCOME_PER_PIXEL;
-    const upkeepPerPx = this.country.army_upkeep_per_pixel || 0.3;
+    const markets = myInfra.filter(i => i.type === 'market').length;
+    const upkeepPerPx = Math.max(0.02, calcTierUpkeepRate(this.country.pixel_count) - markets * CONFIG.INFRA_COSTS.market.upkeepReduction);
     const baseIncome = incomePerPx * this.country.pixel_count;
     const mineIncome = calcMineIncome(mineInfra, this.country.pixel_count, this.pixelData);
     const farmIncome = calcFarmIncome(farmInfra, this.country.pixel_count, this.pixelData);
