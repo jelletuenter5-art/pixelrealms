@@ -193,7 +193,8 @@
   /* MOBILE RESPONSIVE */
   @media (max-width: 700px) {
     .main { padding: 0.75rem; }
-    .topbar { padding: 0.75rem 1rem; }
+    .topbar { padding: 0.5rem 0.75rem; flex-wrap: nowrap; overflow: hidden;
+              padding-top: max(0.5rem, env(safe-area-inset-top)); }
     .topbar-logo { font-size: 1.05rem; }
     .username-badge { display: none; }
     .page-tab { padding: 0.45rem 0.7rem; font-size: 0.75rem; }
@@ -430,8 +431,11 @@ function adjustMainPadding() {
   const main = document.querySelector('.main');
   if (tb && main) main.style.paddingTop = tb.offsetHeight + 'px';
 }
+// Run immediately, after first paint, and on resize/orientation change
 adjustMainPadding();
+requestAnimationFrame(() => requestAnimationFrame(adjustMainPadding));
 window.addEventListener('resize', adjustMainPadding);
+window.addEventListener('orientationchange', () => setTimeout(adjustMainPadding, 200));
 
 (async () => {
   const { data: { session } } = await sb.auth.getSession();
