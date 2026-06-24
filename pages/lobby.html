@@ -58,7 +58,7 @@
   .tournament-banner {
     background: linear-gradient(135deg, rgba(22,101,52,0.18), rgba(21,128,61,0.1));
     border: 1px solid rgba(34,197,94,0.35);
-    border-radius: 10px; margin-bottom: 1rem;
+    border-radius: 10px; margin-top: 0.75rem; margin-bottom: 1rem;
     padding: 0.6rem 1rem; display: flex; align-items: center; gap: 0.75rem;
     flex-wrap: wrap; font-size: 0.8rem; line-height: 1.45; color: var(--text);
   }
@@ -396,7 +396,20 @@
       <div id="createRealmMsg" style="margin-top:0.5rem; font-size:0.85rem"></div>
     </div>
     <hr style="border-color:var(--border); margin-bottom:1.5rem">
-    <div id="adminAccountCount" style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;margin-bottom:1.5rem;font-size:0.85rem;color:var(--muted)">👤 Total accounts: <span style="color:var(--text);font-weight:600">Loading…</span></div>
+    <div id="adminAccountCount" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:1rem 1.1rem;margin-bottom:1.5rem">
+      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.2rem">Total registered accounts</div>
+      <div style="font-size:1.6rem;font-weight:700;font-family:'Cinzel',serif;color:var(--text)" id="adminTotalCount">—</div>
+      <div style="margin-top:0.75rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem">
+          <span style="font-size:0.78rem;color:var(--muted)">Active players <span style="color:var(--text);font-size:0.7rem">(last 3 days)</span></span>
+          <span style="font-size:0.82rem;font-weight:700;color:var(--green)" id="adminActiveCount">— / 125</span>
+        </div>
+        <div style="height:7px;background:rgba(255,255,255,0.07);border-radius:99px;overflow:hidden">
+          <div id="adminActiveBar" style="height:100%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:99px;width:0%;transition:width 0.5s"></div>
+        </div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:0.3rem">Tournament starts at 125 active players</div>
+      </div>
+    </div>
     <h3 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:1rem">🌍 All Games</h3>
     <div id="adminGamesList"><div style="color:var(--muted)">Loading…</div></div>
     <hr style="border-color:var(--border); margin:1.5rem 0">
@@ -1339,9 +1352,19 @@ async function deleteEventRealm(gameId) {
 
 // ── ADMIN ─────────────────────────────────────────
 async function loadAdminGames() {
-  const { count } = await sb.from('profiles').select('*', { count: 'exact', head: true });
-  const countEl = document.getElementById('adminAccountCount');
-  if (countEl) countEl.innerHTML = `👤 Total accounts: <span style="color:var(--text);font-weight:600">${count ?? '—'}</span>`;
+  const cutoff = new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString();
+  const [{ count }, { data: activeData }] = await Promise.all([
+    sb.from('profiles').select('*', { count: 'exact', head: true }),
+    sb.from('countries').select('player_id').gt('last_active', cutoff).not('player_id', 'is', null),
+  ]);
+  const activeUnique = new Set((activeData || []).map(r => r.player_id)).size;
+  const pct = Math.min(100, Math.round((activeUnique / 125) * 100));
+  const totalEl = document.getElementById('adminTotalCount');
+  const activeEl = document.getElementById('adminActiveCount');
+  const barEl = document.getElementById('adminActiveBar');
+  if (totalEl) totalEl.textContent = count ?? '—';
+  if (activeEl) activeEl.textContent = `${activeUnique} / 125`;
+  if (barEl) barEl.style.width = pct + '%';
 
   const { data: games } = await sb.from('games').select('*').order('created_at', { ascending: false });
   const list = document.getElementById('adminGamesList');
