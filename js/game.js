@@ -134,17 +134,6 @@ create policy "update boats" on boats for update using (true);`);
       if (data) this.country = data;
     }
 
-    // Enforce building cap — delete random excess buildings if over pixel_count / 2
-    const nonWallInfra = myInfra.filter(i => i.type !== 'wall');
-    const cap = Math.floor((updates.pixel_count ?? this.country.pixel_count) / 2);
-    if (nonWallInfra.length > cap) {
-      const shuffled = nonWallInfra.sort(() => Math.random() - 0.5);
-      const toDelete = shuffled.slice(cap);
-      for (const infra of toDelete) {
-        await sb.from('infrastructure').delete().eq('id', infra.id);
-        delete this.infraData[`${infra.x},${infra.y}`];
-      }
-    }
   }
 
   // Fix pixel_count and is_alive for ALL countries based on actual pixel data.
@@ -173,17 +162,6 @@ create policy "update boats" on boats for update using (true);`);
         this.countries[country.id] = { ...country, ...updates };
       }
 
-      // Enforce building cap for this country
-      const theirInfra = Object.values(this.infraData)
-        .filter(i => i.country_id === country.id && i.type !== 'wall');
-      const theirCap = Math.floor((updates.pixel_count ?? actual) / 2);
-      if (theirInfra.length > theirCap) {
-        const toDelete = theirInfra.sort(() => Math.random() - 0.5).slice(theirCap);
-        for (const infra of toDelete) {
-          await sb.from('infrastructure').delete().eq('id', infra.id);
-          delete this.infraData[`${infra.x},${infra.y}`];
-        }
-      }
     }
   }
 
