@@ -59,6 +59,7 @@ class GameEngine {
     // can have both a regular building and a fortification simultaneously
     this.infraData = {};
     this.wallData = {};
+    console.log('[PixelRealms] infra load — rows:', infraRes.data?.length ?? 0, '| error:', infraRes.error?.message ?? 'none');
     (infraRes.data || []).forEach(i => {
       if (i.type === 'wall') this.wallData[`${i.pixel_x},${i.pixel_y}`] = i;
       else this.infraData[`${i.pixel_x},${i.pixel_y}`] = i;
