@@ -28,12 +28,17 @@ const AudioEngine = (() => {
   });
 
   // Save position before leaving the page
-  window.addEventListener('beforeunload', () => {
+  // pagehide is used on mobile (beforeunload is unreliable on iOS/Android)
+  function savePosition() {
     if (!music.paused) {
       localStorage.setItem(POS_KEY, String(music.currentTime));
       localStorage.setItem(TS_KEY, String(Date.now()));
     }
-  });
+  }
+  window.addEventListener('beforeunload', savePosition);
+  window.addEventListener('pagehide', savePosition);
+  // Also save periodically so position is never more than 5s stale
+  setInterval(savePosition, 5000);
 
   // Try to autoplay immediately (works if user already interacted on a previous page)
   music.play().catch(() => {});
