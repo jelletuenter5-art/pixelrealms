@@ -400,14 +400,16 @@
       <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.2rem">Total registered accounts</div>
       <div style="font-size:1.6rem;font-weight:700;font-family:'Cinzel',serif;color:var(--text)" id="adminTotalCount">—</div>
       <div style="margin-top:0.75rem">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem">
-          <span style="font-size:0.78rem;color:var(--muted)">Active players <span style="color:var(--text);font-size:0.7rem">(last 3 days)</span></span>
-          <span style="font-size:0.82rem;font-weight:700;color:var(--green)" id="adminActiveCount">— / 125</span>
+        <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.35rem">
+          Active players <span style="color:var(--text);font-size:0.7rem">(last 3 days)</span>: <span style="color:var(--green);font-weight:700" id="adminActiveCount">—</span>
         </div>
-        <div style="height:7px;background:rgba(255,255,255,0.07);border-radius:99px;overflow:hidden">
-          <div id="adminActiveBar" style="height:100%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:99px;width:0%;transition:width 0.5s"></div>
+        <div style="display:flex;align-items:center;gap:0.5rem">
+          <div style="flex:1;height:7px;background:rgba(255,255,255,0.07);border-radius:99px;overflow:hidden">
+            <div id="adminActiveBar" style="height:100%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:99px;width:0%;transition:width 0.5s"></div>
+          </div>
+          <span style="font-size:0.75rem;color:var(--muted);white-space:nowrap" id="adminActiveRatio">— / 125</span>
         </div>
-        <div style="font-size:0.7rem;color:var(--muted);margin-top:0.3rem">Tournament starts at 125 active players</div>
+        <div style="font-size:0.7rem;color:var(--green);margin-top:0.35rem;font-weight:600">Start tournament at 125 active players!</div>
       </div>
     </div>
     <h3 style="font-family:'Cinzel',serif; font-size:1rem; margin-bottom:1rem">🌍 All Games</h3>
@@ -1363,7 +1365,9 @@ async function loadAdminGames() {
   const activeEl = document.getElementById('adminActiveCount');
   const barEl = document.getElementById('adminActiveBar');
   if (totalEl) totalEl.textContent = totalCount;
-  if (activeEl) activeEl.textContent = `${activeUnique} / 125`;
+  if (activeEl) activeEl.textContent = activeUnique;
+  const ratioEl = document.getElementById('adminActiveRatio');
+  if (ratioEl) ratioEl.textContent = `${activeUnique} / 125`;
   if (barEl) barEl.style.width = pct + '%';
 
   const { data: games } = await sb.from('games').select('*').order('created_at', { ascending: false });
