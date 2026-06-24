@@ -1954,6 +1954,12 @@ async function renderTrade(body) {
     .select('*, nation_a_country:nation_a(name, color, flag_emoji), nation_b_country:nation_b(name, color, flag_emoji)')
     .or(`nation_a.eq.${engine.country.id},nation_b.eq.${engine.country.id}`)
     .gt('expires_at', now);
+  const { data: pastCeasefires } = await sb.from('ceasefires')
+    .select('*, nation_a_country:nation_a(name, color, flag_emoji), nation_b_country:nation_b(name, color, flag_emoji)')
+    .or(`nation_a.eq.${engine.country.id},nation_b.eq.${engine.country.id}`)
+    .lte('expires_at', now)
+    .order('expires_at', { ascending: false })
+    .limit(10);
 
   const { data: pending } = await sb.from('trades')
     .select('*, from_country:from_country_id(name, color)')
@@ -2040,10 +2046,30 @@ async function renderTrade(body) {
   // Active ceasefires HTML
   const activeCfHtml = (activeCeasefires || []).map(cf => {
     const partner = cf.nation_a === engine.country.id ? cf.nation_b_country : cf.nation_a_country;
-    const minsLeft = Math.ceil((new Date(cf.expires_at) - Date.now()) / 60000);
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0;border-bottom:1px solid rgba(45,55,72,0.5);font-size:0.8rem">
-      <span><span style="color:${partner?.color}">●</span> ${partner?.flag_emoji||''} ${partner?.name}</span>
-      <span style="color:var(--green)">☮️ ${minsLeft} min left</span>
+    const msLeft = new Date(cf.expires_at) - Date.now();
+    const hoursLeft = msLeft / 3600000;
+    const timeLabel = hoursLeft >= 1 ? `${hoursLeft.toFixed(1)}h` : `${Math.ceil(msLeft/60000)} min`;
+    return `<div style="background:var(--panel2);border:1px solid rgba(34,197,94,0.25);border-radius:8px;padding:0.55rem 0.7rem;margin-bottom:0.4rem;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:0.85rem;font-weight:600"><span style="color:${partner?.color}">●</span> ${partner?.flag_emoji||''} ${partner?.name}</span>
+      <span style="color:var(--green);font-size:0.8rem;font-weight:700">☮️ ${timeLabel} left</span>
+    </div>`;
+  }).join('');
+
+  // Ceasefire history HTML
+  const cfHistoryHtml = (pastCeasefires || []).map(cf => {
+    const partner = cf.nation_a === engine.country.id ? cf.nation_b_country : cf.nation_a_country;
+    const expired = new Date(cf.expires_at);
+    const dateLabel = expired.toLocaleDateString(undefined, { month:'short', day:'numeric' });
+    return `<div style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:0.55rem 0.7rem;margin-bottom:0.4rem;display:flex;align-items:center;gap:0.6rem">
+      <span style="font-size:0.8rem;color:var(--muted);min-width:0.6rem">☮️</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:0.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="color:${partner?.color}">●</span> ${partner?.name}</div>
+        <div style="font-size:0.7rem;color:var(--muted)">Ceasefire</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:0.7rem;color:var(--muted)">${dateLabel}</div>
+        <div style="font-size:0.7rem;color:var(--muted);font-weight:600">Expired</div>
+      </div>
     </div>`;
   }).join('');
 
@@ -2092,6 +2118,7 @@ async function renderTrade(body) {
       </div>`).join('')}` : ''}
 
     <div class="section-label" style="margin-top:0.75rem">📜 History</div>
+    ${cfHistoryHtml}
     ${historyHtml}
   `;
 }
