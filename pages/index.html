@@ -359,7 +359,7 @@ async function loadStats() {
   document.getElementById('nationsFallen').textContent = (deadRes.count || 0).toLocaleString();
   // Random between 1–20% of total accounts
   const totalPlayers = profilesRes.count || 0;
-  const factor = 0.01 + Math.random() * 0.19;
+  const factor = 0.01 + Math.random() * 0.14;
   const online = Math.round(totalPlayers * factor);
   document.getElementById('onlineCount').textContent = totalPlayers > 0 ? online.toString() : '—';
 }
