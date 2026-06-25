@@ -845,6 +845,9 @@ let lastMousePos = null;
     document.querySelector('.mode-bar').style.display = 'none';
   }
 
+  // Process any boats that arrived while offline immediately on load
+  engine.tickBoats();
+
   // Income tick — runs frequently for a smooth gold counter
   setInterval(() => {
     tickIncome(engine);
@@ -1260,6 +1263,7 @@ function renderBoats(ps) {
     const total = arrives - created;
     const elapsed = now - created;
     const progress = Math.min(1, Math.max(0, elapsed / total));
+    if (progress >= 1) continue; // arrived — tickBoats will process and remove it
     const stepF = progress * (path.length - 1);
     const stepI = Math.floor(stepF);
     const frac = stepF - stepI;

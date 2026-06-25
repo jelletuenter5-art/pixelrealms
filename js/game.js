@@ -741,8 +741,9 @@ const { data } = await sb.from('boats').select('*')
     delete this.boatData[boatId];
     // Refund expansion token if it was an expand mission
     if (boat.mode === 'expand') {
-      await sb.from('countries').update({ pending_pixels: Math.max(0, (this.country.pending_pixels || 0) - 1) }).eq('id', this.country.id);
-      this.country.pending_pixels = Math.max(0, (this.country.pending_pixels || 0) - 1);
+      const newPending = Math.min(CONFIG.MAX_STACK, (this.country.pending_pixels || 0) + 1);
+      await sb.from('countries').update({ pending_pixels: newPending }).eq('id', this.country.id);
+      this.country.pending_pixels = newPending;
     }
     return { ok: true, msg: '⛵ Boat recalled.' };
   }
