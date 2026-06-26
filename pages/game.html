@@ -1908,11 +1908,12 @@ async function renderNations(body) {
   const aliveHtml = alive.map(c => {
     rank++;
     const user = c.profiles?.username ? ` <span style="color:var(--muted);font-size:0.8rem;font-weight:400">(${escapeHtml(c.profiles.username)})</span>` : '';
+    const est = estimateCountryStats(c, engine);
     return `<div class="country-item ${c.id === myId ? 'me' : ''}" onclick="focusCountry('${c.id}')">
       <div class="country-flag" style="background:${c.color}"></div>
       <div class="country-info">
         <div class="country-name">#${rank} ${c.flag_emoji || ''} ${c.name}${c.id === myId ? ' (You)' : ''}${user}</div>
-        <div class="country-stats">🗺️ ${c.pixel_count}px · ⚔️ ${c.army_size} · 💰 ${Math.floor(c.gold)}</div>
+        <div class="country-stats">🗺️ ${c.pixel_count}px · ⚔️ ${est.army} · 💰 ${Math.floor(est.gold)}</div>
       </div>
     </div>`;
   }).join('');
@@ -2059,10 +2060,14 @@ async function renderTrade(body) {
     const partner = cf.nation_a === engine.country.id ? cf.nation_b_country : cf.nation_a_country;
     const msLeft = new Date(cf.expires_at) - Date.now();
     const hoursLeft = msLeft / 3600000;
-    const timeLabel = hoursLeft >= 1 ? `${hoursLeft.toFixed(1)}h` : `${Math.ceil(msLeft/60000)} min`;
+    const timeLabel = hoursLeft >= 1 ? `${hoursLeft.toFixed(1)}h left` : `${Math.ceil(msLeft/60000)} min left`;
+    const expiresLabel = new Date(cf.expires_at).toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
     return `<div style="background:var(--panel2);border:1px solid rgba(34,197,94,0.25);border-radius:8px;padding:0.55rem 0.7rem;margin-bottom:0.4rem;display:flex;align-items:center;justify-content:space-between">
       <span style="font-size:0.85rem;font-weight:600"><span style="color:${partner?.color}">●</span> ${partner?.flag_emoji||''} ${partner?.name}</span>
-      <span style="color:var(--green);font-size:0.8rem;font-weight:700">☮️ ${timeLabel} left</span>
+      <div style="text-align:right">
+        <div style="color:var(--green);font-size:0.8rem;font-weight:700">☮️ ${timeLabel}</div>
+        <div style="color:var(--muted);font-size:0.7rem">Expires ${expiresLabel}</div>
+      </div>
     </div>`;
   }).join('');
 
@@ -2090,7 +2095,8 @@ async function renderTrade(body) {
     ${(ceasefireOffers?.length) ? `<div class="section-label" style="color:var(--green)">☮️ Ceasefire Offers (${ceasefireOffers.length})</div>${cfOfferHtml}` : ''}
     ${(pending?.length) ? `<div class="section-label" style="color:var(--gold)">🔔 Gold Offers (${pending.length})</div>${pendingHtml}` : ''}
 
-    ${activeCeasefires?.length ? `<div class="section-label">🕊️ Active Ceasefires</div><div style="margin-bottom:0.75rem">${activeCfHtml}</div>` : ''}
+    <div class="section-label">🕊️ Active Ceasefires</div>
+    <div style="margin-bottom:0.75rem">${activeCfHtml || '<div style="color:var(--muted);font-size:0.82rem;padding:0.4rem 0.1rem">None</div>'}</div>
 
     <div class="section-label" style="margin-top:0.25rem">💸 Send Gold</div>
     <div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:0.75rem;margin-bottom:0.75rem">
@@ -2908,6 +2914,33 @@ async function deleteChatMsg(id, btn) {
 
 function escapeHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function estimateCountryStats(c, engine) {
+  const lastActive = c.last_active ? new Date(c.last_active).getTime() : null;
+  const hoursElapsed = lastActive ? Math.min(48, (Date.now() - lastActive) / 3600000) : 0;
+  if (hoursElapsed < 0.05) return { gold: c.gold, army: c.army_size };
+  const speed = engine.speed || 1;
+  const scaledHours = hoursElapsed * speed;
+  const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id);
+  const markets = myInfra.filter(i => i.type === 'market').length;
+  const barracks = myInfra.filter(i => i.type === 'barracks').length;
+  const harbors = myInfra.filter(i => i.type === 'harbor').length;
+  const incomePerPx = c.income_per_pixel || CONFIG.BASE_INCOME_PER_PIXEL;
+  const tierRate = calcTierUpkeepRate(c.pixel_count);
+  const upkeepPerPx = Math.max(0.02, tierRate - markets * CONFIG.INFRA_COSTS.market.upkeepReduction);
+  const netPerHour = (incomePerPx * c.pixel_count)
+    - (upkeepPerPx * c.pixel_count)
+    - ((c.army_size || 0) * CONFIG.ARMY_UPKEEP_PER_UNIT)
+    - (harbors * CONFIG.INFRA_COSTS.harbor.upkeepPerHour);
+  const estGold = Math.max(0, (c.gold || 0) + netPerHour * scaledHours);
+  const armyCap = barracks * CONFIG.INFRA_COSTS.barracks.armyBonus;
+  const currentArmy = c.army_size || 0;
+  let estArmy = currentArmy;
+  if (barracks > 0 && currentArmy < armyCap) {
+    estArmy = Math.min(armyCap, Math.floor(currentArmy + barracks * CONFIG.BARRACKS_REGEN_PER_HOUR * scaledHours));
+  }
+  return { gold: estGold, army: estArmy };
 }
 
 // ── CHAT FILTER ────────────────────────────────────────
