@@ -397,6 +397,14 @@ create policy "update boats" on boats for update using (true);`);
       return { ok: false, msg: `☮️ Ceasefire with ${defender.name} — ${minsLeft} min remaining.` };
     }
 
+    // Reconcile defender's army to include offline regen before combat
+    const defenderEstArmy = estimateDefenderArmy(defender, this.infraData, this.speed);
+    if (defenderEstArmy !== defender.army_size) {
+      await sb.from('countries').update({ army_size: defenderEstArmy, last_active: new Date().toISOString() }).eq('id', defender.id);
+      defender.army_size = defenderEstArmy;
+      this.countries[defender.id] = defender;
+    }
+
     // Combat formula
     const wall = this.wallData[key];
     const wallBonus = wall ? CONFIG.INFRA_COSTS.wall.defenseBonus : 0;
@@ -1140,6 +1148,19 @@ function calcFoodBalance(farmInfraOrCount, pixelCount, armySize, aggression = 0)
 }
 
 // Tiered territory upkeep — small nations pay far less to ease early game
+function estimateDefenderArmy(defender, infraData, speed) {
+  const lastActive = defender.last_active ? new Date(defender.last_active).getTime() : null;
+  const hoursElapsed = lastActive ? Math.min(48, (Date.now() - lastActive) / 3600000) : 0;
+  if (hoursElapsed < 0.05) return defender.army_size || 0;
+  const scaledHours = hoursElapsed * (speed || 1);
+  const myInfra = Object.values(infraData || {}).filter(i => i.country_id === defender.id);
+  const barracks = myInfra.filter(i => i.type === 'barracks').length;
+  const armyCap = barracks * CONFIG.INFRA_COSTS.barracks.armyBonus;
+  const currentArmy = defender.army_size || 0;
+  if (barracks <= 0 || currentArmy >= armyCap) return currentArmy;
+  return Math.min(armyCap, Math.floor(currentArmy + barracks * CONFIG.BARRACKS_REGEN_PER_HOUR * scaledHours));
+}
+
 function calcTierUpkeepRate(pixelCount) {
   if (pixelCount <= 15) return 0.05;
   if (pixelCount <= 40) return 0.15;
