@@ -507,7 +507,7 @@
 
     <div class="section-label">💰 Economy</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Each pixel earns <strong>1.5 💰/hr</strong> base income. Buildings add on top of this.
+      Each pixel earns <strong>2.5 💰/hr</strong> base income. Buildings add on top of this.
       Territory upkeep scales with your size — small nations pay far less:
     </p>
     <div style="background:var(--panel2);border-radius:8px;padding:0.5rem 0.75rem;margin-bottom:0.5rem;font-size:0.78rem;line-height:1.8;color:var(--muted)">
@@ -577,7 +577,7 @@
 </div><!-- /tutorialModal -->
 
 <!-- Missions widget -->
-<div id="missionsWidget" style="display:none;position:fixed;bottom:4.5rem;left:0.75rem;z-index:50;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:0.65rem 0.85rem;min-width:195px;box-shadow:0 4px 16px rgba(0,0,0,0.4)">
+<div id="missionsWidget" style="display:none;position:fixed;bottom:4.5rem;left:50%;transform:translateX(-50%);z-index:50;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:0.65rem 0.9rem;min-width:210px;max-width:92vw;box-shadow:0 4px 20px rgba(0,0,0,0.5);backdrop-filter:blur(6px)">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.45rem">
     <span style="font-size:0.75rem;font-weight:700;color:var(--text);font-family:'Cinzel',serif">🎯 Starter Missions</span>
     <button onclick="dismissMissions()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.85rem;line-height:1;padding:0 0.1rem">✕</button>
@@ -1802,7 +1802,7 @@ const TUT_SLIDES = [
   {
     icon: '💰',
     title: 'Gold & Income',
-    body: `Each pixel earns <strong>1.5 💰/hr</strong> base. Bigger empires pay more territory upkeep:<br><br>
+    body: `Each pixel earns <strong>2.5 💰/hr</strong> base. Bigger empires pay more territory upkeep:<br><br>
       <div style="background:var(--panel2);border-radius:7px;padding:0.5rem 0.75rem;font-size:0.78rem;line-height:1.9;color:var(--muted)">
         ≤15 px → <strong style="color:var(--text)">0.05/px/hr upkeep</strong><br>
         16–40 px → <strong style="color:var(--text)">0.15/px/hr upkeep</strong><br>
