@@ -3277,7 +3277,7 @@ function showAttackPreview(tx, ty) {
   const terrainDef = CONFIG.TERRAIN_DEFENSE[tile.terrain] || 1;
   const totalDef = terrainDef * (1 + wallBonus);
   const myArmy = engine.country.army_size;
-  const theirArmy = defender.army_size;
+  const theirArmy = estimateCountryStats(defender, engine).army;
   const effectiveDef = theirArmy * totalDef;
   const ratio = myArmy / effectiveDef;
   const outcome = ratio > 1.5 ? '<span style="color:var(--green)">✅ Likely Victory</span>'
@@ -3338,7 +3338,7 @@ function showBoatAttackPreview(tx, ty) {
   const terrainDef = CONFIG.TERRAIN_DEFENSE[tile.terrain] || 1;
   const totalDef = terrainDef * (1 + wallBonus);
   const myArmy = engine.country.army_size;
-  const theirArmy = defender.army_size;
+  const theirArmy = estimateCountryStats(defender, engine).army;
   const effectiveDef = theirArmy * totalDef;
   const ratio = myArmy / effectiveDef;
   const outcome = ratio > 1.5 ? '<span style="color:var(--green)">✅ Likely Victory</span>'
