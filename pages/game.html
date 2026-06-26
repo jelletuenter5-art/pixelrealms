@@ -572,6 +572,7 @@
     </p>
 
       <button class="btn btn-primary btn-full" onclick="closeTutorial()">Got it!</button>
+      <button onclick="reopenMissions()" style="width:100%;margin-top:0.5rem;padding:0.45rem;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:0.82rem">🎯 Show Starter Missions</button>
     </div><!-- /tutFullView -->
   </div><!-- /inner -->
 </div><!-- /tutorialModal -->
@@ -1795,7 +1796,7 @@ const TUT_SLIDES = [
     icon: '🌱',
     title: 'Expand Your Territory',
     body: `You earn <strong>1 expansion token per hour</strong> (max 24 stacked), shown as <strong>🎯</strong> in the top bar.<br><br>
-      Select <strong>🌱 Expand</strong> mode (bottom of the map) and click any <strong>unclaimed tile touching your borders</strong> to claim it for 1 token.<br><br>
+      Select <strong>🌱 Expand</strong> mode (top of the map) and click any <strong>unclaimed tile touching your borders</strong> to claim it for 1 token.<br><br>
       You can also <strong>buy tokens for 1,000 💰</strong> each when you need to expand fast.`,
     tip: '💡 Head toward hills and mountains — they boost mine income significantly.',
   },
@@ -1936,6 +1937,13 @@ function updateMissions() {
 function dismissMissions() {
   localStorage.setItem('pr_missions_dismissed', '1');
   document.getElementById('missionsWidget').style.display = 'none';
+}
+
+function reopenMissions() {
+  localStorage.removeItem('pr_missions_dismissed');
+  document.getElementById('missionsWidget').style.display = 'block';
+  updateMissions();
+  closeTutorial();
 }
 
 // ── MODE ──────────────────────────────────────────────
