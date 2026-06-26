@@ -522,8 +522,8 @@
     <div style="background:var(--panel2);border-radius:8px;padding:0.5rem 0.75rem;margin-bottom:0.5rem;font-size:0.78rem;line-height:1.8;color:var(--muted)">
       <div>≤15 pixels → <strong style="color:var(--text)">2 💰/hr per border pixel</strong></div>
       <div>16–40 pixels → <strong style="color:var(--text)">5 💰/hr per border pixel</strong></div>
-      <div>41–80 pixels → <strong style="color:var(--text)">8 💰/hr per border pixel</strong></div>
-      <div>81+ pixels → <strong style="color:var(--text)">10 💰/hr per border pixel</strong></div>
+      <div>41–80 pixels → <strong style="color:var(--text)">12 💰/hr per border pixel</strong></div>
+      <div>81+ pixels → <strong style="color:var(--text)">18 💰/hr per border pixel</strong></div>
     </div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
       Other costs: <strong>0.5 💰/hr per army unit</strong>.
@@ -693,8 +693,8 @@ function calcFarmIncome(farmInfra, pixelCount, pixelData) {
 function calcBorderUpkeepRate(pixelCount) {
   if (pixelCount <= 15) return 2;
   if (pixelCount <= 40) return 5;
-  if (pixelCount <= 80) return 8;
-  return 10;
+  if (pixelCount <= 80) return 12;
+  return 18;
 }
 function calcBorderUpkeep(pixelData, myCountryId, myPixelCount) {
   let borderPixels = 0;
