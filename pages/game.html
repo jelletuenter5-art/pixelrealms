@@ -407,10 +407,40 @@
 </div>
 
 <!-- Tutorial modal -->
-<div id="tutorialModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;align-items:center;justify-content:center" onclick="if(event.target===this)closeTutorial()">
-  <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.5rem;max-width:520px;width:90%;max-height:85vh;overflow-y:auto;position:relative">
-    <button onclick="closeTutorial()" style="position:sticky;top:0;float:right;background:rgba(17,24,39,0.85);border:1px solid var(--border);border-radius:50%;width:28px;height:28px;color:var(--muted);font-size:1rem;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;z-index:10;backdrop-filter:blur(4px)">✕</button>
-    <h3 style="font-family:'Cinzel',serif;margin-bottom:1rem">How to Play PixelRealms</h3>
+<div id="tutorialModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;align-items:center;justify-content:center" onclick="if(event.target===this)closeTutorial()">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;max-width:540px;width:92%;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;position:relative">
+
+    <!-- Header with tabs -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem 0;flex-shrink:0">
+      <div style="display:flex;gap:0.25rem;background:var(--panel2);border-radius:8px;padding:0.2rem">
+        <button id="tutTabQuick" onclick="tutSwitchView('quick')" style="font-size:0.78rem;font-weight:600;padding:0.3rem 0.75rem;border-radius:6px;border:none;cursor:pointer;background:var(--green);color:#000;transition:all 0.15s">Quick Start</button>
+        <button id="tutTabFull" onclick="tutSwitchView('full')" style="font-size:0.78rem;font-weight:600;padding:0.3rem 0.75rem;border-radius:6px;border:none;cursor:pointer;background:transparent;color:var(--muted)">Full Guide</button>
+      </div>
+      <button onclick="closeTutorial()" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:50%;width:28px;height:28px;color:var(--muted);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+    </div>
+
+    <!-- QUICK START (slideshow) -->
+    <div id="tutQuickView" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+      <!-- slide container -->
+      <div id="tutSlides" style="flex:1;overflow-y:auto;padding:1.25rem 1.5rem 0.5rem">
+        <!-- slides injected by JS -->
+      </div>
+      <!-- footer nav -->
+      <div style="padding:0.75rem 1.5rem 1.25rem;flex-shrink:0;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:0.6rem">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <button id="tutBackBtn" onclick="tutNav(-1)" style="font-size:0.82rem;padding:0.4rem 0.9rem;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer">← Back</button>
+          <div style="display:flex;gap:5px;align-items:center" id="tutDots"></div>
+          <button id="tutNextBtn" onclick="tutNav(1)" style="font-size:0.82rem;font-weight:600;padding:0.4rem 1rem;border-radius:7px;border:none;background:var(--green);color:#000;cursor:pointer">Next →</button>
+        </div>
+        <div style="text-align:center">
+          <button onclick="tutSwitchView('full')" style="font-size:0.73rem;color:var(--muted);background:none;border:none;cursor:pointer;text-decoration:underline">Skip to Full Guide ↗</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FULL GUIDE (existing wall of text) -->
+    <div id="tutFullView" style="display:none;overflow-y:auto;padding:1.25rem 1.5rem 1.5rem;flex:1">
+      <h3 style="font-family:'Cinzel',serif;margin-bottom:1rem">How to Play PixelRealms</h3>
 
     <div class="section-label" style="margin-top:0">🗺️ The Map</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
@@ -540,9 +570,27 @@
       While a ceasefire is active, neither side can attack the other. Ceasefires appear in the Events tab when agreed.
     </p>
 
-    <button class="btn btn-primary btn-full" onclick="closeTutorial()">Got it!</button>
+      <button class="btn btn-primary btn-full" onclick="closeTutorial()">Got it!</button>
+    </div><!-- /tutFullView -->
+  </div><!-- /inner -->
+</div><!-- /tutorialModal -->
+
+<!-- Missions widget -->
+<div id="missionsWidget" style="display:none;position:fixed;bottom:4.5rem;left:0.75rem;z-index:50;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:0.65rem 0.85rem;min-width:195px;box-shadow:0 4px 16px rgba(0,0,0,0.4)">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.45rem">
+    <span style="font-size:0.75rem;font-weight:700;color:var(--text);font-family:'Cinzel',serif">🎯 Starter Missions</span>
+    <button onclick="dismissMissions()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.85rem;line-height:1;padding:0 0.1rem">✕</button>
   </div>
+  <div id="missionExpand" class="mission-row">☐ Expand to 10 pixels</div>
+  <div id="missionBuild"  class="mission-row">☐ Build a structure</div>
+  <div id="missionGold"   class="mission-row">☐ Reach 500 💰 gold</div>
+  <div id="missionAttack" class="mission-row">☐ Attack an enemy tile</div>
+  <div id="missionAllDone" style="display:none;color:var(--green);font-size:0.78rem;font-weight:600;margin-top:0.3rem;text-align:center">✅ All done! You're ready to conquer.</div>
 </div>
+<style>
+  .mission-row { font-size:0.78rem;color:var(--muted);padding:0.18rem 0;line-height:1.4; }
+  .mission-row.done { color:var(--green);text-decoration:line-through; }
+</style>
 
 <!-- Attack preview modal -->
 <div id="attackPreviewModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;align-items:center;justify-content:center">
@@ -1720,13 +1768,160 @@ document.addEventListener('pointerdown', _unlockAudio);
 document.getElementById('muteBtn').textContent = AudioEngine.isMuted() ? '🔇' : '🔊';
 
 // ── TUTORIAL ──────────────────────────────────────────
+const TUT_SLIDES = [
+  {
+    icon: '🌍',
+    title: 'Welcome to PixelRealms',
+    sub: 'Conquer the world, one pixel at a time.',
+    body: `You control a nation on a shared real-time map. Expand your territory, build your economy, and outmaneuver rivals.<br><br>
+      <div style="text-align:center;font-size:2rem;letter-spacing:0.5rem;margin:0.75rem 0">🗺️ ⚔️ 🏗️ 💰</div>
+      This quick guide walks you through the essentials.`,
+  },
+  {
+    icon: '🌱',
+    title: 'Expand Your Territory',
+    body: `You earn <strong>1 expansion token per hour</strong> (max 24 stacked), shown as <strong>🎯</strong> in the top bar.<br><br>
+      Select <strong>🌱 Expand</strong> mode (bottom of the map) and click any <strong>unclaimed tile touching your borders</strong> to claim it for 1 token.<br><br>
+      You can also <strong>buy tokens for 1,000 💰</strong> each when you need to expand fast.`,
+    tip: '💡 Head toward hills and mountains — they boost mine income significantly.',
+  },
+  {
+    icon: '💰',
+    title: 'Gold & Income',
+    body: `Each pixel earns <strong>1.5 💰/hr</strong> base. Bigger empires pay more territory upkeep:<br><br>
+      <div style="background:var(--panel2);border-radius:7px;padding:0.5rem 0.75rem;font-size:0.78rem;line-height:1.9;color:var(--muted)">
+        ≤15 px → <strong style="color:var(--text)">0.05/px/hr upkeep</strong><br>
+        16–40 px → <strong style="color:var(--text)">0.15/px/hr upkeep</strong><br>
+        41–80 px → <strong style="color:var(--text)">0.22/px/hr upkeep</strong><br>
+        81+ px → <strong style="color:var(--text)">0.30/px/hr upkeep</strong>
+      </div><br>
+      Check <strong>My Realm → Balance</strong> for your live net income.`,
+    tip: '💡 Build Farms and Mines early — they pay for themselves quickly.',
+  },
+  {
+    icon: '⚔️',
+    title: 'Build an Army & Fight',
+    body: `Build a <strong>Barracks (150💰)</strong> to grow your army — it gives +20 army instantly and regenerates 0.5/hr up to a cap.<br><br>
+      Switch to <strong>⚔️ Attack</strong> mode and click an enemy tile <strong>bordering your territory</strong>. An <strong>Attack Preview</strong> shows estimated casualties before you commit.<br><br>
+      Both sides lose troops — terrain matters (hills & mountains defend better).`,
+    tip: '💡 Never attack blind — always read the preview first.',
+  },
+  {
+    icon: '🌾',
+    title: 'Keep Your People Fed',
+    body: `Your army eats food. If food drops below <strong>50% of your population cap</strong>, gold income is penalised up to <strong>−80%</strong>.<br><br>
+      Build <strong>Farms (100💰)</strong> to produce food. Upgrade a farm for <strong>200💰</strong> to triple its output.<br><br>
+      War raises food consumption — always <strong>stockpile food before attacking</strong>.`,
+    tip: '💡 Watch the food bar in My Realm. Red = trouble.',
+  },
+  {
+    icon: '🤝',
+    title: 'Diplomacy & Winning',
+    body: `Use the <strong>Diplomacy tab</strong> (left panel) to send gold to allies or propose a <strong>Ceasefire</strong> — preventing attacks for an agreed duration.<br><br>
+      Eliminate all enemies by capturing their last pixel. The <strong>last nation standing wins</strong>.<br><br>
+      The <strong>❓ button</strong> in the top bar reopens this guide anytime. Good luck, Commander!`,
+    finish: true,
+  },
+];
+
+let _tutSlide = 0;
+
 function openTutorial() {
   document.getElementById('tutorialModal').style.display = 'flex';
-  document.getElementById('htpWallCost').textContent = CONFIG.INFRA_COSTS.wall.gold + 'g';
+  if (document.getElementById('htpWallCost')) document.getElementById('htpWallCost').textContent = CONFIG.INFRA_COSTS.wall.gold + 'g';
+  // Returning players go straight to Full Guide; new players see Quick Start
+  if (localStorage.getItem('pr_tutorial_seen')) {
+    tutSwitchView('full');
+  } else {
+    _tutSlide = 0;
+    tutSwitchView('quick');
+    tutRenderSlide();
+  }
 }
+
 function closeTutorial() {
   document.getElementById('tutorialModal').style.display = 'none';
   localStorage.setItem('pr_tutorial_seen', '1');
+  if (!localStorage.getItem('pr_missions_dismissed')) {
+    document.getElementById('missionsWidget').style.display = 'block';
+    updateMissions();
+  }
+}
+
+function tutSwitchView(view) {
+  const isQuick = view === 'quick';
+  document.getElementById('tutQuickView').style.display = isQuick ? 'flex' : 'none';
+  document.getElementById('tutFullView').style.display  = isQuick ? 'none' : 'block';
+  document.getElementById('tutTabQuick').style.background = isQuick ? 'var(--green)' : 'transparent';
+  document.getElementById('tutTabQuick').style.color = isQuick ? '#000' : 'var(--muted)';
+  document.getElementById('tutTabFull').style.background  = isQuick ? 'transparent' : 'var(--green)';
+  document.getElementById('tutTabFull').style.color  = isQuick ? 'var(--muted)' : '#000';
+}
+
+function tutRenderSlide() {
+  const s = TUT_SLIDES[_tutSlide];
+  const isLast = _tutSlide === TUT_SLIDES.length - 1;
+  document.getElementById('tutSlides').innerHTML = `
+    <div style="text-align:center;font-size:2.8rem;margin-bottom:0.5rem">${s.icon}</div>
+    <h3 style="font-family:'Cinzel',serif;font-size:1.1rem;text-align:center;margin-bottom:0.85rem">${s.title}</h3>
+    ${s.sub ? `<p style="text-align:center;color:var(--muted);font-size:0.85rem;margin-bottom:0.75rem">${s.sub}</p>` : ''}
+    <div style="font-size:0.84rem;color:var(--text);line-height:1.7">${s.body}</div>
+    ${s.tip ? `<div style="margin-top:0.85rem;background:rgba(74,222,128,0.07);border:1px solid rgba(74,222,128,0.2);border-radius:8px;padding:0.5rem 0.75rem;font-size:0.78rem;color:var(--green);line-height:1.5">${s.tip}</div>` : ''}
+    ${s.finish ? `<button class="btn btn-primary btn-full" onclick="closeTutorial()" style="margin-top:1.1rem">🚀 Get Started!</button>` : ''}
+  `;
+  // Dots
+  document.getElementById('tutDots').innerHTML = TUT_SLIDES.map((_, i) =>
+    `<div style="width:7px;height:7px;border-radius:50%;background:${i===_tutSlide?'var(--green)':'rgba(255,255,255,0.18)'};transition:background 0.2s"></div>`
+  ).join('');
+  // Back button
+  document.getElementById('tutBackBtn').style.visibility = _tutSlide === 0 ? 'hidden' : 'visible';
+  // Next button — hide on last slide (Get Started button is on the slide itself)
+  document.getElementById('tutNextBtn').style.display = isLast ? 'none' : 'inline-block';
+  document.getElementById('tutNextBtn').textContent = _tutSlide === TUT_SLIDES.length - 2 ? 'Last →' : 'Next →';
+}
+
+function tutNav(dir) {
+  _tutSlide = Math.max(0, Math.min(TUT_SLIDES.length - 1, _tutSlide + dir));
+  tutRenderSlide();
+}
+
+// ── MISSIONS ──────────────────────────────────────────
+function updateMissions() {
+  if (localStorage.getItem('pr_missions_dismissed')) return;
+  if (document.getElementById('missionsWidget').style.display === 'none') return;
+  const c = engine?.country;
+  if (!c) return;
+  const state = JSON.parse(localStorage.getItem('pr_missions_state') || '{}');
+  if (!state.expand10 && c.pixel_count >= 10) state.expand10 = true;
+  if (!state.gold500 && c.gold >= 500) state.gold500 = true;
+  if (!state.attacked && (c.pixels_captured || 0) > 0) state.attacked = true;
+  if (!state.built) {
+    const myInfra = Object.values(engine?.infraData || {}).filter(i => i.country_id === c.id && i.type !== 'wall');
+    if (myInfra.length > 0) state.built = true;
+  }
+  localStorage.setItem('pr_missions_state', JSON.stringify(state));
+  const setRow = (id, done, label) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = (done ? '✅ ' : '☐ ') + label;
+    el.className = 'mission-row' + (done ? ' done' : '');
+  };
+  setRow('missionExpand', state.expand10, 'Expand to 10 pixels');
+  setRow('missionBuild',  state.built,    'Build a structure');
+  setRow('missionGold',   state.gold500,  'Reach 500 💰 gold');
+  setRow('missionAttack', state.attacked, 'Attack an enemy tile');
+  if (state.expand10 && state.built && state.gold500 && state.attacked) {
+    document.getElementById('missionAllDone').style.display = 'block';
+    setTimeout(() => {
+      document.getElementById('missionsWidget').style.display = 'none';
+      localStorage.setItem('pr_missions_dismissed', '1');
+    }, 3000);
+  }
+}
+
+function dismissMissions() {
+  localStorage.setItem('pr_missions_dismissed', '1');
+  document.getElementById('missionsWidget').style.display = 'none';
 }
 
 // ── MODE ──────────────────────────────────────────────
@@ -1825,6 +2020,7 @@ function updateTopBar() {
   document.getElementById('myPixels').textContent = c.pixel_count ?? 0;
   document.getElementById('myArmy').textContent = Math.floor((c.army_size ?? 0) + (engine._armyRegenAccum || 0));
   document.getElementById('myTokens').textContent = engine.getLiveTokens();
+  updateMissions();
 }
 
 // ── LEFT PANEL ─────────────────────────────────────────
