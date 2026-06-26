@@ -432,8 +432,9 @@
           <div style="display:flex;gap:5px;align-items:center" id="tutDots"></div>
           <button id="tutNextBtn" onclick="tutNav(1)" style="font-size:0.82rem;font-weight:600;padding:0.4rem 1rem;border-radius:7px;border:none;background:var(--green);color:#000;cursor:pointer">Next →</button>
         </div>
-        <div style="text-align:center">
-          <button onclick="tutSwitchView('full')" style="font-size:0.73rem;color:var(--muted);background:none;border:none;cursor:pointer;text-decoration:underline">Skip to Full Guide ↗</button>
+        <div style="text-align:center;display:flex;justify-content:center;gap:1rem">
+          <button onclick="closeTutorial()" style="font-size:0.73rem;color:var(--muted);background:none;border:none;cursor:pointer;text-decoration:underline">Skip Tutorial</button>
+          <button onclick="tutSwitchView('full')" style="font-size:0.73rem;color:var(--muted);background:none;border:none;cursor:pointer;text-decoration:underline">Full Guide ↗</button>
         </div>
       </div>
     </div>
@@ -905,7 +906,12 @@ let lastMousePos = null;
   // Token accrual display tick
   setInterval(updateTopBar, 30000);
 
-  if (!localStorage.getItem('pr_tutorial_seen')) openTutorial();
+  // Tutorial fires after nation placement for new players (see chooseSpawn).
+  // For returning players who haven't dismissed missions, show the widget.
+  if (localStorage.getItem('pr_tutorial_seen') && !localStorage.getItem('pr_missions_dismissed')) {
+    document.getElementById('missionsWidget').style.display = 'block';
+    updateMissions();
+  }
 })();
 
 function setLoading(msg) {
@@ -987,6 +993,14 @@ async function chooseSpawn(tx, ty) {
   renderMap();
   updateTopBar();
   showToast('Nation founded! Good luck, ruler.', 'ok');
+
+  // Show tutorial for brand-new players after they place their nation
+  if (!localStorage.getItem('pr_tutorial_seen')) {
+    setTimeout(() => openTutorial(), 600);
+  } else if (!localStorage.getItem('pr_missions_dismissed')) {
+    document.getElementById('missionsWidget').style.display = 'block';
+    updateMissions();
+  }
   } finally { _spawning = false; }
 }
 
