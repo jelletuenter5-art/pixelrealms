@@ -47,7 +47,7 @@ const CONFIG = {
     market:   { gold: 350, effect: '−0.0075 💰/px/hr upkeep · +0.004 war decay/hr (max 40)', upkeepReduction: 0.0075, maxCount: 40, decayBonus: 0.004 },
     barracks: { gold: 150, effect: '+20 army instantly · regenerates 0.5 army/hr per barracks up to cap', armyBonus: 20 },
     wall:     { gold: 80,  effect: '+50% defense when this tile is attacked',      defenseBonus: 0.5 },
-    harbor:   { gold: 180, effect: 'Deploy boats to unclaimed or enemy tiles across water · 10💰/hr upkeep', upkeepPerHour: 10 },
+    harbor:   { gold: 180, effect: 'Deploy boats to unclaimed or enemy tiles across water · 50💰/hr upkeep', upkeepPerHour: 50 },
     trading_post: { gold: 160, effect: '+1💰/hr flat + 5💰/hr per neighboring nation (terrain-adjusted)', flatIncome: 1, incomePerNation: 5 },
   },
   BOAT_MINUTES_PER_TILE: 4,
