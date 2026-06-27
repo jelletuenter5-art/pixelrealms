@@ -347,21 +347,23 @@
 
 // Fetch live stats
 async function loadStats() {
-  const [profilesRes, pixelsRes, deadRes] = await Promise.all([
+  const threeDaysAgo = new Date(Date.now() - 3 * 86400000).toISOString();
+  const [profilesRes, pixelsRes, deadRes, activeRes] = await Promise.all([
     sb.from('profiles').select('id, total_pixels_ever', { count: 'exact' }),
     sb.from('countries').select('pixel_count, pixels_lost'),
     sb.from('countries').select('id', { count: 'exact' }).eq('is_alive', false),
+    sb.from('countries').select('country_id:id', { count: 'exact' }).gt('last_active', threeDaysAgo),
   ]);
   // Total pixels = historical (from finished games) + current live pixels
   const historical = (profilesRes.data || []).reduce((s, p) => s + (p.total_pixels_ever || 0), 0);
   const live = (pixelsRes.data || []).reduce((s, c) => s + (c.pixel_count || 0) + (c.pixels_lost || 0), 0);
   document.getElementById('totalPixels').textContent = (historical + live).toLocaleString();
   document.getElementById('nationsFallen').textContent = (deadRes.count || 0).toLocaleString();
-  // Random between 1–20% of total accounts
-  const totalPlayers = profilesRes.count || 0;
-  const factor = 0.01 + Math.random() * 0.14;
-  const online = Math.round(totalPlayers * factor);
-  document.getElementById('onlineCount').textContent = totalPlayers > 0 ? online.toString() : '—';
+  // Random between 1–20% of active players (last 3 days)
+  const activePlayers = activeRes.count || 0;
+  const factor = 0.01 + Math.random() * 0.19;
+  const online = Math.round(activePlayers * factor);
+  document.getElementById('onlineCount').textContent = activePlayers > 0 ? online.toString() : '—';
 }
 loadStats();
 
