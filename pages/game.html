@@ -469,9 +469,9 @@
     <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.25rem">
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
         <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🌾 Farm <span style="color:var(--gold);font-weight:400">100g</span></div>
-        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+0.04 💰/px/hr income nation-wide · +5 food/hr</div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+0.04 💰/px/hr income nation-wide · +5 food/hr · cap: 1 per 5 pixels</div>
         <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Terrain: grass 1.5× · hill 1.0× · mountain 0.5× · desert 0.3×</div>
-        <div style="font-size:0.72rem;color:#f59e0b;margin-top:0.25rem">⭐ Upgradeable for 300g → produces 15 food/hr. Upgraded farms show a gold ring on the map.</div>
+        <div style="font-size:0.72rem;color:#f59e0b;margin-top:0.25rem">⭐ Upgradeable for 250g → produces 15 food/hr · upgrade cap: 1 per 10 pixels. Upgraded farms show a gold ring on the map.</div>
       </div>
       <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
         <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">⛏️ Mine <span style="color:var(--gold);font-weight:400">120g</span></div>
@@ -536,7 +536,7 @@
       Each pixel gives <strong>15 population</strong>, which unlocks barracks (100 pop each).
       Your land produces <strong>0.5 food/hr per pixel</strong> and consumes <strong>0.2 food/hr per pixel</strong>.
       Your army eats <strong>0.1 food/hr per unit</strong> at peace — this rises sharply during war.
-      Build farms to keep your food in surplus. Farms produce <strong>5 food/hr</strong> each and can be <strong>upgraded for 300g</strong> to produce <strong>15 food/hr</strong>.
+      Build farms to keep your food in surplus — capped at <strong>1 farm per 5 pixels</strong>. Farms produce <strong>5 food/hr</strong> each and can be <strong>upgraded for 250g</strong> to produce <strong>15 food/hr</strong> — upgrade cap: <strong>1 per 10 pixels</strong>.
       If your stored food drops below <strong>50% of your population</strong>, your gold income is penalised by up to <strong>−80%</strong> — always stockpile food before going to war.
     </p>
 
@@ -901,6 +901,9 @@ let lastMousePos = null;
 
   // Process any boats that arrived while offline immediately on load
   engine.tickBoats();
+
+  // Enforce farm & upgrade caps — remove excess randomly
+  await enforceFarmCaps();
 
   // Income tick — runs frequently for a smooth gold counter
   setInterval(() => {
@@ -1590,6 +1593,12 @@ function showBuildMenu() {
       extraNote = 'No cap limit · stacks with any building';
     } else {
       if (type === 'market' && existingMarkets >= CONFIG.INFRA_COSTS.market.maxCount) { blocked = true; blockedMsg = `Market cap reached (${existingMarkets}/${CONFIG.INFRA_COSTS.market.maxCount})`; }
+      else if (type === 'farm') {
+        const existingFarms = myInfra.filter(i => i.type === 'farm').length;
+        const farmCap = Math.floor(pixelCount / CONFIG.INFRA_COSTS.farm.maxPerPixels);
+        if (existingFarms >= farmCap) { blocked = true; blockedMsg = `Farm cap: ${existingFarms}/${farmCap} (1 per ${CONFIG.INFRA_COSTS.farm.maxPerPixels} pixels)`; }
+        else if (atCap) { blocked = true; blockedMsg = `Need ${(myInfra.length + 1) * 2} pixels`; }
+      }
       else if (atCap) { blocked = true; blockedMsg = `Need ${(myInfra.length + 1) * 2} pixels`; }
     }
 
@@ -1732,9 +1741,17 @@ function openManageBuilding(x, y) {
   if (infra.type === 'farm' && farmLevel < 2) {
     const upgCost = CONFIG.INFRA_COSTS.farm.upgradeCost;
     const canAffordUpg = (engine.country?.gold || 0) >= upgCost;
-    upgradeBtn.innerHTML = `⭐ Upgrade Farm → ${CONFIG.INFRA_COSTS.farm.upgradedFoodPerHour * mngSpd} food/hr &nbsp;·&nbsp; 💰 ${upgCost}g`;
-    upgradeBtn.style.cssText = `width:100%;background:${canAffordUpg?'rgba(245,158,11,0.15)':'#1f2937'};border:1px solid ${canAffordUpg?'rgba(245,158,11,0.5)':'#374151'};color:${canAffordUpg?'var(--gold)':'var(--muted)'};cursor:${canAffordUpg?'pointer':'not-allowed'};border-radius:8px;padding:0.55rem 0.75rem;font-size:0.85rem`;
+    const myFarmsAll = Object.values(engine.infraData || {}).filter(i => i.country_id === engine.country?.id && i.type === 'farm');
+    const upgradedCount = myFarmsAll.filter(f => (f.level || 1) >= 2).length;
+    const upgCap = Math.floor((engine.country?.pixel_count ?? 0) / CONFIG.INFRA_COSTS.farm.maxUpgradePerPixels);
+    const atUpgCap = upgradedCount >= upgCap;
+    const canUpgrade = canAffordUpg && !atUpgCap;
+    upgradeBtn.innerHTML = atUpgCap
+      ? `⭐ Upgrade cap reached (${upgradedCount}/${upgCap} · 1 per ${CONFIG.INFRA_COSTS.farm.maxUpgradePerPixels} pixels)`
+      : `⭐ Upgrade Farm → ${CONFIG.INFRA_COSTS.farm.upgradedFoodPerHour * mngSpd} food/hr &nbsp;·&nbsp; 💰 ${upgCost}g <span style="color:var(--muted);font-size:0.7rem">(${upgradedCount}/${upgCap})</span>`;
+    upgradeBtn.style.cssText = `width:100%;background:${canUpgrade?'rgba(245,158,11,0.15)':'#1f2937'};border:1px solid ${canUpgrade?'rgba(245,158,11,0.5)':'#374151'};color:${canUpgrade?'var(--gold)':'var(--muted)'};cursor:${canUpgrade?'pointer':'not-allowed'};border-radius:8px;padding:0.55rem 0.75rem;font-size:0.85rem`;
     upgradeBtn.onclick = async () => {
+      if (atUpgCap) { showToast(`Upgrade cap: 1 per ${CONFIG.INFRA_COSTS.farm.maxUpgradePerPixels} pixels`, 'error'); return; }
       if (!canAffordUpg) { showToast(`Need ${upgCost} gold`, 'error'); return; }
       closeManageBuildingModal();
       const res = await engine.upgradeInfra(infra.id);
@@ -1830,7 +1847,7 @@ const TUT_SLIDES = [
     icon: '🌾',
     title: 'Keep Your People Fed',
     body: `Your army eats food. If food drops below <strong>50% of your population cap</strong>, gold income is penalised up to <strong>−80%</strong>.<br><br>
-      Build <strong>Farms (100💰)</strong> to produce food. Upgrade a farm for <strong>300💰</strong> to triple its output.<br><br>
+      Build <strong>Farms (100💰)</strong> to produce food — max <strong>1 farm per 5 pixels</strong>. Upgrade a farm for <strong>250💰</strong> to triple its output (max <strong>1 upgrade per 10 pixels</strong>).<br><br>
       War raises food consumption — always <strong>stockpile food before attacking</strong>.`,
     tip: '💡 Watch the food bar in My Realm. Red = trouble.',
   },
@@ -1936,6 +1953,43 @@ function updateMissions() {
       document.getElementById('missionsWidget').style.display = 'none';
       localStorage.setItem('pr_missions_dismissed', '1');
     }, 3000);
+  }
+}
+
+async function enforceFarmCaps() {
+  if (!engine?.country) return;
+  const c = engine.country;
+  const pixelCount = c.pixel_count ?? 0;
+  const farmCap = Math.floor(pixelCount / CONFIG.INFRA_COSTS.farm.maxPerPixels);
+  const upgradeCap = Math.floor(pixelCount / CONFIG.INFRA_COSTS.farm.maxUpgradePerPixels);
+
+  const myFarms = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id && i.type === 'farm');
+  const upgradedFarms = myFarms.filter(f => (f.level || 1) >= 2);
+
+  // Downgrade excess upgraded farms (random order)
+  const shuffledUpgraded = [...upgradedFarms].sort(() => Math.random() - 0.5);
+  const excessUpgrades = shuffledUpgraded.slice(upgradeCap);
+  for (const f of excessUpgrades) {
+    await sb.from('infrastructure').update({ level: 1 }).eq('id', f.id);
+    if (engine.infraData[`${f.pixel_x},${f.pixel_y}`]) engine.infraData[`${f.pixel_x},${f.pixel_y}`].level = 1;
+  }
+
+  // Delete excess farms (random order, prefer non-upgraded)
+  const nonUpgraded = myFarms.filter(f => (f.level || 1) < 2).sort(() => Math.random() - 0.5);
+  const stillUpgraded = shuffledUpgraded.slice(0, upgradeCap);
+  const allFarmsOrdered = [...nonUpgraded, ...stillUpgraded];
+  const excessFarms = allFarmsOrdered.slice(farmCap);
+  for (const f of excessFarms) {
+    await sb.from('infrastructure').delete().eq('id', f.id);
+    delete engine.infraData[`${f.pixel_x},${f.pixel_y}`];
+    const key = `${f.pixel_x},${f.pixel_y}`;
+    if (engine.wallData?.[key]) { /* keep wall */ }
+  }
+
+  if (excessUpgrades.length > 0 || excessFarms.length > 0) {
+    showToast(`Farm caps applied: −${excessFarms.length} farm${excessFarms.length!==1?'s':''}, −${excessUpgrades.length} upgrade${excessUpgrades.length!==1?'s':''}`, 'error');
+    renderMap();
+    if (rightTab === 'country') renderRightPanel();
   }
 }
 
