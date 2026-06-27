@@ -537,7 +537,8 @@
       Your land produces <strong>0.5 food/hr per pixel</strong> and consumes <strong>0.2 food/hr per pixel</strong>.
       Your army eats <strong>0.1 food/hr per unit</strong> at peace — this rises sharply during war.
       Build farms to keep your food in surplus — capped at <strong>1 farm per 5 pixels</strong>. Farms produce <strong>5 food/hr</strong> each and can be <strong>upgraded for 250g</strong> to produce <strong>15 food/hr</strong> — upgrade cap: <strong>1 per 10 pixels</strong>.
-      If your stored food drops below <strong>50% of your population</strong>, your gold income is penalised by up to <strong>−80%</strong> — always stockpile food before going to war.
+      If your stored food drops below <strong>50% of your population</strong>, your gold income is penalised by up to <strong>−80%</strong> — always stockpile food before going to war.<br><br>
+      <strong>⚠️ War disrupts your farms:</strong> food <em>production</em> is reduced by your war aggression level — at aggression 1.0 you produce at ×0.5, at 2.0 (full war) only ×0.25. The more you fight, the less your farms produce.
     </p>
 
     <div class="section-label">⚓ Harbours &amp; Boats</div>
@@ -695,6 +696,10 @@ function calcFarmIncome(farmInfra, pixelCount, pixelData) {
     return sum + CONFIG.INFRA_COSTS.farm.incomeBonus * terrainMult * pixelCount;
   }, 0);
 }
+function warFoodMult(aggression) {
+  return Math.max(0.25, Math.pow(0.5, aggression || 0));
+}
+
 function calcBorderUpkeepRate(pixelCount) {
   if (pixelCount <= 15) return 2;
   if (pixelCount <= 40) return 5;
@@ -733,7 +738,8 @@ function calcFoodBalance(farmInfraOrCount, pixelCount, armySize, aggression = 0)
   const farmFood = Array.isArray(farmInfraOrCount)
     ? calcFarmFoodProduction(farmInfraOrCount)
     : farmInfraOrCount * CONFIG.FOOD_PRODUCTION_PER_FARM;
-  const production = pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmFood;
+  const rawProduction = pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmFood;
+  const production = rawProduction * warFoodMult(aggression);
   const armyRate = CONFIG.FOOD_CONSUMPTION_PER_ARMY + (aggression || 0);
   const consumption = pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + (armySize || 0) * armyRate;
   return production - consumption;
@@ -1848,7 +1854,7 @@ const TUT_SLIDES = [
     title: 'Keep Your People Fed',
     body: `Your army eats food. If food drops below <strong>50% of your population cap</strong>, gold income is penalised up to <strong>−80%</strong>.<br><br>
       Build <strong>Farms (100💰)</strong> to produce food — max <strong>1 farm per 5 pixels</strong>. Upgrade a farm for <strong>250💰</strong> to triple its output (max <strong>1 upgrade per 10 pixels</strong>).<br><br>
-      War raises food consumption — always <strong>stockpile food before attacking</strong>.`,
+      War raises food consumption AND cuts food production — at full war your farms produce at only ×0.25. Always <strong>stockpile food before attacking</strong>.`,
     tip: '💡 Watch the food bar in My Realm. Red = trouble.',
   },
   {
@@ -2605,7 +2611,7 @@ async function spectateCountry(id, fromClick = false) {
   const netIncomeSp = grossIncomeSp - pixelUpkeepSp - armyUpkeepSp - borderCostSp - harborUpkeepSp;
   const population = c.pixel_count * CONFIG.POPULATION_PER_PIXEL;
   const aggressionSp = Number.isFinite(c.food_aggression) ? c.food_aggression : 0;
-  const foodProdSp = (c.pixel_count * CONFIG.FOOD_PRODUCTION_PER_PIXEL + calcFarmFoodProduction(farmInfra)) * spSpeed;
+  const foodProdSp = (c.pixel_count * CONFIG.FOOD_PRODUCTION_PER_PIXEL + calcFarmFoodProduction(farmInfra)) * warFoodMult(aggressionSp) * spSpeed;
   const foodConsSp = (c.pixel_count * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + c.army_size * (CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggressionSp)) * spSpeed;
 
   body.innerHTML = `
@@ -2738,6 +2744,7 @@ async function renderMyCountry(body) {
   const tradingPostIncome = calcTradingPostIncome(tradingPostInfraArr, engine.pixelData, border.nations) * speed;
   const aggression = Number.isFinite(c.food_aggression) ? c.food_aggression : 0;
   const farmFoodProd = calcFarmFoodProduction(farmInfraArr);
+  const warFoodPenalty = warFoodMult(aggression);
   const foodBal = calcFoodBalance(farmInfraArr, pixelCount, armySize, aggression) * speed;
   const population = pixelCount * CONFIG.POPULATION_PER_PIXEL;
   const foodThreshold = population * 0.5;
@@ -2810,7 +2817,7 @@ async function renderMyCountry(body) {
     <div style="font-size:0.8rem;line-height:1.8;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between">
         <span style="color:var(--muted)">🌱 Production</span>
-        <span style="color:var(--green)">+${((pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmFoodProd) * speed).toFixed(1)}/hr</span>
+        <span style="color:${aggression > 0 ? 'var(--gold)' : 'var(--green)'}">+${((pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmFoodProd) * warFoodPenalty * speed).toFixed(1)}/hr${aggression > 0 ? ` (×${warFoodPenalty.toFixed(2)})` : ''}</span>
       </div>
       <div style="display:flex;justify-content:space-between">
         <span style="color:var(--muted)">🍖 Consumption</span>

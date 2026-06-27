@@ -1137,11 +1137,17 @@ function calcFarmFoodProduction(farmInfra) {
   return farmInfra.reduce((sum, f) => sum + (f.level >= 2 ? CONFIG.INFRA_COSTS.farm.upgradedFoodPerHour : CONFIG.FOOD_PRODUCTION_PER_FARM), 0);
 }
 
+// War production penalty: 0 aggression = ×1.0, 1.0 = ×0.5, 2.0+ = ×0.25
+function warFoodMult(aggression) {
+  return Math.max(0.25, Math.pow(0.5, aggression || 0));
+}
+
 function calcFoodBalance(farmInfraOrCount, pixelCount, armySize, aggression = 0) {
   const farmFood = Array.isArray(farmInfraOrCount)
     ? calcFarmFoodProduction(farmInfraOrCount)
     : farmInfraOrCount * CONFIG.FOOD_PRODUCTION_PER_FARM;
-  const production = pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmFood;
+  const rawProduction = pixelCount * CONFIG.FOOD_PRODUCTION_PER_PIXEL + farmFood;
+  const production = rawProduction * warFoodMult(aggression);
   const armyRate = CONFIG.FOOD_CONSUMPTION_PER_ARMY + (aggression || 0);
   const consumption = pixelCount * CONFIG.FOOD_CONSUMPTION_PER_PIXEL + (armySize || 0) * armyRate;
   return production - consumption;
