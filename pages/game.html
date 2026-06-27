@@ -2756,7 +2756,7 @@ async function renderMyCountry(body) {
   const population = pixelCount * CONFIG.POPULATION_PER_PIXEL;
   const foodThreshold = population * 0.5;
   const currentFood = Number.isFinite(c.food) ? c.food : 0;
-  const foodCap = pixelCount * CONFIG.POPULATION_PER_PIXEL + farms * 20;
+  const foodCap = pixelCount * CONFIG.FOOD_CAP_PER_PIXEL;
   const foodMult = (foodThreshold > 0 && currentFood < foodThreshold)
     ? Math.max(0.2, currentFood / foodThreshold)
     : 1;
