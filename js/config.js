@@ -50,7 +50,7 @@ const CONFIG = {
   },
   BOAT_MINUTES_PER_TILE: 4,
   TRADING_POST_TERRAIN_MULT: { desert: 1.5, hill: 1.1, grass: 0.9, mountain: 0.5, water: 0 },
-  TOKEN_BUY_COST: 1000,            // gold cost to buy 1 expansion token
+  TOKEN_BUY_COST: 2000,            // gold cost to buy 1 expansion token
   TERRAIN_DEFENSE: {
     grass: 1.0, hill: 1.3, mountain: 1.6, desert: 0.8, water: 0
   },
