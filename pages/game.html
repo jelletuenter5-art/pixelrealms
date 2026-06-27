@@ -439,142 +439,146 @@
       </div>
     </div>
 
-    <!-- FULL GUIDE (existing wall of text) -->
+    <!-- FULL GUIDE -->
     <div id="tutFullView" style="display:none;overflow-y:auto;padding:1.25rem 1.5rem 1.5rem;flex:1">
       <h3 style="font-family:'Cinzel',serif;margin-bottom:1rem">How to Play PixelRealms</h3>
 
     <div class="section-label" style="margin-top:0">🗺️ The Map</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      PixelRealms is a real-time multiplayer strategy game. Every player controls a nation on a shared pixel map.
-      Scroll to zoom, drag to pan. Tap the <strong>🗺️ terrain button</strong> (bottom-left) to reveal the landscape — grass, hills, mountains, desert, and water all affect income and combat.
+      PixelRealms is a real-time multiplayer strategy game — every player controls a nation on a shared pixel map.
+      Scroll to zoom, drag to pan. Tap <strong>🗺️ Terrain</strong> (bottom-left) to reveal the landscape: grass, hills, mountains, desert, and water all affect income and combat.
       Click any nation in the <strong>Nations</strong> tab to jump to it on the map.
     </p>
 
     <div class="section-label">🌱 Expanding Your Territory</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
       You earn <strong>1 expansion token per hour</strong> (max 24 stacked), shown as 🎯 in the top bar.
-      Switch to <strong>Expand</strong> mode and click any unclaimed tile directly adjacent to your territory to claim it for 1 token.
-      Water tiles cannot be claimed on foot — use a boat for that.
-      You can also <strong>buy tokens for 2,000 💰</strong> each when you need to expand faster.
+      Switch to <strong>Expand</strong> mode and click any unclaimed tile adjacent to your territory to claim it for 1 token. Water tiles require a boat.
+      You can also <strong>buy tokens for 2,000 💰</strong> each from the My Realm panel when you need to expand faster.
     </p>
 
     <div class="section-label">🏗️ Buildings</div>
-    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Switch to <strong>Build</strong> mode and click one of your tiles to open the building menu.
-      Clicking a tile that already has a building opens a <strong>manage dialog</strong> where you can upgrade (farms only), or sell the building for a 25% gold refund.
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6;margin-bottom:0.35rem">
+      Switch to <strong>Build</strong> mode and click any of your tiles to open the build menu. Clicking a tile with an existing building opens a <strong>manage dialog</strong> to upgrade (farms only) or sell for a 25% gold refund.
     </p>
-    <p style="font-size:0.85rem;color:var(--accent);line-height:1.6;margin-bottom:0.4rem">
-      ⚠️ <strong>Building cap: 1 building per 2 pixels.</strong> A 10-pixel nation can have at most 5 buildings. Expand to unlock more slots.
+    <p style="font-size:0.82rem;color:var(--accent);line-height:1.5;margin-bottom:0.5rem">
+      ⚠️ <strong>Building cap: 1 building per 2 pixels.</strong> Expand to unlock more slots.
     </p>
-    <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.25rem">
-      <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
-        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🌾 Farm <span style="color:var(--gold);font-weight:400">100g</span></div>
-        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+0.04 💰/px/hr income nation-wide · +5 food/hr · cap: 1 per 5 pixels</div>
-        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Terrain: grass 1.5× · hill 1.0× · mountain 0.5× · desert 0.3×</div>
-        <div style="font-size:0.72rem;color:#f59e0b;margin-top:0.25rem">⭐ Upgradeable for 250g → produces 15 food/hr · upgrade cap: 1 per 10 pixels. Upgraded farms show a gold ring on the map.</div>
+    <div style="display:flex;flex-direction:column;gap:0.45rem">
+      <div style="background:var(--panel2);border-radius:8px;padding:0.55rem 0.75rem">
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.15rem">🌾 Farm <span style="color:var(--gold);font-weight:400">100g</span></div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+0.04 💰/px/hr income nation-wide · +5 food/hr · <strong style="color:var(--text)">cap: 1 per 5 pixels</strong></div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.1rem">Terrain: grass 1.5× · hill 1.0× · mountain 0.5× · desert 0.3×</div>
+        <div style="font-size:0.72rem;color:#f59e0b;margin-top:0.2rem">⭐ Upgrade for <strong>250g</strong> → 15 food/hr · <strong>cap: 1 upgrade per 10 pixels</strong></div>
       </div>
-      <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
-        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">⛏️ Mine <span style="color:var(--gold);font-weight:400">120g</span></div>
-        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+12 💰/hr flat + 0.02 💰/px/hr hybrid income · each extra mine slightly reduces the flat rate</div>
-        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Terrain: mountain 1.8× · hill 1.3× · grass 0.9× · desert 0.5×</div>
+      <div style="background:var(--panel2);border-radius:8px;padding:0.55rem 0.75rem">
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.15rem">⛏️ Mine <span style="color:var(--gold);font-weight:400">120g</span></div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+12 💰/hr flat + 0.02 💰/px/hr hybrid income</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.1rem">Terrain: mountain 1.8× · hill 1.3× · grass 0.9× · desert 0.5×</div>
       </div>
-      <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
-        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🏛️ Trading Post <span style="color:var(--gold);font-weight:400">160g</span></div>
-        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+1 💰/hr flat + 5 💰/hr per unique neighbouring nation · rewards you for bordering many players</div>
-        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Terrain: desert 1.5× · hill 1.1× · grass 0.9× · mountain 0.5×</div>
+      <div style="background:var(--panel2);border-radius:8px;padding:0.55rem 0.75rem">
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.15rem">🏛️ Trading Post <span style="color:var(--gold);font-weight:400">160g</span></div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+1 💰/hr flat + 5 💰/hr per unique neighbouring nation</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.1rem">Terrain: desert 1.5× · hill 1.1× · grass 0.9× · mountain 0.5×</div>
       </div>
-      <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
-        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🏪 Market <span style="color:var(--gold);font-weight:400">350g</span></div>
-        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">−0.0075 💰/px/hr territory upkeep · +0.004 war aggression decay/hr per market (max 40)</div>
-        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">40 markets fully cancel territory upkeep · also speeds up recovery from war aggression</div>
+      <div style="background:var(--panel2);border-radius:8px;padding:0.55rem 0.75rem">
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.15rem">🏪 Market <span style="color:var(--gold);font-weight:400">350g</span></div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">−0.0075 💰/px/hr territory upkeep · +0.004 war aggression decay/hr (max 40 markets)</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.1rem">40 markets fully cancel territory upkeep and speed up war recovery</div>
       </div>
-      <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
-        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">⚔️ Barracks <span style="color:var(--gold);font-weight:400">150g</span></div>
-        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+20 army instantly · regenerates 0.5 army/hr per barracks (cap: 20 army per barracks)</div>
-        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Requires 100 population per barracks — roughly 1 per 7 pixels</div>
-        <div style="font-size:0.72rem;color:var(--gold);margin-top:0.15rem">Late game: buy 10 army for 50,000 💰 in My Realm (up to barracks cap)</div>
+      <div style="background:var(--panel2);border-radius:8px;padding:0.55rem 0.75rem">
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.15rem">⚔️ Barracks <span style="color:var(--gold);font-weight:400">150g</span></div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+20 army instantly · regenerates 0.5 army/hr per barracks · cap: 20 army per barracks</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.1rem">Requires 100 population per barracks (15 pop/pixel = ~7 pixels per barracks)</div>
+        <div style="font-size:0.72rem;color:var(--gold);margin-top:0.1rem">Late game: buy 10 army for 50,000 💰 in My Realm (up to barracks cap)</div>
       </div>
-      <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
-        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">🧱 Fortification <span style="color:var(--gold);font-weight:400">80g</span></div>
-        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+50% defense on that tile when attacked · shown as gold border lines on the map</div>
-        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Does not count toward building cap · lost if the tile is captured</div>
+      <div style="background:var(--panel2);border-radius:8px;padding:0.55rem 0.75rem">
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.15rem">🧱 Fortification <span style="color:var(--gold);font-weight:400">80g</span></div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+50% defense on that tile when attacked · shown as gold borders on the map</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.1rem">Does not count toward building cap · destroyed if the tile is captured</div>
       </div>
-      <div style="background:var(--panel2);border-radius:8px;padding:0.6rem 0.75rem">
-        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem">⚓ Harbour <span style="color:var(--gold);font-weight:400">180g</span></div>
-        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">Unlocks boats — must be built on a land tile that borders water · 10 💰/hr upkeep</div>
-        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem">Place on your coastline — each harbour costs upkeep whether or not a boat is active</div>
+      <div style="background:var(--panel2);border-radius:8px;padding:0.55rem 0.75rem">
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.15rem">⚓ Harbour <span style="color:var(--gold);font-weight:400">180g</span></div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">Unlocks boats · must be built on a land tile bordering water · 10 💰/hr upkeep</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.1rem">Upkeep applies even when no boat is active — build on the coastline you actually use</div>
       </div>
     </div>
 
     <div class="section-label">💰 Economy</div>
-    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Each pixel earns <strong>2.5 💰/hr</strong> base income. Buildings add on top of this.
-      Territory upkeep scales with your size — small nations pay far less:
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6;margin-bottom:0.35rem">
+      Each pixel earns <strong>2.5 💰/hr</strong> base income. Buildings stack on top. Territory upkeep and border upkeep are deducted automatically.
     </p>
-    <div style="background:var(--panel2);border-radius:8px;padding:0.5rem 0.75rem;margin-bottom:0.5rem;font-size:0.78rem;line-height:1.8;color:var(--muted)">
-      <div>≤15 pixels → <strong style="color:var(--text)">0.05 💰/px/hr upkeep</strong></div>
-      <div>16–40 pixels → <strong style="color:var(--text)">0.15 💰/px/hr upkeep</strong></div>
-      <div>41–80 pixels → <strong style="color:var(--text)">0.22 💰/px/hr upkeep</strong></div>
-      <div>81+ pixels → <strong style="color:var(--text)">0.30 💰/px/hr upkeep</strong></div>
+    <div style="display:flex;gap:0.4rem;margin-bottom:0.5rem">
+      <div style="flex:1;background:var(--panel2);border-radius:8px;padding:0.5rem 0.65rem;font-size:0.75rem;line-height:1.8;color:var(--muted)">
+        <div style="font-weight:700;color:var(--text);margin-bottom:0.1rem">Territory upkeep</div>
+        <div>≤15 px → <strong style="color:var(--text)">0.05/px/hr</strong></div>
+        <div>16–40 px → <strong style="color:var(--text)">0.15/px/hr</strong></div>
+        <div>41–80 px → <strong style="color:var(--text)">0.22/px/hr</strong></div>
+        <div>81+ px → <strong style="color:var(--text)">0.30/px/hr</strong></div>
+      </div>
+      <div style="flex:1;background:var(--panel2);border-radius:8px;padding:0.5rem 0.65rem;font-size:0.75rem;line-height:1.8;color:var(--muted)">
+        <div style="font-weight:700;color:var(--text);margin-bottom:0.1rem">Border upkeep /pixel</div>
+        <div>≤15 px → <strong style="color:var(--text)">2 💰/hr</strong></div>
+        <div>16–40 px → <strong style="color:var(--text)">5 💰/hr</strong></div>
+        <div>41–80 px → <strong style="color:var(--text)">12 💰/hr</strong></div>
+        <div>81+ px → <strong style="color:var(--text)">18 💰/hr</strong></div>
+      </div>
     </div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Border upkeep also scales — tiles of yours touching an enemy add upkeep per border pixel:
-    </p>
-    <div style="background:var(--panel2);border-radius:8px;padding:0.5rem 0.75rem;margin-bottom:0.5rem;font-size:0.78rem;line-height:1.8;color:var(--muted)">
-      <div>≤15 pixels → <strong style="color:var(--text)">2 💰/hr per border pixel</strong></div>
-      <div>16–40 pixels → <strong style="color:var(--text)">5 💰/hr per border pixel</strong></div>
-      <div>41–80 pixels → <strong style="color:var(--text)">12 💰/hr per border pixel</strong></div>
-      <div>81+ pixels → <strong style="color:var(--text)">18 💰/hr per border pixel</strong></div>
-    </div>
-    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Other costs: <strong>0.5 💰/hr per army unit</strong>.
-      Markets reduce territory upkeep further. Check <strong>My Realm → Balance</strong> to see your live net gold/hr. Gold never drops below 0.
+      Army upkeep: <strong>0.5 💰/hr per unit</strong>. Markets reduce territory upkeep (max 40 for full cancellation). Check <strong>My Realm → Balance</strong> for your live net gold/hr. Gold never drops below 0.
     </p>
 
     <div class="section-label">👥 Population &amp; 🌽 Food</div>
-    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Each pixel gives <strong>15 population</strong>, which unlocks barracks (100 pop each).
-      Your land produces <strong>0.5 food/hr per pixel</strong> and consumes <strong>0.2 food/hr per pixel</strong>.
-      Your army eats <strong>0.1 food/hr per unit</strong> at peace — this rises sharply during war.
-      Build farms to keep your food in surplus — capped at <strong>1 farm per 5 pixels</strong>. Farms produce <strong>5 food/hr</strong> each and can be <strong>upgraded for 250g</strong> to produce <strong>15 food/hr</strong> — upgrade cap: <strong>1 per 10 pixels</strong>.
-      If your stored food drops below <strong>50% of your population</strong>, your gold income is penalised by up to <strong>−80%</strong> — always stockpile food before going to war.<br><br>
-      <strong>⚠️ War food double-penalty:</strong> every attack raises your <em>war aggression</em> by 0.05. This hits your food in two ways simultaneously:<br>
-      &nbsp;&nbsp;① <strong>Higher consumption</strong> — your army eats +0.05 food/hr per unit per aggression point.<br>
-      &nbsp;&nbsp;② <strong>Lower production</strong> — farm output is multiplied by <code>0.5^aggression</code>, capped at ×0.25.<br>
-      At aggression 1.0: production ×0.5 · army rate +1.0/unit/hr. At aggression 2.0+: production ×0.25 · army rate +2.0/unit/hr.<br>
-      The attack preview shows your <strong>current balance</strong> and your <strong>after-attack balance</strong> side by side — the difference is caused by this combined penalty.
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6;margin-bottom:0.35rem">
+      Each pixel gives <strong>15 population</strong>, unlocking barracks (100 pop each). Food is tracked separately from gold:
     </p>
+    <div style="background:var(--panel2);border-radius:8px;padding:0.5rem 0.75rem;margin-bottom:0.5rem;font-size:0.78rem;line-height:1.8;color:var(--muted)">
+      <div>🌱 Production: <strong style="color:var(--text)">0.5 food/hr per pixel</strong> + 5/hr per farm (15/hr upgraded) · <em>reduced by war</em></div>
+      <div>🍖 Consumption: <strong style="color:var(--text)">0.2 food/hr per pixel</strong> + 0.1/hr per army unit at peace · <em>rises with war aggression</em></div>
+      <div>📦 Storage cap: <strong style="color:var(--text)">10 food per pixel</strong> (300 pixels = 3,000 food max)</div>
+    </div>
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6;margin-bottom:0.35rem">
+      Farm caps: <strong>1 farm per 5 pixels</strong> · <strong>1 upgraded farm per 10 pixels</strong>.
+      If stored food drops below <strong>50% of population</strong>, gold income is penalised up to <strong>−80%</strong>.
+    </p>
+    <div style="background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:0.5rem 0.75rem;font-size:0.78rem;line-height:1.8;color:var(--text)">
+      <div style="font-weight:700;margin-bottom:0.1rem">⚔️ War food double-penalty</div>
+      <div>Every attack raises <em>war aggression</em> by <strong>+0.05</strong> (max 2.0). Two effects stack simultaneously:</div>
+      <div>① <strong>More consumption</strong> — army eats +0.05 extra food/hr per unit per aggression point</div>
+      <div>② <strong>Less production</strong> — all farm output × 0.5<sup>aggression</sup>, floored at ×0.25</div>
+      <div style="color:var(--muted);font-size:0.72rem;margin-top:0.1rem">Aggression 1.0 → production ×0.5 · Aggression 2.0+ → production ×0.25</div>
+      <div style="color:var(--muted);font-size:0.72rem">The attack preview shows separate food balances for WIN and LOSE outcomes.</div>
+    </div>
 
     <div class="section-label">⚓ Harbours &amp; Boats</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Build a <strong>Harbour (⚓ 180g)</strong> on any land tile bordering water. Then switch to <strong>Boat</strong> mode and click any reachable land tile across water — the game auto-detects whether to expand or attack.
-      The boat departs from your nearest harbour and travels at <strong>4 minutes per tile</strong>.
+      Build a <strong>Harbour (180g)</strong> on any land tile bordering water. Switch to <strong>Boat</strong> mode and click any reachable land tile — the game auto-detects expand vs. attack.
+      Boats depart from your nearest harbour at <strong>4 minutes per tile</strong>.
     </p>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      <strong>Expand by boat:</strong> costs 1 expansion token. If the tile is taken before arrival, your token is refunded.<br>
+      <strong>Expand by boat:</strong> costs 1 expansion token — refunded if the tile is claimed before arrival.<br>
       <strong>Attack by boat:</strong> combat resolves on arrival using current army sizes.<br>
-      All boats are visible to everyone. You can cancel your own boat at any time from the bottom panel.
+      All boats are visible to everyone. Cancel your own boat at any time from the bottom panel.
     </p>
 
     <div class="section-label">⚔️ Attack &amp; War</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Switch to <strong>Attack</strong> mode and click an enemy tile bordering your territory. Your army vs. their army — modified by terrain (hills and mountains defend better) — decides the outcome. Both sides lose troops win or lose. Capture all of an enemy's pixels to eliminate them.
-      If a captured tile has a building, there's a <strong>50% chance</strong> it transfers to you and a 50% chance it's destroyed.
+      Switch to <strong>Attack</strong> mode and click an enemy tile bordering your territory. Combat is army vs. army, modified by terrain — hills and mountains boost defense, walls add +50% on that tile. Both sides lose troops regardless of outcome. Capture all of an enemy's pixels to eliminate them.
     </p>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Each attack raises your <strong>war aggression</strong> by 0.05, which both increases your army's food consumption <em>and</em> reduces your farm production. The attack preview always shows your current food balance <em>and</em> what it will be after the attack — check the difference before committing. Aggression decays over time (faster with markets). Sustained wars without food stockpiles will cripple your economy.
-    </p>
-
-    <div class="section-label">💬 Chat</div>
-    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Open the <strong>Chat</strong> tab to talk with other players in real time. Messages show your nation name and colour. If a message breaks the rules, tap 🚩 to report it to the admin.
+      Every attack raises your <strong>war aggression</strong> (+0.05), increasing army food consumption and cutting farm production. The <strong>attack preview</strong> shows separate food balances for if you win and if you lose — check before committing. Aggression decays over time (boosted by markets). Captured buildings have a 50% chance to transfer to you.
     </p>
 
     <div class="section-label">🤝 Diplomacy</div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
       Open the <strong>Diplomacy</strong> tab to send gold to another nation or propose a <strong>ceasefire</strong>.
-      Set the duration (in hours) and an optional gold offer — the other nation must accept before it takes effect.
-      While a ceasefire is active, neither side can attack the other. Ceasefires appear in the Events tab when agreed.
+      Set a duration (hours) and an optional gold offer — the other nation must accept. While active, neither side can attack the other.
+      Your active ceasefires are always shown in the Diplomacy tab with their expiry time.
+    </p>
+
+    <div class="section-label">💬 Chat</div>
+    <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
+      Open the <strong>Chat</strong> tab to talk with other players in real time. Messages show your nation name and colour. Tap 🚩 to report rule-breaking messages to the admin.
     </p>
 
       <button class="btn btn-primary btn-full" onclick="closeTutorial()">Got it!</button>
@@ -1819,55 +1823,69 @@ const TUT_SLIDES = [
     icon: '🌍',
     title: 'Welcome to PixelRealms',
     sub: 'Conquer the world, one pixel at a time.',
-    body: `You control a nation on a shared real-time map. Expand your territory, build your economy, and outmaneuver rivals.<br><br>
+    body: `You control a nation on a shared real-time pixel map. Expand your territory, build your economy, and outmaneuver rivals to become the last nation standing.<br><br>
       <div style="text-align:center;font-size:2rem;letter-spacing:0.5rem;margin:0.75rem 0">🗺️ ⚔️ 🏗️ 💰</div>
-      This quick guide walks you through the essentials.`,
+      This quick guide covers the essentials. You can reopen it anytime with <strong>❓</strong> in the top bar.`,
   },
   {
     icon: '🌱',
     title: 'Expand Your Territory',
     body: `You earn <strong>1 expansion token per hour</strong> (max 24 stacked), shown as <strong>🎯</strong> in the top bar.<br><br>
-      Select <strong>🌱 Expand</strong> mode (top of the map) and click any <strong>unclaimed tile touching your borders</strong> to claim it for 1 token.<br><br>
-      You can also <strong>buy tokens for 2,000 💰</strong> each when you need to expand fast.`,
+      Select <strong>🌱 Expand</strong> mode and click any <strong>unclaimed tile touching your borders</strong> to claim it for 1 token. Water tiles require a harbour and boat.<br><br>
+      Need to grow faster? <strong>Buy tokens for 2,000 💰</strong> each from the My Realm panel.`,
     tip: '💡 Head toward hills and mountains — they boost mine income significantly.',
   },
   {
     icon: '💰',
     title: 'Gold & Income',
-    body: `Each pixel earns <strong>2.5 💰/hr</strong> base. Bigger empires pay more territory upkeep:<br><br>
-      <div style="background:var(--panel2);border-radius:7px;padding:0.5rem 0.75rem;font-size:0.78rem;line-height:1.9;color:var(--muted)">
-        ≤15 px → <strong style="color:var(--text)">0.05/px/hr upkeep</strong><br>
-        16–40 px → <strong style="color:var(--text)">0.15/px/hr upkeep</strong><br>
-        41–80 px → <strong style="color:var(--text)">0.22/px/hr upkeep</strong><br>
-        81+ px → <strong style="color:var(--text)">0.30/px/hr upkeep</strong>
+    body: `Each pixel earns <strong>2.5 💰/hr</strong> base income. Bigger empires pay more upkeep:<br><br>
+      <div style="display:flex;gap:0.4rem">
+        <div style="flex:1;background:var(--panel2);border-radius:7px;padding:0.45rem 0.6rem;font-size:0.74rem;line-height:1.8;color:var(--muted)">
+          <div style="font-weight:700;color:var(--text);margin-bottom:0.05rem">Territory</div>
+          ≤15 px → <strong style="color:var(--text)">0.05/px/hr</strong><br>
+          16–40 px → <strong style="color:var(--text)">0.15/px/hr</strong><br>
+          41–80 px → <strong style="color:var(--text)">0.22/px/hr</strong><br>
+          81+ px → <strong style="color:var(--text)">0.30/px/hr</strong>
+        </div>
+        <div style="flex:1;background:var(--panel2);border-radius:7px;padding:0.45rem 0.6rem;font-size:0.74rem;line-height:1.8;color:var(--muted)">
+          <div style="font-weight:700;color:var(--text);margin-bottom:0.05rem">Border /pixel</div>
+          ≤15 px → <strong style="color:var(--text)">2 💰/hr</strong><br>
+          16–40 px → <strong style="color:var(--text)">5 💰/hr</strong><br>
+          41–80 px → <strong style="color:var(--text)">12 💰/hr</strong><br>
+          81+ px → <strong style="color:var(--text)">18 💰/hr</strong>
+        </div>
       </div><br>
-      Check <strong>My Realm → Balance</strong> for your live net income.`,
+      Army costs <strong>0.5 💰/hr per unit</strong>. Check <strong>My Realm → Balance</strong> for your live net income.`,
     tip: '💡 Build Farms and Mines early — they pay for themselves quickly.',
   },
   {
     icon: '⚔️',
     title: 'Build an Army & Fight',
-    body: `Build a <strong>Barracks (150💰)</strong> to grow your army — it gives +20 army instantly and regenerates 0.5/hr up to a cap.<br><br>
-      Switch to <strong>⚔️ Attack</strong> mode and click an enemy tile <strong>bordering your territory</strong>. An <strong>Attack Preview</strong> shows estimated casualties before you commit.<br><br>
-      Both sides lose troops — terrain matters (hills & mountains defend better).<br><br>
-      Late game: you can <strong>buy 10 army for 50,000 💰</strong> in My Realm (up to your barracks cap).`,
+    body: `Build a <strong>Barracks (150💰)</strong> to grow your army — +20 instantly, then regenerates 0.5/hr per barracks up to its cap.<br><br>
+      Switch to <strong>⚔️ Attack</strong> mode and click an enemy tile <strong>bordering your territory</strong>. The <strong>attack preview</strong> shows outcome odds, estimated casualties, and your food balance for both win and loss before you commit.<br><br>
+      Terrain matters: hills and mountains boost defense. Fortifications add +50% on that tile. Both sides always lose some troops.<br><br>
+      Late game: <strong>buy 10 army for 50,000 💰</strong> in My Realm (up to barracks cap).`,
     tip: '💡 Never attack blind — always read the preview first.',
   },
   {
     icon: '🌾',
     title: 'Keep Your People Fed',
-    body: `Your army eats food. If food drops below <strong>50% of your population cap</strong>, gold income is penalised up to <strong>−80%</strong>.<br><br>
-      Build <strong>Farms (100💰)</strong> to produce food — max <strong>1 farm per 5 pixels</strong>. Upgrade a farm for <strong>250💰</strong> to triple its output (max <strong>1 upgrade per 10 pixels</strong>).<br><br>
-      ⚠️ <strong>War hits food twice:</strong> each attack raises your <em>war aggression</em> by 0.05.<br>
-      — Army eats <strong>+0.05 more food/hr per unit</strong> per aggression point.<br>
-      — Farm production is multiplied by <code>0.5^aggression</code> — at aggression 1.0 you get ×0.5, at 2.0+ you get only ×0.25.<br>
-      The <strong>attack preview</strong> shows your current balance <em>and</em> your after-attack balance so you can see the exact cost before you commit.`,
-    tip: '💡 Watch the food bar in My Realm. Red = trouble.',
+    body: `Food is critical. If stored food drops below <strong>50% of your population</strong>, gold income is penalised up to <strong>−80%</strong>.<br><br>
+      Build <strong>Farms (100💰)</strong> — cap: <strong>1 per 5 pixels</strong>. Each produces <strong>5 food/hr</strong>.
+      Upgrade for <strong>250💰</strong> → <strong>15 food/hr</strong> — upgrade cap: <strong>1 per 10 pixels</strong>.
+      Storage cap: <strong>10 food per pixel</strong>.<br><br>
+      <div style="background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);border-radius:7px;padding:0.4rem 0.6rem;font-size:0.78rem;line-height:1.7">
+        <strong>⚔️ War hits food twice:</strong> every attack raises aggression +0.05 (max 2.0).<br>
+        ① Army eats more: +0.05 food/hr per unit per aggression point<br>
+        ② Farms produce less: output × 0.5<sup>aggression</sup>, min ×0.25<br>
+        <span style="color:var(--muted);font-size:0.72rem">The attack preview shows WIN and LOSE food balances so you can plan ahead.</span>
+      </div>`,
+    tip: '💡 Watch the food bar in My Realm — red means your income is being penalised.',
   },
   {
     icon: '🤝',
     title: 'Diplomacy & Winning',
-    body: `Use the <strong>Diplomacy tab</strong> (left panel) to send gold to allies or propose a <strong>Ceasefire</strong> — preventing attacks for an agreed duration.<br><br>
+    body: `Use the <strong>Diplomacy</strong> tab to send gold to allies or propose a <strong>Ceasefire</strong> — setting a duration and optional gold offer. While active, neither side can attack the other. Your active ceasefires are always shown with their expiry time.<br><br>
       Eliminate all enemies by capturing their last pixel. The <strong>last nation standing wins</strong>.<br><br>
       The <strong>❓ button</strong> in the top bar reopens this guide anytime. Good luck, Commander!`,
     finish: true,
