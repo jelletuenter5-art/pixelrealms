@@ -592,6 +592,9 @@
 <style>
   .mission-row { font-size:0.73rem;color:var(--muted);padding:0.12rem 0;line-height:1.35; }
   .mission-row.done { color:var(--green);text-decoration:line-through; }
+  @media (min-width: 768px) {
+    #missionsWidget { right: 290px !important; }
+  }
 </style>
 
 <!-- Attack preview modal -->
@@ -1934,6 +1937,30 @@ function updateMissions() {
   }
 }
 
+async function buyArmy() {
+  const c = engine?.country;
+  if (!c) return;
+  const myInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === c.id);
+  const barracks = myInfra.filter(i => i.type === 'barracks').length;
+  const armyCap = barracks * CONFIG.INFRA_COSTS.barracks.armyBonus;
+  const buyAmt = 10;
+  const buyCost = buyAmt * 5000;
+  if (barracks === 0) { showToast('Build Barracks first.', 'error'); return; }
+  if (c.army_size >= armyCap) { showToast('Army already at cap.', 'error'); return; }
+  if (c.gold < buyCost) { showToast(`Need 💰${buyCost.toLocaleString()} gold.`, 'error'); return; }
+  const actualBuy = Math.min(buyAmt, armyCap - c.army_size);
+  const actualCost = actualBuy * 5000;
+  const newArmy = c.army_size + actualBuy;
+  const newGold = c.gold - actualCost;
+  const { error } = await sb.from('countries').update({ army_size: newArmy, gold: newGold }).eq('id', c.id);
+  if (error) { showToast('Purchase failed.', 'error'); return; }
+  c.army_size = newArmy;
+  c.gold = newGold;
+  showToast(`+${actualBuy} army for 💰${actualCost.toLocaleString()}`, 'ok');
+  updateTopBar();
+  if (rightTab === 'country') renderRightPanel();
+}
+
 function dismissMissions() {
   localStorage.setItem('pr_missions_dismissed', '1');
   document.getElementById('missionsWidget').style.display = 'none';
@@ -2833,6 +2860,13 @@ async function renderMyCountry(body) {
       const barracksBuilt = myInfra.filter(i => i.type === 'barracks').length;
       const armyCap = barracksBuilt * CONFIG.INFRA_COSTS.barracks.armyBonus;
       const regenRate = barracksBuilt * CONFIG.BARRACKS_REGEN_PER_HOUR * speed;
+      const canBuy = barracksBuilt > 0 && armySize < armyCap;
+      const buyAmt = 10;
+      const buyCost = buyAmt * 5000;
+      const canAfford = gold >= buyCost;
+      const buyLabel = canBuy
+        ? `Buy ${buyAmt} Army — 💰${buyCost.toLocaleString()}`
+        : barracksBuilt === 0 ? 'Build Barracks to unlock army purchasing' : 'Army at full strength';
       return barracksBuilt > 0 ? `<div class="section-label">⚔️ Army Regeneration</div>
     <div style="font-size:0.8rem;line-height:1.9;margin-bottom:0.75rem">
       <div style="display:flex;justify-content:space-between">
@@ -2840,6 +2874,7 @@ async function renderMyCountry(body) {
         <span style="font-weight:600;${armySize > armyCap ? 'color:var(--red)' : ''}">${displayArmy} / ${armyCap}</span>
       </div>
       ${armySize > armyCap ? `<div style="font-size:0.7rem;color:var(--red)">Army exceeds cap — will reduce to ${armyCap} over time</div>` : armySize < armyCap ? `<div style="font-size:0.7rem;color:var(--green)">+${regenRate.toFixed(2)}/hr regenerating back to ${armyCap}</div>` : `<div style="font-size:0.7rem;color:var(--muted)">At full strength</div>`}
+      <button onclick="buyArmy()" ${!canBuy || !canAfford ? 'disabled' : ''} style="margin-top:0.4rem;width:100%;padding:0.4rem;border-radius:7px;border:1px solid ${canBuy && canAfford ? 'var(--red)' : 'var(--border)'};background:${canBuy && canAfford ? 'rgba(239,68,68,0.1)' : 'transparent'};color:${canBuy && canAfford ? 'var(--red)' : 'var(--muted)'};cursor:${canBuy && canAfford ? 'pointer' : 'not-allowed'};font-size:0.75rem;font-weight:600">${buyLabel}</button>
     </div>` : '';
     })()}
 
