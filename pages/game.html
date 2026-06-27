@@ -538,7 +538,11 @@
       Your army eats <strong>0.1 food/hr per unit</strong> at peace — this rises sharply during war.
       Build farms to keep your food in surplus — capped at <strong>1 farm per 5 pixels</strong>. Farms produce <strong>5 food/hr</strong> each and can be <strong>upgraded for 250g</strong> to produce <strong>15 food/hr</strong> — upgrade cap: <strong>1 per 10 pixels</strong>.
       If your stored food drops below <strong>50% of your population</strong>, your gold income is penalised by up to <strong>−80%</strong> — always stockpile food before going to war.<br><br>
-      <strong>⚠️ War disrupts your farms:</strong> food <em>production</em> is reduced by your war aggression level — at aggression 1.0 you produce at ×0.5, at 2.0 (full war) only ×0.25. The more you fight, the less your farms produce.
+      <strong>⚠️ War food double-penalty:</strong> every attack raises your <em>war aggression</em> by 0.05. This hits your food in two ways simultaneously:<br>
+      &nbsp;&nbsp;① <strong>Higher consumption</strong> — your army eats +0.05 food/hr per unit per aggression point.<br>
+      &nbsp;&nbsp;② <strong>Lower production</strong> — farm output is multiplied by <code>0.5^aggression</code>, capped at ×0.25.<br>
+      At aggression 1.0: production ×0.5 · army rate +1.0/unit/hr. At aggression 2.0+: production ×0.25 · army rate +2.0/unit/hr.<br>
+      The attack preview shows your <strong>current balance</strong> and your <strong>after-attack balance</strong> side by side — the difference is caused by this combined penalty.
     </p>
 
     <div class="section-label">⚓ Harbours &amp; Boats</div>
@@ -558,7 +562,7 @@
       If a captured tile has a building, there's a <strong>50% chance</strong> it transfers to you and a 50% chance it's destroyed.
     </p>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Each attack raises your <strong>war aggression</strong>, which increases your army's food consumption. Aggression decays over time (faster with markets). Sustained wars without enough food will cripple your economy — plan ahead.
+      Each attack raises your <strong>war aggression</strong> by 0.05, which both increases your army's food consumption <em>and</em> reduces your farm production. The attack preview always shows your current food balance <em>and</em> what it will be after the attack — check the difference before committing. Aggression decays over time (faster with markets). Sustained wars without food stockpiles will cripple your economy.
     </p>
 
     <div class="section-label">💬 Chat</div>
@@ -1854,7 +1858,10 @@ const TUT_SLIDES = [
     title: 'Keep Your People Fed',
     body: `Your army eats food. If food drops below <strong>50% of your population cap</strong>, gold income is penalised up to <strong>−80%</strong>.<br><br>
       Build <strong>Farms (100💰)</strong> to produce food — max <strong>1 farm per 5 pixels</strong>. Upgrade a farm for <strong>250💰</strong> to triple its output (max <strong>1 upgrade per 10 pixels</strong>).<br><br>
-      War raises food consumption AND cuts food production — at full war your farms produce at only ×0.25. Always <strong>stockpile food before attacking</strong>.`,
+      ⚠️ <strong>War hits food twice:</strong> each attack raises your <em>war aggression</em> by 0.05.<br>
+      — Army eats <strong>+0.05 more food/hr per unit</strong> per aggression point.<br>
+      — Farm production is multiplied by <code>0.5^aggression</code> — at aggression 1.0 you get ×0.5, at 2.0+ you get only ×0.25.<br>
+      The <strong>attack preview</strong> shows your current balance <em>and</em> your after-attack balance so you can see the exact cost before you commit.`,
     tip: '💡 Watch the food bar in My Realm. Red = trouble.',
   },
   {
@@ -3610,7 +3617,18 @@ function showAttackPreview(tx, ty) {
   const curArmyRate = (CONFIG.FOOD_CONSUMPTION_PER_ARMY + curAggression).toFixed(2);
   const newArmyRate = (CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggressionAfter).toFixed(2);
   const speed = engine.speed || 1;
+  const foodBalNow  = calcFoodBalance(myInfraFarms, myPixels, myArmySize, curAggression)  * speed;
   const foodBalAfter = calcFoodBalance(myInfraFarms, myPixels, myArmySize, aggressionAfter) * speed;
+  const foodBalDelta = foodBalAfter - foodBalNow;
+  const multNow  = warFoodMult(curAggression);
+  const multAfter = warFoodMult(aggressionAfter);
+  const rawFoodProd = (myPixels * CONFIG.FOOD_PRODUCTION_PER_PIXEL + (myInfraFarms.reduce((s, f) => {
+    const base = (f.level || 1) >= 2 ? CONFIG.INFRA_COSTS.farm.upgradedFoodPerHour : CONFIG.FOOD_PRODUCTION_PER_FARM;
+    return s + base;
+  }, 0))) * speed;
+  const prodNow   = rawFoodProd * multNow;
+  const prodAfter = rawFoodProd * multAfter;
+  const multChanged = Math.abs(multAfter - multNow) > 0.001;
 
   document.getElementById('attackPreviewBody').innerHTML = `
     <div>Target: <strong style="color:${defender.color}">${defender.flag_emoji || ''} ${defender.name}</strong></div>
@@ -3625,9 +3643,17 @@ function showAttackPreview(tx, ty) {
     </div>
     <div style="margin-top:0.6rem;padding:0.4rem 0.6rem;background:rgba(239,68,68,0.08);border-radius:6px;border:1px solid rgba(239,68,68,0.2);font-size:0.75rem;line-height:1.8">
       <div style="font-weight:600;color:var(--text);margin-bottom:0.2rem">🍞 Food impact (win or lose)</div>
-      <div>Army rate: ${curArmyRate} → <span style="color:var(--red)">${newArmyRate}/unit</span> (+${CONFIG.FOOD_AGGRESSION_PER_ATTACK.toFixed(2)})</div>
-      <div>New food balance: <span style="color:${foodBalAfter >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBalAfter >= 0 ? '+' : ''}${foodBalAfter.toFixed(1)}/hr</span></div>
-      <div style="color:var(--muted);font-size:0.7rem">Decays −${(CONFIG.FOOD_AGGRESSION_DECAY + myMarkets * CONFIG.MARKET_DECAY_BONUS).toFixed(3)}/hr${myMarkets > 0 ? ` (base 0.06 + ${myMarkets} mkt)` : ''}</div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🌱 Food production</span><span>${multChanged ? `${prodNow.toFixed(1)} → <span style="color:var(--red)">${prodAfter.toFixed(1)}/hr</span> (×${multAfter.toFixed(2)})` : `${prodNow.toFixed(1)}/hr (×${multNow.toFixed(2)})`}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚔️ Army food rate</span><span>${curArmyRate} → <span style="color:var(--red)">${newArmyRate}/unit/hr</span></span></div>
+      <div style="display:flex;justify-content:space-between;border-top:1px solid rgba(239,68,68,0.2);margin-top:0.2rem;padding-top:0.2rem">
+        <span>Current balance</span>
+        <span style="color:${foodBalNow >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBalNow >= 0 ? '+' : ''}${foodBalNow.toFixed(1)}/hr</span>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-weight:600">After this attack</span>
+        <span style="font-weight:700;color:${foodBalAfter >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBalAfter >= 0 ? '+' : ''}${foodBalAfter.toFixed(1)}/hr <span style="font-weight:400;color:var(--muted)">(${foodBalDelta >= 0 ? '+' : ''}${foodBalDelta.toFixed(1)})</span></span>
+      </div>
+      <div style="color:var(--muted);font-size:0.7rem;margin-top:0.1rem">Aggression decays −${(CONFIG.FOOD_AGGRESSION_DECAY + myMarkets * CONFIG.MARKET_DECAY_BONUS).toFixed(3)}/hr${myMarkets > 0 ? ` (base 0.06 + ${myMarkets} mkt)` : ''}</div>
     </div>
   `;
 
@@ -3670,6 +3696,20 @@ function showBoatAttackPreview(tx, ty) {
   }
   const etaStr = minEta !== null ? `~${minEta * CONFIG.BOAT_MINUTES_PER_TILE} min` : 'unknown';
 
+  const boatMyInfra = Object.values(engine.infraData || {}).filter(i => i.country_id === engine.country?.id);
+  const boatFarms = boatMyInfra.filter(i => i.type === 'farm');
+  const boatMarkets = boatMyInfra.filter(i => i.type === 'market').length;
+  const boatSpeed = engine.speed || 1;
+  const boatPixels = engine.country?.pixel_count || 0;
+  const boatArmySize = engine.country?.army_size || 0;
+  const boatAgg = Number.isFinite(engine.country?.food_aggression) ? engine.country.food_aggression : 0;
+  const boatAggAfter = boatAgg + CONFIG.FOOD_AGGRESSION_PER_ATTACK;
+  const boatBalNow = calcFoodBalance(boatFarms, boatPixels, boatArmySize, boatAgg) * boatSpeed;
+  const boatBalAfter = calcFoodBalance(boatFarms, boatPixels, boatArmySize, boatAggAfter) * boatSpeed;
+  const boatBalDelta = boatBalAfter - boatBalNow;
+  const boatMultNow = warFoodMult(boatAgg);
+  const boatMultAfter = warFoodMult(boatAggAfter);
+
   document.getElementById('attackPreviewBody').innerHTML = `
     <div style="font-size:0.78rem;color:var(--blue);margin-bottom:0.5rem">⛵ Boat Attack — resolves on arrival</div>
     <div>Target: <strong style="color:${defender.color}">${defender.flag_emoji || ''} ${defender.name}</strong></div>
@@ -3682,6 +3722,20 @@ function showBoatAttackPreview(tx, ty) {
       If you <strong style="color:var(--red)">lose</strong>: you lose ~${Math.ceil(myArmy * 0.225)} troops · they lose ~${Math.ceil(myArmy * 0.06)} troops
     </div>
     <div style="margin-top:0.5rem;font-size:0.78rem;color:var(--muted)">⏱️ ETA: <strong style="color:var(--blue)">${etaStr}</strong> · Stats resolve on arrival</div>
+    <div style="margin-top:0.5rem;padding:0.4rem 0.6rem;background:rgba(239,68,68,0.08);border-radius:6px;border:1px solid rgba(239,68,68,0.2);font-size:0.75rem;line-height:1.8">
+      <div style="font-weight:600;color:var(--text);margin-bottom:0.2rem">🍞 Food impact (win or lose)</div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚔️ Army food rate</span><span>${(CONFIG.FOOD_CONSUMPTION_PER_ARMY + boatAgg).toFixed(2)} → <span style="color:var(--red)">${(CONFIG.FOOD_CONSUMPTION_PER_ARMY + boatAggAfter).toFixed(2)}/unit/hr</span></span></div>
+      ${Math.abs(boatMultAfter - boatMultNow) > 0.001 ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">🌱 Production mult</span><span>×${boatMultNow.toFixed(2)} → <span style="color:var(--red)">×${boatMultAfter.toFixed(2)}</span></span></div>` : `<div style="color:var(--muted)">🌱 Production mult: ×${boatMultNow.toFixed(2)} (unchanged)</div>`}
+      <div style="display:flex;justify-content:space-between;border-top:1px solid rgba(239,68,68,0.2);margin-top:0.2rem;padding-top:0.2rem">
+        <span>Current balance</span>
+        <span style="color:${boatBalNow >= 0 ? 'var(--green)' : 'var(--red)'}">${boatBalNow >= 0 ? '+' : ''}${boatBalNow.toFixed(1)}/hr</span>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-weight:600">After this attack</span>
+        <span style="font-weight:700;color:${boatBalAfter >= 0 ? 'var(--green)' : 'var(--red)'}">${boatBalAfter >= 0 ? '+' : ''}${boatBalAfter.toFixed(1)}/hr <span style="font-weight:400;color:var(--muted)">(${boatBalDelta >= 0 ? '+' : ''}${boatBalDelta.toFixed(1)})</span></span>
+      </div>
+      <div style="color:var(--muted);font-size:0.7rem;margin-top:0.1rem">Aggression decays −${(CONFIG.FOOD_AGGRESSION_DECAY + boatMarkets * CONFIG.MARKET_DECAY_BONUS).toFixed(3)}/hr${boatMarkets > 0 ? ` (base 0.06 + ${boatMarkets} mkt)` : ''}</div>
+    </div>
   `;
 
   const modal = document.getElementById('attackPreviewModal');
