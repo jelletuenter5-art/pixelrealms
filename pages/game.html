@@ -3648,15 +3648,24 @@ function showAttackPreview(tx, ty) {
   const multAfter = warFoodMult(aggressionAfter);
   const multChanged = Math.abs(multAfter - multNow) > 0.001;
 
-  const foodBalNow    = calcFoodBalance(myInfraFarms, myPixels,    myArmySize,  curAggression)  * speed;
-  const foodBalIfWin  = calcFoodBalance(myInfraFarms, pixelsIfWin, armyIfWin,   aggressionAfter) * speed;
-  const foodBalIfLose = calcFoodBalance(myInfraFarms, myPixels,    armyIfLose,  aggressionAfter) * speed;
+  // Shared aggression effect (same regardless of win/lose): uses current army size
+  const foodBalNow      = calcFoodBalance(myInfraFarms, myPixels, myArmySize, curAggression)  * speed;
+  const foodBalAggOnly  = calcFoodBalance(myInfraFarms, myPixels, myArmySize, aggressionAfter) * speed;
+  const aggDelta        = foodBalAggOnly - foodBalNow;
 
-  const fmtBal = (v, ref) => {
-    const delta = v - ref;
-    const col = v >= 0 ? 'var(--green)' : 'var(--red)';
-    const dCol = delta >= 0 ? 'var(--green)' : 'var(--red)';
-    return `<span style="color:${col}">${v >= 0 ? '+' : ''}${v.toFixed(1)}/hr</span> <span style="color:${dCol};font-size:0.7rem">(${delta >= 0 ? '+' : ''}${delta.toFixed(1)})</span>`;
+  // Army casualty delta on top of aggression change
+  const armyRateAfter   = (CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggressionAfter) * speed;
+  const winArmyDelta    = (armyIfWin  - myArmySize) * armyRateAfter; // negative (fewer troops = less consumption = better balance)
+  const loseArmyDelta   = (armyIfLose - myArmySize) * armyRateAfter;
+  const winPixelDelta   = (CONFIG.FOOD_PRODUCTION_PER_PIXEL * multAfter - CONFIG.FOOD_CONSUMPTION_PER_PIXEL) * speed; // +1 pixel on win
+  const winTotalDelta   = winArmyDelta  - winPixelDelta  * -1; // pixel adds prod - cons
+  // recalc cleanly
+  const foodBalIfWin    = calcFoodBalance(myInfraFarms, pixelsIfWin, armyIfWin,  aggressionAfter) * speed;
+  const foodBalIfLose   = calcFoodBalance(myInfraFarms, myPixels,    armyIfLose, aggressionAfter) * speed;
+
+  const fmtDelta = d => {
+    const col = d >= 0 ? 'var(--green)' : 'var(--red)';
+    return `<span style="color:${col}">${d >= 0 ? '+' : ''}${d.toFixed(1)}/hr</span>`;
   };
 
   document.getElementById('attackPreviewBody').innerHTML = `
@@ -3672,17 +3681,26 @@ function showAttackPreview(tx, ty) {
     </div>
     <div style="margin-top:0.6rem;padding:0.4rem 0.6rem;background:rgba(239,68,68,0.08);border-radius:6px;border:1px solid rgba(239,68,68,0.2);font-size:0.75rem;line-height:1.9">
       <div style="font-weight:600;color:var(--text);margin-bottom:0.15rem">🍞 Food impact</div>
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚔️ Army rate</span><span>${(CONFIG.FOOD_CONSUMPTION_PER_ARMY + curAggression).toFixed(2)} → <span style="color:var(--red)">${(CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggressionAfter).toFixed(2)}/unit/hr</span>${multChanged ? ` · prod ×${multNow.toFixed(2)} → <span style="color:var(--red)">×${multAfter.toFixed(2)}</span>` : ` · prod ×${multNow.toFixed(2)}`}</span></div>
-      <div style="display:flex;justify-content:space-between;border-top:1px solid rgba(239,68,68,0.15);margin-top:0.15rem;padding-top:0.15rem">
-        <span style="color:var(--muted)">Now</span><span style="color:${foodBalNow >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBalNow >= 0 ? '+' : ''}${foodBalNow.toFixed(1)}/hr</span>
+      <div style="display:flex;justify-content:space-between;margin-bottom:0.1rem">
+        <span style="color:var(--muted)">⚔️ Aggression +0.05 (win or lose)</span>
+        <span>rate ${(CONFIG.FOOD_CONSUMPTION_PER_ARMY + curAggression).toFixed(2)} → <span style="color:var(--red)">${(CONFIG.FOOD_CONSUMPTION_PER_ARMY + aggressionAfter).toFixed(2)}</span>${multChanged ? ` · prod <span style="color:var(--red)">×${multAfter.toFixed(2)}</span>` : ''}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;border-top:1px solid rgba(239,68,68,0.15);padding-top:0.15rem">
+        <span style="color:var(--muted)">Food balance now</span>
+        <span style="color:${foodBalNow >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBalNow >= 0 ? '+' : ''}${foodBalNow.toFixed(1)}/hr</span>
       </div>
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--green)">If WIN  (+1px, −${estWinLoss} army)</span>${fmtBal(foodBalIfWin, foodBalNow)}
+        <span style="color:var(--muted)">After aggression +0.05</span>
+        <span style="color:${foodBalAggOnly >= 0 ? 'var(--green)' : 'var(--red)'}">${foodBalAggOnly >= 0 ? '+' : ''}${foodBalAggOnly.toFixed(1)}/hr</span>
+      </div>
+      <div style="border-top:1px solid rgba(239,68,68,0.15);margin-top:0.15rem;padding-top:0.15rem;color:var(--muted);font-size:0.72rem;margin-bottom:0.1rem">Army casualties change consumption:</div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="color:var(--green)">✅ If WIN  (−${estWinLoss} army, +1 px)</span>${fmtDelta(foodBalIfWin - foodBalAggOnly)}
       </div>
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--red)">If LOSE (−${estLoseLoss} army)</span>${fmtBal(foodBalIfLose, foodBalNow)}
+        <span style="color:var(--red)">❌ If LOSE (−${estLoseLoss} army)</span>${fmtDelta(foodBalIfLose - foodBalAggOnly)}
       </div>
-      <div style="color:var(--muted);font-size:0.7rem;margin-top:0.1rem">Aggression decays −${(CONFIG.FOOD_AGGRESSION_DECAY + myMarkets * CONFIG.MARKET_DECAY_BONUS).toFixed(3)}/hr${myMarkets > 0 ? ` (base 0.06 + ${myMarkets} mkt)` : ''}</div>
+      <div style="color:var(--muted);font-size:0.7rem;margin-top:0.15rem">Aggression decays −${(CONFIG.FOOD_AGGRESSION_DECAY + myMarkets * CONFIG.MARKET_DECAY_BONUS).toFixed(3)}/hr${myMarkets > 0 ? ` (base 0.06 + ${myMarkets} mkt)` : ''}</div>
     </div>
   `;
 
@@ -3737,17 +3755,17 @@ function showBoatAttackPreview(tx, ty) {
   const boatLoseLoss = Math.ceil(myArmy * 0.225);
   const boatArmyIfWin  = Math.max(1, boatArmySize - boatWinLoss);
   const boatArmyIfLose = Math.max(1, boatArmySize - boatLoseLoss);
-  const boatMultNow  = warFoodMult(boatAgg);
+  const boatMultNow   = warFoodMult(boatAgg);
   const boatMultAfter = warFoodMult(boatAggAfter);
-  const boatBalNow    = calcFoodBalance(boatFarms, boatPixels,     boatArmySize,    boatAgg)      * boatSpeed;
-  const boatBalIfWin  = calcFoodBalance(boatFarms, boatPixels + 1, boatArmyIfWin,  boatAggAfter) * boatSpeed;
-  const boatBalIfLose = calcFoodBalance(boatFarms, boatPixels,     boatArmyIfLose, boatAggAfter) * boatSpeed;
+  const boatMultChanged = Math.abs(boatMultAfter - boatMultNow) > 0.001;
+  const boatBalNow      = calcFoodBalance(boatFarms, boatPixels,     boatArmySize,    boatAgg)      * boatSpeed;
+  const boatBalAggOnly  = calcFoodBalance(boatFarms, boatPixels,     boatArmySize,    boatAggAfter) * boatSpeed;
+  const boatBalIfWin    = calcFoodBalance(boatFarms, boatPixels + 1, boatArmyIfWin,   boatAggAfter) * boatSpeed;
+  const boatBalIfLose   = calcFoodBalance(boatFarms, boatPixels,     boatArmyIfLose,  boatAggAfter) * boatSpeed;
 
-  const boatFmtBal = (v, ref) => {
-    const delta = v - ref;
-    const col = v >= 0 ? 'var(--green)' : 'var(--red)';
-    const dCol = delta >= 0 ? 'var(--green)' : 'var(--red)';
-    return `<span style="color:${col}">${v >= 0 ? '+' : ''}${v.toFixed(1)}/hr</span> <span style="color:${dCol};font-size:0.7rem">(${delta >= 0 ? '+' : ''}${delta.toFixed(1)})</span>`;
+  const boatFmtDelta = d => {
+    const col = d >= 0 ? 'var(--green)' : 'var(--red)';
+    return `<span style="color:${col}">${d >= 0 ? '+' : ''}${d.toFixed(1)}/hr</span>`;
   };
 
   document.getElementById('attackPreviewBody').innerHTML = `
@@ -3764,17 +3782,26 @@ function showBoatAttackPreview(tx, ty) {
     <div style="margin-top:0.5rem;font-size:0.78rem;color:var(--muted)">⏱️ ETA: <strong style="color:var(--blue)">${etaStr}</strong> · Stats resolve on arrival</div>
     <div style="margin-top:0.5rem;padding:0.4rem 0.6rem;background:rgba(239,68,68,0.08);border-radius:6px;border:1px solid rgba(239,68,68,0.2);font-size:0.75rem;line-height:1.9">
       <div style="font-weight:600;color:var(--text);margin-bottom:0.15rem">🍞 Food impact</div>
-      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">⚔️ Army rate</span><span>${(CONFIG.FOOD_CONSUMPTION_PER_ARMY + boatAgg).toFixed(2)} → <span style="color:var(--red)">${(CONFIG.FOOD_CONSUMPTION_PER_ARMY + boatAggAfter).toFixed(2)}/unit/hr</span>${Math.abs(boatMultAfter - boatMultNow) > 0.001 ? ` · prod ×${boatMultNow.toFixed(2)} → <span style="color:var(--red)">×${boatMultAfter.toFixed(2)}</span>` : ` · prod ×${boatMultNow.toFixed(2)}`}</span></div>
-      <div style="display:flex;justify-content:space-between;border-top:1px solid rgba(239,68,68,0.15);margin-top:0.15rem;padding-top:0.15rem">
-        <span style="color:var(--muted)">Now</span><span style="color:${boatBalNow >= 0 ? 'var(--green)' : 'var(--red)'}">${boatBalNow >= 0 ? '+' : ''}${boatBalNow.toFixed(1)}/hr</span>
+      <div style="display:flex;justify-content:space-between;margin-bottom:0.1rem">
+        <span style="color:var(--muted)">⚔️ Aggression +0.05 (win or lose)</span>
+        <span>rate ${(CONFIG.FOOD_CONSUMPTION_PER_ARMY + boatAgg).toFixed(2)} → <span style="color:var(--red)">${(CONFIG.FOOD_CONSUMPTION_PER_ARMY + boatAggAfter).toFixed(2)}</span>${boatMultChanged ? ` · prod <span style="color:var(--red)">×${boatMultAfter.toFixed(2)}</span>` : ''}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;border-top:1px solid rgba(239,68,68,0.15);padding-top:0.15rem">
+        <span style="color:var(--muted)">Food balance now</span>
+        <span style="color:${boatBalNow >= 0 ? 'var(--green)' : 'var(--red)'}">${boatBalNow >= 0 ? '+' : ''}${boatBalNow.toFixed(1)}/hr</span>
       </div>
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--green)">If WIN  (+1px, −${boatWinLoss} army)</span>${boatFmtBal(boatBalIfWin, boatBalNow)}
+        <span style="color:var(--muted)">After aggression +0.05</span>
+        <span style="color:${boatBalAggOnly >= 0 ? 'var(--green)' : 'var(--red)'}">${boatBalAggOnly >= 0 ? '+' : ''}${boatBalAggOnly.toFixed(1)}/hr</span>
+      </div>
+      <div style="border-top:1px solid rgba(239,68,68,0.15);margin-top:0.15rem;padding-top:0.15rem;color:var(--muted);font-size:0.72rem;margin-bottom:0.1rem">Army casualties change consumption:</div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="color:var(--green)">✅ If WIN  (−${boatWinLoss} army, +1 px)</span>${boatFmtDelta(boatBalIfWin - boatBalAggOnly)}
       </div>
       <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--red)">If LOSE (−${boatLoseLoss} army)</span>${boatFmtBal(boatBalIfLose, boatBalNow)}
+        <span style="color:var(--red)">❌ If LOSE (−${boatLoseLoss} army)</span>${boatFmtDelta(boatBalIfLose - boatBalAggOnly)}
       </div>
-      <div style="color:var(--muted);font-size:0.7rem;margin-top:0.1rem">Aggression decays −${(CONFIG.FOOD_AGGRESSION_DECAY + boatMarkets * CONFIG.MARKET_DECAY_BONUS).toFixed(3)}/hr${boatMarkets > 0 ? ` (base 0.06 + ${boatMarkets} mkt)` : ''}</div>
+      <div style="color:var(--muted);font-size:0.7rem;margin-top:0.15rem">Aggression decays −${(CONFIG.FOOD_AGGRESSION_DECAY + boatMarkets * CONFIG.MARKET_DECAY_BONUS).toFixed(3)}/hr${boatMarkets > 0 ? ` (base 0.06 + ${boatMarkets} mkt)` : ''}</div>
     </div>
   `;
 
