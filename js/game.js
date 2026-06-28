@@ -441,8 +441,13 @@ create policy "update boats" on boats for update using (true);`);
         .eq('game_id', this.gameId).eq('x', x).eq('y', y);
       await sb.from('countries').update({ pixel_count: this.country.pixel_count + 1, pixels_captured: (this.country.pixels_captured || 0) + 1 })
         .eq('id', this.country.id);
-      await sb.from('countries').update({ pixel_count: Math.max(0, defender.pixel_count - 1), pixels_lost: (defender.pixels_lost || 0) + 1 })
-        .eq('id', defender.id);
+      const defNewPixels = Math.max(0, defender.pixel_count - 1);
+      const defFoodCap = defNewPixels * CONFIG.FOOD_CAP_PER_PIXEL;
+      const defFoodNow = Number.isFinite(defender.food) ? defender.food : 0;
+      const defFoodUpdate = { pixel_count: defNewPixels, pixels_lost: (defender.pixels_lost || 0) + 1 };
+      if (defFoodNow > defFoodCap) defFoodUpdate.food = defFoodCap;
+      await sb.from('countries').update(defFoodUpdate).eq('id', defender.id);
+      defender.pixel_count = defNewPixels;
       this.country.pixels_captured = (this.country.pixels_captured || 0) + 1;
 
       this.pixelData[key] = { ...pixel, country_id: this.country.id };
