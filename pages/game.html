@@ -467,9 +467,9 @@
     <div style="display:flex;flex-direction:column;gap:0.45rem">
       <div style="background:var(--panel2);border-radius:8px;padding:0.55rem 0.75rem">
         <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.15rem">🌾 Farm <span style="color:var(--gold);font-weight:400">100g</span></div>
-        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+0.04 💰/px/hr income nation-wide · +5 food/hr · <strong style="color:var(--text)">cap: 1 per 5 pixels</strong></div>
+        <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">+0.04 💰/px/hr income nation-wide · +5 food/hr · <strong style="color:var(--text)">cap: 1 per 8 pixels</strong></div>
         <div style="font-size:0.72rem;color:var(--muted);margin-top:0.1rem">Terrain: grass 1.5× · hill 1.0× · mountain 0.5× · desert 0.3×</div>
-        <div style="font-size:0.72rem;color:#f59e0b;margin-top:0.2rem">⭐ Upgrade for <strong>250g</strong> → 15 food/hr · <strong>cap: 1 upgrade per 10 pixels</strong></div>
+        <div style="font-size:0.72rem;color:#f59e0b;margin-top:0.2rem">⭐ Upgrade for <strong>250g</strong> → 15 food/hr · <strong>cap: 1 upgrade per 15 pixels</strong></div>
       </div>
       <div style="background:var(--panel2);border-radius:8px;padding:0.55rem 0.75rem">
         <div style="font-size:0.82rem;font-weight:700;margin-bottom:0.15rem">⛏️ Mine <span style="color:var(--gold);font-weight:400">120g</span></div>
@@ -538,7 +538,7 @@
       <div>📦 Storage cap: <strong style="color:var(--text)">10 food per pixel</strong> (300 pixels = 3,000 food max)</div>
     </div>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6;margin-bottom:0.35rem">
-      Farm caps: <strong>1 farm per 5 pixels</strong> · <strong>1 upgraded farm per 10 pixels</strong>.
+      Farm caps: <strong>1 farm per 8 pixels</strong> · <strong>1 upgraded farm per 15 pixels</strong>.
       If stored food drops below <strong>50% of population</strong>, gold income is penalised up to <strong>−80%</strong>.
     </p>
     <div style="background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:0.5rem 0.75rem;font-size:0.78rem;line-height:1.8;color:var(--text)">
@@ -547,7 +547,7 @@
       <div>① <strong>More consumption</strong> — army eats +0.05 extra food/hr per unit per aggression point</div>
       <div>② <strong>Less production</strong> — all farm output × 0.5<sup>aggression</sup>, floored at ×0.25</div>
       <div style="color:var(--muted);font-size:0.72rem;margin-top:0.1rem">Aggression 1.0 → production ×0.5 · Aggression 2.0+ → production ×0.25</div>
-      <div style="color:var(--muted);font-size:0.72rem">The attack preview shows separate food balances for WIN and LOSE outcomes.</div>
+      <div style="color:var(--muted);font-size:0.72rem">The attack preview shows your food balance now vs. after the attack.</div>
     </div>
 
     <div class="section-label">⚓ Harbours &amp; Boats</div>
@@ -566,7 +566,7 @@
       Switch to <strong>Attack</strong> mode and click an enemy tile bordering your territory. Combat is army vs. army, modified by terrain — hills and mountains boost defense, walls add +50% on that tile. Both sides lose troops regardless of outcome. Capture all of an enemy's pixels to eliminate them.
     </p>
     <p style="font-size:0.85rem;color:var(--text);line-height:1.6">
-      Every attack raises your <strong>war aggression</strong> (+0.05), increasing army food consumption and cutting farm production. The <strong>attack preview</strong> shows separate food balances for if you win and if you lose — check before committing. Aggression decays over time (boosted by markets). Captured buildings have a 50% chance to transfer to you.
+      Every attack raises your <strong>war aggression</strong> (+0.05), increasing army food consumption and cutting farm production. The <strong>attack preview</strong> shows your food balance now vs. after the attack — check before committing. Aggression decays over time (boosted by markets). Captured buildings have a 50% chance to transfer to you — unless you're already at the market cap (40) or lack the population for another barracks, in which case the building is always destroyed instead.
     </p>
 
     <div class="section-label">🤝 Diplomacy</div>
@@ -1862,7 +1862,7 @@ const TUT_SLIDES = [
     icon: '⚔️',
     title: 'Build an Army & Fight',
     body: `Build a <strong>Barracks (150💰)</strong> to grow your army — +20 instantly, then regenerates 0.5/hr per barracks up to its cap.<br><br>
-      Switch to <strong>⚔️ Attack</strong> mode and click an enemy tile <strong>bordering your territory</strong>. The <strong>attack preview</strong> shows outcome odds, estimated casualties, and your food balance for both win and loss before you commit.<br><br>
+      Switch to <strong>⚔️ Attack</strong> mode and click an enemy tile <strong>bordering your territory</strong>. The <strong>attack preview</strong> shows outcome odds, estimated casualties, and your food balance now vs. after the attack before you commit.<br><br>
       Terrain matters: hills and mountains boost defense. Fortifications add +50% on that tile. Both sides always lose some troops.<br><br>
       Late game: <strong>buy 10 army for 50,000 💰</strong> in My Realm (up to barracks cap).`,
     tip: '💡 Never attack blind — always read the preview first.',
@@ -1871,14 +1871,14 @@ const TUT_SLIDES = [
     icon: '🌾',
     title: 'Keep Your People Fed',
     body: `Food is critical. If stored food drops below <strong>50% of your population</strong>, gold income is penalised up to <strong>−80%</strong>.<br><br>
-      Build <strong>Farms (100💰)</strong> — cap: <strong>1 per 5 pixels</strong>. Each produces <strong>5 food/hr</strong>.
-      Upgrade for <strong>250💰</strong> → <strong>15 food/hr</strong> — upgrade cap: <strong>1 per 10 pixels</strong>.
+      Build <strong>Farms (100💰)</strong> — cap: <strong>1 per 8 pixels</strong>. Each produces <strong>5 food/hr</strong>.
+      Upgrade for <strong>250💰</strong> → <strong>15 food/hr</strong> — upgrade cap: <strong>1 per 15 pixels</strong>.
       Storage cap: <strong>10 food per pixel</strong>.<br><br>
       <div style="background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);border-radius:7px;padding:0.4rem 0.6rem;font-size:0.78rem;line-height:1.7">
         <strong>⚔️ War hits food twice:</strong> every attack raises aggression +0.05 (max 2.0).<br>
         ① Army eats more: +0.05 food/hr per unit per aggression point<br>
         ② Farms produce less: output × 0.5<sup>aggression</sup>, min ×0.25<br>
-        <span style="color:var(--muted);font-size:0.72rem">The attack preview shows WIN and LOSE food balances so you can plan ahead.</span>
+        <span style="color:var(--muted);font-size:0.72rem">The attack preview shows your food balance now vs. after the attack so you can plan ahead.</span>
       </div>`,
     tip: '💡 Watch the food bar in My Realm — red means your income is being penalised.',
   },
