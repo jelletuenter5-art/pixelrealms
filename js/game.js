@@ -354,9 +354,14 @@ create policy "update boats" on boats for update using (true);`);
       return { ok: false, msg: 'Must expand to a pixel adjacent to your territory.' };
     }
 
-    // If occupied, must attack instead
+    // If occupied by a living country, must attack instead.
+    // If country_id points at a country that's eliminated/not loaded (a desynced
+    // "ghost" pixel left over from a stale pixel_count), treat it as unclaimed
+    // so it doesn't get permanently stuck — unselectable, unattackable, unexpandable.
     if (pixel.country_id && pixel.country_id !== this.country.id) {
-      return { ok: false, msg: 'Tile is occupied! Use Attack instead.', needsAttack: true };
+      if (this.countries[pixel.country_id]) {
+        return { ok: false, msg: 'Tile is occupied! Use Attack instead.', needsAttack: true };
+      }
     }
 
     // Claim the pixel
