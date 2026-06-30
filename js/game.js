@@ -239,31 +239,19 @@ create policy "update boats" on boats for update using (true);`);
     const farmIncome = calcFarmIncome(farmInfra, this.country.pixel_count, this.pixelData);
     const border = calcBorderUpkeep(this.pixelData, this.country.id, this.country.pixel_count);
     const tradingPostIncome = calcTradingPostIncome(tradingPostInfra, this.pixelData, border.nations);
-    const currentAggression = Number.isFinite(this.country.food_aggression) ? this.country.food_aggression : 0;
-    const foodBalance = calcFoodBalance(farmInfra, this.country.pixel_count, this.country.army_size, currentAggression);
     const foodThreshold = this.country.pixel_count * CONFIG.POPULATION_PER_PIXEL * 0.5;
-    const currentFood = Number.isFinite(this.country.food) ? this.country.food : 0;
-    const foodMult = (foodThreshold > 0 && currentFood < foodThreshold)
-      ? Math.max(0.2, currentFood / foodThreshold)
-      : 1;
-    const hourlyIncome = (baseIncome + mineIncome + farmIncome + tradingPostIncome) * foodMult;
     const pixelUpkeep = Math.max(0, upkeepPerPx * this.country.pixel_count);
     const armyUpkeep = this.country.army_size * CONFIG.ARMY_UPKEEP_PER_UNIT;
     const harborCount = myInfra.filter(i => i.type === 'harbor').length;
     const harborUpkeep = harborCount * CONFIG.INFRA_COSTS.harbor.upkeepPerHour;
-    // Border upkeep capped at gross income — being surrounded can't create an inescapable spiral
-    const borderCost = Math.min(border.cost, hourlyIncome);
-    const currentGold = Number.isFinite(this.country.gold) ? this.country.gold : 0;
-    const scaledHours = hoursOffline * speed;
-    const newGold = Math.max(0, Math.round((currentGold + (hourlyIncome - pixelUpkeep - armyUpkeep - borderCost - harborUpkeep) * scaledHours) * 10000) / 10000);
-
-    // Food offline — capped at FOOD_CAP_PER_PIXEL per pixel
+    const marketsCount = markets;
+    const effectiveDecay = CONFIG.FOOD_AGGRESSION_DECAY + marketsCount * CONFIG.MARKET_DECAY_BONUS;
     const foodCap = this.country.pixel_count * CONFIG.FOOD_CAP_PER_PIXEL;
-    const newFood = Math.min(foodCap, Math.max(0, Math.round((currentFood + foodBalance * scaledHours) * 100) / 100));
 
     // Army regen offline — barracks regenerate up to their cap; drain slowly if over cap
     const armyCap = barracksCount * CONFIG.INFRA_COSTS.barracks.armyBonus;
     const currentArmy = this.country.army_size || 0;
+    const scaledHours = hoursOffline * speed;
     let newArmy;
     if (barracksCount > 0 && currentArmy < armyCap) {
       newArmy = Math.min(armyCap, Math.floor(currentArmy + barracksCount * CONFIG.BARRACKS_REGEN_PER_HOUR * scaledHours));
@@ -274,10 +262,31 @@ create policy "update boats" on boats for update using (true);`);
       newArmy = currentArmy;
     }
 
-    // Food aggression decays offline — boosted by markets
-    const marketsCount = myInfra.filter(i => i.type === 'market').length;
-    const effectiveDecay = CONFIG.FOOD_AGGRESSION_DECAY + marketsCount * CONFIG.MARKET_DECAY_BONUS;
-    const newAggression = Math.max(0, Math.round((currentAggression - effectiveDecay * scaledHours) * 100000) / 100000);
+    // Simulate gold/food/aggression in chunks instead of one flat-rate shot, since
+    // war aggression decays (and food production recovers) continuously over the
+    // offline window — a single average rate badly misrepresents fast-changing periods.
+    let simGold = Number.isFinite(this.country.gold) ? this.country.gold : 0;
+    let simFood = Number.isFinite(this.country.food) ? this.country.food : 0;
+    let simAggression = Number.isFinite(this.country.food_aggression) ? this.country.food_aggression : 0;
+    const numChunks = Math.min(500, Math.max(1, Math.ceil(scaledHours / 0.25)));
+    const chunkHours = scaledHours / numChunks;
+    for (let i = 0; i < numChunks; i++) {
+      const foodMult = (foodThreshold > 0 && simFood < foodThreshold)
+        ? Math.max(0.2, simFood / foodThreshold)
+        : 1;
+      const hourlyIncome = (baseIncome + mineIncome + farmIncome + tradingPostIncome) * foodMult;
+      // Border upkeep capped at gross income — being surrounded can't create an inescapable spiral
+      const borderCost = Math.min(border.cost, hourlyIncome);
+      simGold = Math.max(0, simGold + (hourlyIncome - pixelUpkeep - armyUpkeep - borderCost - harborUpkeep) * chunkHours);
+
+      const foodBalance = calcFoodBalance(farmInfra, this.country.pixel_count, this.country.army_size, simAggression);
+      simFood = Math.min(foodCap, Math.max(0, simFood + foodBalance * chunkHours));
+
+      simAggression = Math.max(0, simAggression - effectiveDecay * chunkHours);
+    }
+    const newGold = Math.round(simGold * 10000) / 10000;
+    const newFood = Math.round(simFood * 100) / 100;
+    const newAggression = Math.round(simAggression * 100000) / 100000;
 
     const updates = {
       pending_pixels: newTokens,
