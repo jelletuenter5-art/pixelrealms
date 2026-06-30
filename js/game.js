@@ -470,12 +470,18 @@ create policy "update boats" on boats for update using (true);`);
       }
 
       // 50/50: captured building is either transferred or destroyed
-      // (markets always destroyed if the attacker is already at the market cap — can't transfer in over the limit)
+      // (markets/barracks always destroyed if the attacker is already at their cap — can't transfer in over the limit)
       const capturedInfra = this.infraData[key];
       if (capturedInfra) {
-        const attackerMarketCount = Object.values(this.infraData || {}).filter(i => i.country_id === this.country.id && i.type === 'market').length;
+        const attackerInfra = Object.values(this.infraData || {}).filter(i => i.country_id === this.country.id);
+        const attackerMarketCount = attackerInfra.filter(i => i.type === 'market').length;
         const marketCapBlocksTransfer = capturedInfra.type === 'market' && attackerMarketCount >= CONFIG.INFRA_COSTS.market.maxCount;
-        if (!marketCapBlocksTransfer && Math.random() < 0.5) {
+        const attackerBarracksCount = attackerInfra.filter(i => i.type === 'barracks').length;
+        const attackerPopulation = this.country.pixel_count * CONFIG.POPULATION_PER_PIXEL;
+        const requiredPopForOneMore = (attackerBarracksCount + 1) * CONFIG.BARRACKS_POPULATION_COST;
+        const barracksCapBlocksTransfer = capturedInfra.type === 'barracks' && attackerPopulation < requiredPopForOneMore;
+        const capBlocksTransfer = marketCapBlocksTransfer || barracksCapBlocksTransfer;
+        if (!capBlocksTransfer && Math.random() < 0.5) {
           // Transfer to attacker
           await sb.from('infrastructure').update({ country_id: this.country.id }).eq('id', capturedInfra.id);
           this.infraData[key] = { ...capturedInfra, country_id: this.country.id };
