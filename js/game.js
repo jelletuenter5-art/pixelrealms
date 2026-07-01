@@ -296,8 +296,10 @@ create policy "update boats" on boats for update using (true);`);
       food_aggression: newAggression,
       last_active: now.toISOString(),
     };
-    const { data } = await sb.from('countries').update(updates).eq('id', this.country.id).select().single();
+    const { data, error } = await sb.from('countries').update(updates).eq('id', this.country.id).select().single();
+    if (error) console.warn('[offline accrual] update failed:', error.message, '| updates:', updates);
     if (data) this.country = data;
+    else console.log('[offline accrual] computed food:', newFood, 'gold:', newGold, 'aggression:', newAggression, '— but DB returned no row');
   }
 
   // How many whole expansion tokens available
@@ -1254,7 +1256,8 @@ async function tickIncome(engine) {
   const newFood = Math.min(foodCap, Math.max(0, Math.round((safeFood + foodBalance * tickHours) * 100) / 100));
   if (newFood !== safeFood) {
     const { error } = await sb.from('countries').update({ food: newFood }).eq('id', c.id);
-    if (!error) engine.country.food = newFood;
+    if (error) console.warn('[food tick] update failed:', error.message, '| safeFood:', safeFood, 'newFood:', newFood);
+    else engine.country.food = newFood;
   }
 
   // War aggression decays — base rate boosted by markets owned

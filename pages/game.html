@@ -919,9 +919,9 @@ let lastMousePos = null;
   // Enforce farm & upgrade caps — remove excess randomly
   await enforceFarmCaps();
 
-  // Income tick — runs frequently for a smooth gold counter
-  setInterval(() => {
-    tickIncome(engine);
+  // Income tick — runs frequently for a smooth gold/food counter
+  setInterval(async () => {
+    await tickIncome(engine);
     updateTopBar();
     if (rightTab === 'country') renderRightPanel();
   }, CONFIG.INCOME_TICK_SECONDS * 1000);
@@ -2652,7 +2652,7 @@ async function spectateCountry(id, fromClick = false) {
       ${statCard('🗺️ Pixels', c.pixel_count, 'green')}
       ${statCard('👥 Population', population.toLocaleString(), 'blue')}
       ${statCard('⚔️ Army', c.army_size, 'muted')}
-      ${statCard('🍞 Food', (Number.isFinite(c.food) ? c.food : 0).toFixed(1) + ' / ' + (c.pixel_count * CONFIG.POPULATION_PER_PIXEL), 'green')}
+      ${statCard('🍞 Food', (Number.isFinite(c.food) ? c.food : 0).toFixed(1) + ' / ' + (c.pixel_count * CONFIG.FOOD_CAP_PER_PIXEL), 'green')}
       ${statCard('🏗️ Buildings', myInfra.length, 'gold')}
       ${statCard('🎯 Tokens', Math.floor(Math.min((c.pending_pixels || 0) + Math.max(0, (Date.now() - new Date(c.last_active)) / 3600000) * CONFIG.PIXELS_PER_HOUR * spSpeed, CONFIG.MAX_STACK)), 'green')}
     </div>
