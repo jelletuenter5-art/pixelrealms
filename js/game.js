@@ -159,24 +159,17 @@ create policy "update boats" on boats for update using (true);`);
     for (const p of Object.values(this.pixelData)) {
       if (p.country_id) actualCount[p.country_id] = (actualCount[p.country_id] || 0) + 1;
     }
-    const now = new Date().toISOString();
     for (const country of Object.values(this.countries)) {
       if (country.id === this.country?.id) continue; // own country handled by _reconcileCountryStats
       const actual = actualCount[country.id] || 0;
-      const updates = {};
-      if (actual !== country.pixel_count) updates.pixel_count = actual;
-      // Eliminate if 0 actual pixels and still alive, provided they're not a brand-new
-      // player in spawn selection (give 30 min grace period for new spawns)
-      const ageMinutes = (Date.now() - new Date(country.created_at).getTime()) / 60000;
-      if (actual === 0 && country.is_alive && (country.pixel_count > 0 || ageMinutes > 30)) {
-        updates.is_alive = false;
-        updates.surrendered_at = now;
+      // Only fix the pixel_count number — do NOT eliminate here.
+      // Eliminating based on stale local pixelData can prematurely fire the win
+      // condition before the player has actually captured all pixels. Elimination
+      // is only reliable when it happens directly in attack() / sendBoat().
+      if (actual !== country.pixel_count) {
+        await sb.from('countries').update({ pixel_count: actual }).eq('id', country.id);
+        this.countries[country.id] = { ...country, pixel_count: actual };
       }
-      if (Object.keys(updates).length > 0) {
-        await sb.from('countries').update(updates).eq('id', country.id);
-        this.countries[country.id] = { ...country, ...updates };
-      }
-
     }
   }
 
@@ -905,14 +898,27 @@ const { data } = await sb.from('boats').select('*')
 
   // ── Win condition & cleanup ───────────────────────────────
   async _checkWinCondition() {
+    if (this._gameFinished) return;
     const all = Object.values(this.countries);
     const alive = all.filter(c => c.is_alive);
     if (alive.length !== 1) return;
+
+    // Double-check against DB — in-memory countries can lag behind realtime updates
+    const { data: dbAlive } = await sb.from('countries').select('id').eq('game_id', this.gameId).eq('is_alive', true);
+    if (!dbAlive || dbAlive.length !== 1) return;
 
     await this._finishGame(alive[0]);
   }
 
   async _finishGame(winner) {
+    // Guard against duplicate calls (race between simultaneous attacks or boat arrivals)
+    if (this._gameFinished) return;
+    this._gameFinished = true;
+
+    // Verify game isn't already finished in DB before doing anything
+    const { data: currentGame } = await sb.from('games').select('status').eq('id', this.gameId).single();
+    if (currentGame?.status === 'finished') return;
+
     // Fetch ALL countries (alive + eliminated) so everyone gets credited
     const { data: allCountries } = await sb.from('countries').select('*').eq('game_id', this.gameId);
     for (const c of (allCountries || [])) {
